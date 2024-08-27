@@ -119,7 +119,7 @@ use crate::schema::SchemaElement;
 
 impl<Store, E> GraphStore<&str, Vec<u8>, E> for Store
 where
-  Store: KVStore,
+  Store: KVStore + GraphStoreHelper<E>,
   E: std::convert::From<<Store as KVStore>::Error>,
   //T: SchemaElement<String, E>,
 {
