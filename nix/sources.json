@@ -5,10 +5,10 @@
         "homepage": "",
         "owner": "nmattia",
         "repo": "naersk",
-        "rev": "6944160c19cb591eb85bbf9b2f2768a935623ed3",
-        "sha256": "01i282zrx651mpvnmlgk4fgwg56nbr1yljpzcj5irqxf18cqx3gn",
+        "rev": "aeb58d5e8faead8980a807c840232697982d47b9",
+        "sha256": "185wg4p67krrjd8dx5h9pc381z7677nfzsdyp54kg3niqcf5wdzx",
         "type": "tarball",
-        "url": "https://github.com/nmattia/naersk/archive/6944160c19cb591eb85bbf9b2f2768a935623ed3.tar.gz",
+        "url": "https://github.com/nmattia/naersk/archive/aeb58d5e8faead8980a807c840232697982d47b9.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "niv": {
@@ -17,22 +17,22 @@
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "82e5cd1ad3c387863f0545d7591512e76ab0fc41",
-        "sha256": "090l219mzc0gi33i3psgph6s2pwsc8qy4lyrqjdj4qzkvmaj65a7",
+        "rev": "290965abaa02be33b601032d850c588a6bafb1a5",
+        "sha256": "1f75kd0s7ch882camvsp0shkbx0vs0hshn184il0fi6i7k4xs5hy",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/82e5cd1ad3c387863f0545d7591512e76ab0fc41.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/290965abaa02be33b601032d850c588a6bafb1a5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-22.05",
+        "branch": "nixpkgs-unstable",
         "description": "Nix Packages collection",
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "494fcbbe851c45875276dc141e04b73f08746170",
-        "sha256": "0xyb4jd8s5lkvlx0dyvj0iawdklxdjs3jfs2skhblwjmhlkmsdzw",
+        "rev": "93e1c2d08467d1117ebac45689469613a9fe8453",
+        "sha256": "0hp9dfaliypha9mzvfpw21xk71g9y72zsnp630w0fqgz72y86k68",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/494fcbbe851c45875276dc141e04b73f08746170.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/93e1c2d08467d1117ebac45689469613a9fe8453.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "rust-overlay": {
@@ -41,10 +41,10 @@
         "homepage": "",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "2ac8be332f507e521c235caa37cb0b2fc698cbd9",
-        "sha256": "01xhkc1k37jv6xq7m26cglyf7myqa41j4sb0vhxn2nfb6apsg0yk",
+        "rev": "b4ae18c03af976549a0b6e396b2b5be56d275f8b",
+        "sha256": "19vrdxfwg48a33b6jar7a0z5063pxrvb5zkcr4f00b7cy1nxj4d7",
         "type": "tarball",
-        "url": "https://github.com/oxalica/rust-overlay/archive/2ac8be332f507e521c235caa37cb0b2fc698cbd9.tar.gz",
+        "url": "https://github.com/oxalica/rust-overlay/archive/b4ae18c03af976549a0b6e396b2b5be56d275f8b.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
