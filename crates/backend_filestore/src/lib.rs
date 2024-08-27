@@ -175,16 +175,15 @@ impl<T: Property<HashId, Error>> FsStore<T> {
   ///             the property and needs a backling
   /// ty:         the type of the element that needs a backlink
   fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> std::io::Result<()> {
-    let index_path = self.base_path.join("indexes/");
-    let index_path = index_path.join(props_hash.to_string() + "/");
-    self.create_bucket(index_path.as_os_str().as_bytes())?;
+    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
+    self.create_bucket(index_path.as_bytes())?;
 
     let prefix = match ty {
       BacklinkType::Node => "nodes",
       BacklinkType::Edge => "edges",
       BacklinkType::Property => "props",
     };
-    let backlink_path = index_path.join(prefix.to_owned() + "_" + id);
+    let backlink_path = self.key_to_path(index_path.as_bytes()).join(prefix.to_owned() + "_" + id);
     let path = self.base_path.join(prefix).join(id);
     fs::hard_link(path, backlink_path)?;
 
@@ -192,17 +191,17 @@ impl<T: Property<HashId, Error>> FsStore<T> {
   }
 
   fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> std::io::Result<bool> {
-    let index_path = self.base_path.join("indexes/");
-    let index_path = index_path.join(props_hash.to_string() + "/");
+    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
 
     let prefix = match ty {
       BacklinkType::Node => "nodes",
       BacklinkType::Edge => "edges",
       BacklinkType::Property => "props",
     };
-    let backlink_path = index_path.join(prefix.to_owned() + "_" + id);
-    self.delete_record(backlink_path.as_os_str().as_bytes())?;
+    let backlink_path = index_path.clone() + prefix + "_" + id;
+    self.delete_record(backlink_path.as_bytes())?;
 
+    let index_path = self.key_to_path(index_path.as_bytes());
     if fs::read_dir(&index_path)?.next().is_none() {
       fs::remove_dir(&index_path)?;
 
@@ -223,8 +222,8 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     let id = node.get_key();
     let node = SchemaElement::serialize(&node)?;
 
-    let path = self.base_path.join("nodes/");
-    let path = path.join(&id);
+    let node_path = "nodes/".to_string() + &id;
+    let path = self.key_to_path(node_path.as_bytes());
 
     if path.exists() {
       log::error!("node {:?} allready exists", path);
@@ -232,7 +231,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     };
 
     log::debug!("creating node file {:?} with content {}", path, String::from_utf8_lossy(&node));
-    self.store_record(&path.as_os_str().as_bytes(), &node)?;
+    self.store_record(&node_path.as_bytes(), &node)?;
 
     self.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
 
