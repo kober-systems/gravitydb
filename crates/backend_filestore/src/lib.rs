@@ -225,7 +225,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     let node_path = "nodes/".to_string() + &id;
     let path = self.key_to_path(node_path.as_bytes());
 
-    if path.exists() {
+    if self.exists(node_path.as_bytes())? {
       log::error!("node {:?} allready exists", path);
       return Err(Error::NodeExists);
     };
