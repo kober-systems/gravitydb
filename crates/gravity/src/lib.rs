@@ -90,10 +90,12 @@ pub trait KVStore {
   fn exists(&self, key: &[u8]) -> Result<bool, Self::Error>;
 }
 
-pub trait GraphStore<E> {
+pub trait GraphStore {
+  type Error;
+
   /// helper functions used to implement the default api
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), E>;
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
+  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Self::Error>;
+  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Self::Error>;
 
   // CRUD functions
   //      TODO these functions should have a default implementation
