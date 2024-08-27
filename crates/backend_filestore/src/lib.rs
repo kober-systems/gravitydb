@@ -222,16 +222,15 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     let id = node.get_key();
     let node = SchemaElement::serialize(&node)?;
 
-    let node_path = "nodes/".to_string() + &id;
-    let path = self.key_to_path(node_path.as_bytes());
+    let path = "nodes/".to_string() + &id;
 
-    if self.exists(node_path.as_bytes())? {
+    if self.exists(path.as_bytes())? {
       log::error!("node {:?} allready exists", path);
       return Err(Error::NodeExists);
     };
 
     log::debug!("creating node file {:?} with content {}", path, String::from_utf8_lossy(&node));
-    self.store_record(&node_path.as_bytes(), &node)?;
+    self.store_record(&path.as_bytes(), &node)?;
 
     self.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
 
