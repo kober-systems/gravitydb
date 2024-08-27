@@ -1,0 +1,388 @@
+= Gravity - A graph library
+
+Basic ideas are from here https://depth-first.com/articles/2020/01/06/a-minimal-graph-api/
+
+== Graph drawing
+Visualizing Graphs is a powerful way to understand structures. We need a function to do this.
+
+We use the https://github.com/plotters-rs/plotters-backend[plotters backend] crate to enable drawing on different canveses.
+
+[source, rust]
+----
+fn render(g: G, backend: DrawingBackend)
+where
+  G: NodeLayout + EdgeLayout + NodeRenderer
+{
+  <<render_nodes>>
+  for (x, y, node) in g.get_node_positions() {
+    let relative_backend = get_relative_backend(&backend, x, y);
+    g.render_node(node, relative_backend);
+  }
+  <<render_edges>>
+}
+----
+
+TODO It's not clear what to render first: nodes or edges. This depends on the intent. Maybe we need a more sophisticated algorithm that uses Layers.
+
+=== Layout algorithms
+There is not the _one_ way to render a graph. For example nodes can be layed out on different positions to emphazise different aspects of the graph structure.
+
+[source, rust]
+.Basic Interface for node layout algorithms
+----
+trait NodeLayout<'a, N: 'a> {
+  fn get_node_positions(&self) -> Iterator<Item=(u32, u32, &'a N)>;
+}
+----
+
+Edges can also be rendered in different ways. The same Node Layout Algorithm can be used in combination with different edge layout algorithms. For example we would like to have straight lines for edges in one case and non overlapping (as far as possible) curves in another.
+
+[source, rust]
+.Basic Interface for edge layout algorithms
+----
+trait EdgeLayout<'a, E: 'a> {
+  fn get_edge_paths(&self) -> Iterator<Item=(Vec<u32, u32>, &'a E)>;
+}
+----
+
+A type could implement both `NodeLayout` and `EdgeLayout` at the same time or an `EdgeLayout` could use a `NodeLayout` internally to get the Positions first and than calculate the edge line drawing paths.
+
+==== Add support for graphviz layout algorithms
+Once we can import and export <<dot>> it is easily possible to support all of graphviz layout algorithms. All we have to do is run graphviz with our dot input and output to xdot. The additional Attributes in xdot provide all we need to implement our `NodeLayout` and `EdgeLayout` traits.
+
+=== Rendering Nodes
+
+[source, rust]
+----
+trait NodeRenderer<'a, N: 'a> {
+  fn render_node(&self, node: N, backend: DrawingBackend);
+}
+----
+
+TODO We need a function to map to another position in a drawing backend fn(DrawingBackend) -> DrawingBackend
+
+=== Interactivity
+Graph drawing is useful in itself and it should be up to the integrations to add interactivity. But we could provide some helpers to implement it.
+
+First we need a function that takes a rendered graph (whatever this is we consider it as a opaque element) and a coordinate. It should return all nodes and edges that are on that coordinate. Its up to the implementor to deside on things like the coodrdinate system.
+
+TODO
+
+TODO Maybe we should have a similar function for areas.
+
+== Graph traversal and algorithms
+TODO
+
+TODO We could mostly use https://github.com/samueltardieu/pathfinding
+
+A very basic interface for most traversal mechanisms could be something like this:
+
+[source, rust]
+----
+trait filter<GIN, GOUT>
+where
+  GIN: Graph,
+  GOUT: Graph,
+{
+  filter(graph: GIN) -> GOUT;
+}
+----
+
+TODO What about other graph variations like directed graphs etc. Do we have to implement it for every combination? Or could we remove the restrictions on the types and leave it to the implementations to set constraints? This seems to be a better option:
+
+[[traits]]
+[source, rust]
+----
+trait GraphFilter<GIN, GOUT>
+{
+  fn filter(&mut self, graph: GIN) -> GOUT;
+}
+----
+
+== Import and export of graph file formats
+TODO
+
+[[dot]]
+=== Graphwiz dot
+TODO Maybe we can use https://github.com/przygienda/dot-rust as a base
+
+=== graphml
+TODO
+
+TODO It would be interesting to support the graphml flavors of tinkerpop as well as the other serialisation formats there https://tinkerpop.apache.org/docs/3.5.1/dev/io/
+
+==== ygraphml
+yed (TODO link) is a wonderful graph editor. It uses a customized graphml format to serialize it's data.
+
+TODO
+
+[source, rust]
+----
+#[derive(Default, PartialEq, Debug, UtilsTupleIo, UtilsDefaultSerde)]
+pub struct LineTypeType (pub String);
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lower")]
+pub enum FontStyleType {
+  Plain,
+  Bold,
+  Italic,
+  Bolditalic,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ShapeTypeType {
+    Rectangle,
+    Roundrectangle,
+    Ellipse,
+    Parallelogram,
+    Hexagon,
+    Octagon,
+    Diamond,
+    Triangle,
+    Trapezoid,
+    Trapezoid2,
+    Rectangle3D,
+}
+
+// The valid alignemts for labels.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum AlignmentType {
+    Center,
+    Left,
+    Right,
+}
+
+// The valid label positions for node labels.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum NodeLabelPositionType {
+    N,
+    Nw,
+    Ne,
+    W,
+    E,
+    Sw,
+    S,
+    Se,
+    C,
+    Tl,
+    T,
+    Tr,
+    R,
+    L,
+    Bl,
+    B,
+    Br,
+    Anywhere,
+}
+
+// The valid label positions for edge labels.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum EdgeLabelPositionType {
+    Center,
+    Tcentr,
+    Scentr,
+    Anywhere,
+    Stail,
+    Ttail,
+    Tail,
+    Shead,
+    Thead,
+    Head,
+}
+
+// The valid vertical text vs. icon alignements for labels.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum VerticalTextPositionType {
+    Top,
+    Bottom,
+    Center,
+}
+
+// Type definition for rectangles.
+#[derive(Default, PartialEq, Debug, YaSerialize, YaDeserialize)]
+#[yaserde(namespace = "http://www.yworks.com/xml/graphml")]
+pub struct RectangleType {}
+
+// Attribute group that describes a two-dimensional path, consisting of a point
+// list together with optional source
+// and target locations.
+#[derive(Default, Debug, Serialize, Deserialize)]
+#[yaserde(namespace = "http://www.yworks.com/xml/graphml")]
+pub struct PathType {
+    // Single control point for two dimensional paths.
+    #[yaserde(rename = "Point")]
+    pub point: Vec<path_type::PointType>,
+
+    // true iff the path should be rendered in reverse order.
+    #[yaserde(attribute, rename = "reversedPathRendering")]
+    pub reversed_path_rendering: Option<bool>,
+
+    // The x coordinate of the source point.
+    #[yaserde(attribute, rename = "sx")]
+    pub sx: Option<f64>,
+
+    // The y coordinate of the source point.
+    #[yaserde(attribute, rename = "sy")]
+    pub sy: Option<f64>,
+
+    // The x coordinate of the target point.
+    #[yaserde(attribute, rename = "tx")]
+    pub tx: Option<f64>,
+
+    // The y coordinate of the target point.
+    #[yaserde(attribute, rename = "ty")]
+    pub ty: Option<f64>,
+}
+
+----
+
+== Basic Graph structure
+
+[[traits]]
+[source, rust]
+.Basic methods for graphs
+----
+pub trait Graph<'a, N: 'a, E> {
+  type NodeIterator: Iterator<Item=&'a N>;
+  type NeighborIterator: Iterator<Item=&'a N>;
+  type EdgeIterator: Iterator<Item=(&'a N, &'a N)>;
+
+  /// Returns true if there are no nodes, or false otherwise.
+  fn is_empty(&self) -> bool;
+
+  // /// Returns the number of nodes in this graph.
+  fn order(&self) -> usize;
+
+  // /// Returns the number of edges in this graph.
+  fn size(&self) -> usize;
+
+  // /// Iterates the nodes of this graph
+  fn nodes(&'a self) -> Self::NodeIterator;
+
+  // /// Returns true if node is a member, or false otherwise.
+  fn has_node(&self, node: &N) -> bool;
+
+  // /// Iterates the neighbors of node.
+  fn neighbors(&'a self, node: &N) -> Result<Self::NeighborIterator, E>;
+
+  // /// Returns the number of neighbors connected to node.
+  fn degree(&self, node: &N) -> Result<usize, E>;
+
+  // /// Iterates the edges of this graph.
+  fn edges(&'a self) -> Self::EdgeIterator;
+
+  // /// Returns true if an edge exists between source and target.
+  fn has_edge(&self, source: &N, target: &N) -> Result<bool, E>;
+}
+----
+
+[[traits]]
+[source, rust]
+.Additional properties of a directed graph
+----
+pub trait DirectedGraph<'a, N: 'a, E>: Graph<'a, N, E> {
+  type OutIterator: Iterator<Item = &'a N>;
+  type InIterator: Iterator<Item = &'a N>;
+
+  // /// Iterates the outgoing neighbors of node.
+  fn outgoing(&'a self, node: &N) -> Result<Self::OutIterator, E>;
+
+  // /// Iterates the incoming neighbors of node.
+  fn incoming(&'a self, node: &N) -> Result<Self::InIterator, E>;
+}
+----
+
+[[traits]]
+[source, rust]
+.A weighted graph
+----
+pub trait WeightedGraph<'a, N:'a, P, E> : Graph<'a, N, E> {
+  /// Returns the weight between source and target.
+  fn weight(&self, source: &'a N, target: &'a N) -> Result<Option<&P>, E>;
+}
+----
+
+TODO How to manipulate weigthed Graphs? Should this be handled in a separate trait?
+
+[[traits]]
+[source, rust]
+.Manipulating a graph
+----
+pub trait GraphBuilder<N, P, E> {
+  /// Add a new node to the graph
+  fn add_node(&mut self, node: N) -> Result<(), E>;
+  /// Add an edge to the graph
+  ///
+  /// Edges are expected to have properties. If an Implementation
+  /// does not have them it should use ().
+  fn add_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
+  fn delete_node(&mut self, node: &N) -> Result<(), E>;
+  fn delete_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
+}
+----
+
+TODO What about a Graph Store with more constrained Types?
+TODO Refactor filestore into a trait that works generic on all kinds of kv-Stores
+
+[[traits]]
+[source, rust]
+----
+pub enum BacklinkType {
+  Node,
+  Edge,
+  Property,
+}
+
+pub trait KVStore<E> {
+  type Error;
+  //type KeyIterator: Iterator<Item = AsRef<[u8]>>;
+
+  // creates a new bucket
+  fn create_bucket(&self, key: &[u8]) -> Result<(), Self::Error>;
+  // delete a data record (could also be a bucket)
+  fn delete_record(&self, key: &[u8]) -> Result<(), Self::Error>;
+  // list all records and buckets inside a bucket
+  //fn list_records(&self, key: Option<&[u8]>) -> Result<Self::KeyIterator, Self::Error>;
+  // store a data record
+  fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error>;
+  // fetch a data record
+  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error>;
+  fn exists(&self, key: &[u8]) -> Result<bool, Self::Error>;
+}
+
+pub trait GraphStore<E> {
+  /// helper functions used to implement the default api
+  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), E>;
+  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
+
+  // CRUD functions
+  //      TODO these functions should have a default implementation
+  //fn create_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), E>;
+  //fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, E>;
+  //fn update_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), E>;
+  //fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), E>;
+  //fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, E>;
+  //fn read_edge(&self, id: &HashId) -> Result<EdgeData, E>;
+  //fn delete_edge(&mut self, id: &HashId) -> Result<(), E>;
+  //fn create_property(&mut self, properties: &T) -> Result<HashId, E>;
+  //fn read_property(&mut self, id: &HashId) -> Result<T, E>;
+  //fn delete_property(&mut self, id: &HashId) -> Result<(), E>;
+
+  // Query functions
+  //       TODO these functions should have a default implementation
+  //fn query(&self, q: BasicQuery) -> Result<QueryResult, E>;
+}
+----
+
+== Boilerplate-Code
+
+[source, rust, save]
+.src/lib.rs
+----
+pub mod ql;
+pub mod schema;
+
+<<traits|join="\n\n">>
+----
+

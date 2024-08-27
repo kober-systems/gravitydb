@@ -1,0 +1,260 @@
+Daten Schema
+============
+
+In unseren Graphen-Speichern kann man beliebige Informationen speichern.
+Abgesehen von der Aufteilung in Knoten, Verbindungen und Eigenschaften
+haben wir keinerlei Vorgaben in Bezug auf die Strukturierung der Daten.
+
+Daraus ergibt sich eine hohe Flexibilität aber in einem konkreten Fall
+ermöglichenen uns konkretere Vorgaben in Bezug auf die Datentypen (was
+ja in gewisser Hinsicht mit Einschränkungen einhergeht), die Daten
+leichter zu interpretieren und verarbeiten. Mit anderen Worten: Die
+Abfragen werden *effizienter*. Als weiteren Vorteil können wir Aussagen
+über die inhaltliche *Korrektheit* eines oder mehrerer Datensätze
+machen.
+
+Ein https://en.wikipedia.org/wiki/Data_model[Daten Model] durch ein
+solches Schema zu erarbeiten, ist eine wesentliche Hilfe die Daten und
+die Domain zu verstehen.
+
+Aus diesen Gründen möchten wir es ermöglichen ein
+https://de.wikipedia.org/wiki/Schema_(Informatik)[Schema] in unseren
+Datenbanken zu definieren.
+
+== Übersicht
+Ein Schema besteht aus zwei Teilen:
+
+* Festlegen der möglichen Datenformate für Properties
+* Festlegen, wie Knoten, Verbindungen und Properties miteinander in
+  Verbindung stehen dürfen/müssen
+
+[source, rust]
+----
+pub struct Schema {
+  <<schema_elements>>
+}
+----
+
+Diese beiden Aspekte wollen wir jetzt durchgehen.
+
+== Mögliche Datenformate für Eigenschaften
+Eigenschaften (Properties) sind die zentralen Elemente um festzulegen,
+wie die Daten aussehen dürfen. Mit ihnen legen wir fest, welche
+Bausteine uns in unserem Graphen zur Verfügung stehen.
+
+Als Analogie könnte man sich die Atome vorstellen (ausgehend von dem
+alten Gedanken, das Atome die unteilbaren Grundbausteine aller Stoffe
+sind). Wir können aus ihnen neue Materialien zusammensetzen aber sie
+selber sind erst einmal gegeben und unveränderlich.
+
+[[schema_elements]]
+[source, rust]
+----
+pub trait SchemaElement<K: Sized, E> {
+  <<schema_element_functions>>
+}
+----
+
+Generell sind alle Datentypen als Array von Bytes serialisierbar
+(Das ist die allgemeinste Form in der Daten auf heutigen Computern
+gespeichert werden. Man kann also jeden Datensatz in einer Datei auf dem
+Computer ablegen).
+
+Bei unserem Schema legen wir fest, wie aus einer Datei eine Struktur
+wird, die wir später leichter verarbeiten können.
+
+[[schema_element_functions]]
+[source, rust]
+----
+fn deserialize(data: &[u8]) -> Result<Self,E> where Self: Sized;
+----
+
+Umgekehrt wollen wir aber auch unsere Struktur wieder in ein Byte Array
+(eine Datei) umwandeln können footnote:[Dabei ist es wichtig, dass eine
+Struktur, die in eine Datei umgewandelt wird, wenn man diese Datei
+wieder mit `deserialize` in eine Struktur umwandelt, wieder die gleiche
+Struktur ergibt].
+
+[[schema_element_functions]]
+[source, rust]
+----
+fn serialize(&self) -> Result<Vec<u8>,E>;
+----
+
+Zugleich benötigen wir eine Funktion, welche uns den Schlüssel auf ein
+Element gibt. Damit haben wir später die Möglichkeit, das entsprechende
+Element aus der Datenbank auszulesen.
+
+[[schema_element_functions]]
+[source, rust]
+----
+fn get_key(&self) -> K;
+----
+
+Sobald das gegeben ist, können wir sicherstellen, dass wir leicht Daten
+abfragen und grundlegend überprüfen können.
+
+=== Schema Schnittstellen für Knoten, Verbindungen und Eigenschaften
+Unsere Datenbank erlaubt es ein Schema zu definieren. Damit das möglich
+ist müssen die einzelnen Elemente Schnittstellen bereitstellen.
+
+[[traits]]
+[source, rust]
+----
+pub trait Node<P: Property> {
+  fn id(&self) -> uuid::Uuid;
+  fn properties(&self) -> P;
+}
+----
+
+Da wir unsere Properties (also die Eigenschaften von Knoten und
+Verbindungen) nicht mit den Knoten und Verbindungen abspeichern, sondern
+separat benutzen wir auch hier eine eigene Schnittstelle. Daraus ergibt
+sich die Möglichkeit Eigenschaften zwischen mehreren Elementen zu
+teilen.
+
+Eine Besonderheit unserer Properties ist, das sie als Baum auf andere
+Properties verweisen können.
+
+Es ist möglich mit Pfaden auf andere Dateien zu verweisen und diese
+eventuell mit zu Synchronisieren. Das kann in einigen Anwendungsfällen
+sehr nützlich und angenehm sein, da so z.B. direkt auf Bilder, Videos
+etc mit einem normalen Dateieditor zugegriffen werden kann aber die
+Datenbank dennoch direkt darauf verweist. Allerdings birgt es auch seine
+Gefahren, da eine Veränderung der verlinkten Dateien keine Veränderung
+des Property Datensatzes zur Folge hätte und es somit zu unsichtbaren
+Konflikten bei der Synchronisierung kommen könnte. Eine Alternative
+wäre die Daten als Blob innerhalb des Property Datensates abzulegen und
+über ein fuse-Dateisystem (TODO interner Link) bereitzustellen. Das
+wäre sicherer aber könnte mitunter zu Performanceverlusten führen. Eine
+weitere Möglichkeit wäre einen Mechanismus bereitzustellen, in dem die
+Properties wiederum auf andere Properties im Store verwesen (über den
+Hash) und diese Properties wiederum Dateien über ein Fuse Dateisystem
+zur Verfügung stellen. Hier könnte die Performance ebenfalls ein Problem
+werden (vielleicht ein lösbares) aber die Daten in den Properties
+würden seltener wechseln. Was am besten ist hängt stark vom jeweiligen
+Anwendungsfall ab.
+
+TODO die Idee der auf Properties verweisenden Properties könnte viele interessante und nützliche Anwendungen haben.
+
+[[schema_elements]]
+[source, rust]
+----
+pub trait Property<K: Sized, E>: Sized + SchemaElement<K, E>
+{
+  fn nested(&self) -> Vec<Self>;
+}
+----
+
+TODO Es waere schoen Iteratoren verwenden zu koennen `fn nested(&self) -> impl Iterator<Item=Self> + '_;` // Siehe https://blog.katona.me/2019/12/29/Rust-Lifetimes-and-Iterators/ und https://depth-first.com/articles/2020/06/22/returning-rust-iterators/
+
+TODO Es ist wichtig irgendwie zu verhindern, dass Properties rekursiv auf sich selbst verweisen (auch nicht indirekt). Sonst kann es passieren, dass sich Schemata nicht validieren lassen (es käme zu endlosen Schleifen).
+
+== Zusammenhänge zwischen Elementen definieren
+Wenn man sich das Datenformat für Eigenschaften als Atome vorstellt,
+so entspricht der nun folgende Teil, den Regeln nach denen aus Atomen
+Moleküle zusammengesetzt werden können.
+
+Mit anderen Worten es geht um die Definition von erlaubten bzw
+erforderlichen Strukturen zwischen Elementen.
+
+Zu diesem Zweck verwenden wir Regeln. Immer wenn eine Transaktion (TODO
+link) abgeschlossen wird, wird zunächst überprüft, ob alle Regeln
+(Constraints) eingehalten wurden. Ist das nicht der Fall wird die
+Transaktion verworfen und eine Fehlermeldung mit der Begründung zurück
+gegeben.
+
+Diese Reglen lassen sich in zwei Kategorien einordnen:
+
+* Bedingungen, die erfüllt sein *müssen*
+* Bedingungen, die *nicht erlaubt* sind. Also nicht auftreten dürfen
+
+Wir verwenden hierfür unsere Zoe Abfrage Sprache (TODO link). Wir
+überprüfen jeweils bei einer Abfrage, wie viele Ergebnisse es gibt. Bei
+einer geforderten Bedingung muss es mindestens ein Ergebnis geben und
+bei einer verbotenen Bedingung darf es kein Ergebnis geben.
+
+[[schema_elements]]
+[source, rust]
+----
+pub enum SchemaConstraint<<generic_types>> {
+  Requiered(ql::BasicQuery<<generic_types>>),
+  Prohibited(ql::BasicQuery<<generic_types>>),
+}
+----
+
+TODO Aus Zoe importieren
+
+[[generic_types]]
+[source, rust]
+----
+<VertexId, EdgeId, PropertyId, VFilter, EFilter>
+----
+
+== Schema Struktur
+Nun können wir alle diese Bausteine in ein gemeinsames Schema
+zusammenfassen. Dabei müssen wir Unmengen an generischen Parametern
+verschalten.
+
+[[schema_elements]]
+[source, rust]
+----
+pub struct Schema<
+  VertexId,
+  EdgeId,
+  PropertyId,
+  VFilter,
+  EFilter,
+  VertexSchema,
+  EdgeSchema,
+  PropertySchema,
+  E,
+>
+where
+  VertexId: Sized,
+  VertexSchema: SchemaElement<VertexId, E>,
+  EdgeId: Sized,
+  EdgeSchema: SchemaElement<EdgeId, E>,
+  PropertyId: Sized,
+  PropertySchema: SchemaElement<PropertyId, E>,
+{
+  pub vertex_properties: VertexSchema,
+  pub edge_properties: EdgeSchema,
+  pub referenced_properties: PropertySchema,
+  pub constraints: Vec<SchemaConstraint<VertexId, EdgeId, PropertyId, VFilter, EFilter>>,
+  _err_type: std::marker::PhantomData<E>,
+}
+----
+
+Aber der Aufwand lohnt sich, denn nun können wir beliebige Schemata
+überprüfen.
+
+TODO Funktion, welche am Ende einer Transaktion aufgerufen werden kann um die Gültigkeit der Transaktion zu prüfen.
+
+[source, rust, save]
+.src/schema.rs
+----
+use crate::ql;
+
+<<schema_elements|join="\n\n">>
+----
+
+== Schema Migrationen
+Früher oder später verändert oder erweitert sich das Verständnis der
+zugrundeliegenden Domain footnote:[Gründe dafür können unter anderem
+sein, dass man die Domain nun besser versteht, dass sie sich verändert
+hat (und nicht unser Verständnis) oder das man sie erweitern möchte,
+indem man sie mit einer weiteren Domain zusammenführt. Auch können
+Performance Bedürfnisse dazu führen, dass man das Schema anpassen
+möchte.]. Dann wird man das Schema verändern.
+
+Im Grunde bedeutet das nichts anderes, als das man das bestehende
+Schema durch ein neues ersetzt. Die Problematik besteht darin, dass die
+bestehenden Daten mit dem alten Schema erzeugt wurden und wir sicher
+stellen müssen, dass sie in das neue Schema überführt werden und weiter
+alle Bedingungen erfüllt bleiben.
+
+TODO Beschreiben, dass man für jedes Schema eine Version braucht. Dann benötigt man jeweils eine Funktion, welche die Daten von einem Schema der unteren Version in das Schema der nächst höheren Version konvertiert. Bei einer Konvertierungen werden dann alle Funktionen für die dazwischenliegenden Versionen nacheinander ausgeführt.
+
+TODO Mögliche Optimierungen beschreiben. Möglicherweise lassen sich die Konvertierungsfunktionen zusammenfassen, so dass man jeden Knoten und jede Verbindung nur einmal anfassen muss (ob das sicher möglich ist muss allerdings erst noch überprüft werden). Möglicherweise kann man auf die Validierungen zwischen den Konvertierungen verzichten und erst die letzte Validierung durchführen.
+

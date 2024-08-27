@@ -1,0 +1,1095 @@
+Zoe - Eine Abfrage Sprache
+==========================
+TODO Als Name könnte man Q (für Question) oder Zoe verwenden.
+
+Es gibt einige Graph-Abfrage Sprachen aber keine große Standardisierung footnote:[Und dem will ich hier Abhilfe schaffen, durch eine weitere Sprache :)]. Manche Sprachen haben eine größere Bedeutung erlangt und/oder es wäre interessant sie näher anzuschauen (TODO Vielleicht sollte man das in einen Anhang mit dem Titel "Prior Art" verschieben).
+
+https://neo4j.com/developer/cypher/[cypher]:: Ist die Abfrage Sprache
+  der Neo4j Datenbank. Sie hat den interessanten Ansatz Abfragen als
+  ASCII-Art zu codieren. Das macht es recht intuitiv einfache Abfragen
+  zu machen, da Graphen etwas sehr bildliches haben. Sobald die Abfragen
+  aber nur etwas komplexer werden ist es schwierig sie in dieser Form
+  darzustellen und sie werden unübersichtlich. Zudem bin ich nicht
+  sicher, ob die Form unflexibel ist. Die vielen Erweiterungen der
+  Sprache scheinen das zu bestätigen (sie ermöglichen nämlich Dinge, die
+  in der Sprache selbst scheinbar nicht ausgedrückt werden könnten).
+https://graphql.org/[graphql]:: Diese Sprache ist eine Json Sprache und
+  sehr intuitiv. Allerdings scheint auch sie mir nicht sehr flexibel zu
+  sein.
+http://www.graphviz.org/pdf/gvpr.1.pdf[gvpr]:: Dieses Tool stammt aus
+  dem graphviz Universum. Es scheint nicht so weit verbreitet zu
+  sein, wie die beiden anderen Sprachen und es wäre interessant
+  herauszufinden, warum das so ist. Insgesamt scheint die Sprache aber
+  zumindest eine hohe Flexibilität zu erlauben (Vielleicht ist einfach
+  die Syntax nicht besonders schön).
+https://tinkerpop.apache.org/gremlin.html[gremlin]:: Ist eine sowohl
+  schöne und elegante als auch flexibele funktionale Sprache. Allerdings
+  bin ich nicht sicher, ob sie eine einheitliche Form der Serialisierung
+  hat. Die hier beschriebene Sprache orientiert sich im Funktionumfang
+  und Aufbau stark an Gremlin.
+
+TODO Es wäre sehr gut eine Versionierung für die Serialisierung einzuführen. Dabei muss man bedenken, dass das Format wahrscheinlich von beliebigen Stellen zusammengesetzt werden kann. Deshalb muss man überlegen, ob man in jeder Stelle der Pipe eine Version einfügen will oder ob man es dem Benutzer überlässt zu überprüfen welche Steps in der aktuellen Version verfügbar und kombinierbar sind.
+
+== Anpassungsfähigkeit der Sprache
+Statt die Sprache vollständig festzulegen wird hier ein Gerüst
+definiert, welches man an die eigene Datenbank oder auch an die
+bevorzugte (Umgebungs-)Sprache anpassen kann.
+
+Ermöglicht wird das dadurch, dass der AST als generische Struktur
+festgelegt wird. Die generischen Parameter können jeweils durch die
+Implementierung angepasst werden. Jede beliebige Sprache kann den AST
+generieren, so dass man beliebige Programmiersprachen verwenden kann um
+die Abfragesprache einzubetten.
+
+[[generic_types]]
+[source, rust]
+----
+<<<generic_types_inner|join=", ">>>
+----
+
+== Abfragen
+Abfragen können sich auf Knoten (Vertices), Verbindungen (Edges) oder
+Eigenschaften (Properties) beziehen.
+
+[[structs]]
+[source, rust]
+----
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum VertexQuery<<generic_types>>
+{
+  <<vertex_query_fields>>
+}
+
+impl<<generic_types>> VertexQuery<<generic_types>> {
+  <<vertex_query_functions|join="\n\n">>
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EdgeQuery<<generic_types>>
+{
+  <<edge_query_fields>>
+}
+
+impl<<generic_types>> EdgeQuery<<generic_types>> {
+  <<edge_query_functions|join="\n\n">>
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PropertyQuery<PropertyId> {
+  <<property_query_fields>>
+}
+
+impl<PropertyId> PropertyQuery<PropertyId> {
+  <<property_query_functions|join="\n\n">>
+}
+----
+
+Wir fassen alle diese (lesenden) Abfragen in einen gemeinsamen
+Abfragetyp zusammen. Das ist praktischer, wenn wir ihn später in Filtern
+verwenden.
+
+[[structs]]
+[source, rust]
+----
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum BasicQuery<<generic_types>> {
+  V(VertexQuery<<generic_types>>),
+  E(EdgeQuery<<generic_types>>),
+  P(PropertyQuery<PropertyId>),
+}
+----
+
+Die Ids können dabei durch die Implementierung der Datenbank festgelegt
+werden, also
+
+* [[generic_types_inner]]`VertexId`
+* [[generic_types_inner]]`EdgeId`
+* [[generic_types_inner]]`PropertyId`
+
+[[start_points]]
+=== Startpunkte (Vertex, Edge und Property Queries)
+Alle unsere Abfragen beginnen mit einem Startpunkt. Ein solcher
+Startpunkt ist entweder ein Knoten (Vertex), eine Verbindung zwischen
+zwei Knoten oder eine Eigenschaft (Property).
+
+[[vertex_query_fields]]
+[source, rust]
+----
+/// Query over all vertices in the database
+All,
+/// Query specific vertices
+Specific(Vec<VertexId>),
+/// Query all vertices that have a specific property
+Property(PropertyQuery<PropertyId>),
+----
+
+[[edge_query_fields]]
+[source, rust]
+----
+/// Query over all edges in the database
+All,
+/// Query specific edges
+Specific(Vec<EdgeId>),
+/// Query all Edges that have a specific property
+Property(PropertyQuery<PropertyId>),
+----
+
+[[query_functions_template]]
+[source, rust]
+----
+pub fn all() -> Self {
+  <<Type>>Query::All
+}
+
+pub fn from_ids(ids: Vec<<<Type>>Id>) -> Self {
+  <<Type>>Query::Specific(ids)
+}
+
+pub fn from_property(p: PropertyQuery<PropertyId>) -> Self {
+  <<Type>>Query::Property(p)
+}
+----
+
+[%collapsible]
+====
+
+[[vertex_query_functions]]
+[source, rust]
+----
+<<query_functions_template|
+    join="\n\n",
+    Type:="Vertex" >>
+----
+
+[[edge_query_functions]]
+[source, rust]
+----
+<<query_functions_template|
+    join="\n\n",
+    Type:="Edge" >>
+----
+
+====
+
+[%collapsible]
+.Implementierung der Lua API
+====
+
+[[lua_startpoint_functions_template]]
+[source, rust]
+----
+globals.set("<<function_pfx>>_all", lua.create_function(|_, ()| {
+  Ok(<<Type>>Query::<<generic_types>>::all())
+})?)?;
+globals.set("<<function_pfx>>_from_ids", lua.create_function(|_, ids: Vec<<<Type>>Id>| {
+  Ok(<<Type>>Query::<<generic_types>>::from_ids(ids))
+})?)?;
+globals.set("<<function_pfx>>_from_property", lua.create_function(|_, p: LuaPropertyQuery<<generic_types>>| {
+  Ok(<<Type>>Query::<<generic_types>>::from_property(p.q))
+})?)?;
+----
+
+[[init_lua]]
+[source, rust]
+----
+<<lua_startpoint_functions_template|
+    Type:="Vertex",
+    function_pfx:="vq" >>
+
+<<lua_startpoint_functions_template|
+    Type:="Edge",
+    function_pfx:="eq" >>
+----
+
+TODO Vielleicht ist eine weitere Vorgehensweise mit clousures statt mit
+methoden doch besser. Es muss auf jeden Fall getestet werden, ob bei der
+Vorgensweise mit Methoden Memory Probleme entstehen können.
+
+[[implement_lua_types]]
+[source, rust]
+----
+impl<<generic_types>> mlua::UserData for VertexQuery<<generic_types>>
+where
+  VertexId:   Clone + 'static,
+  EdgeId:     Clone + 'static,
+  PropertyId: Clone + 'static,
+  VFilter:    Clone + 'static,
+  EFilter:    Clone + 'static,
+{
+  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    //methods.add_method("union", |_, this, q2: VertexQuery<<generic_types>>| {
+    //  Ok(this.clone().union(q2))
+    //});
+
+    <<query_lua_functions>>
+  }
+}
+----
+
+[[implement_lua_types]]
+[source, rust]
+----
+impl<<generic_types>> mlua::UserData for EdgeQuery<<generic_types>>
+where
+  VertexId:   Clone + 'static,
+  EdgeId:     Clone + 'static,
+  PropertyId: Clone + 'static,
+  VFilter:    Clone + 'static,
+  EFilter:    Clone + 'static,
+{
+  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    <<query_lua_functions>>
+  }
+}
+----
+
+PropertyQueries bringen für die Implementierung in Lua ein besonderes
+Problem mit sich: Sie haben nur einen generischen Parameter. Wenn man
+aber Funktionen implementieren möchte um aus den PropertyQueries Vertex-
+oder EdgeQuery Datensätze zu machen, so benötigt man die generieren
+Parameter dieser Strukturen. Wir umgehen dieses Problem, indem wir eine
+Wrapper Struktur für die Lua API anlegen und dieser mit `PhantomData`
+die zusätzlichen generischen Parameter übergeben.
+
+[[implement_lua_types]]
+[source, rust]
+----
+#[derive(Clone)]
+struct LuaPropertyQuery<<generic_types>> {
+  q: PropertyQuery<PropertyId>,
+  marker: std::marker::PhantomData<VertexQuery<<generic_types>>>,
+}
+
+impl<<generic_types>> LuaPropertyQuery<<generic_types>> {
+  fn from_property_query(q: PropertyQuery<PropertyId>) -> Self {
+    LuaPropertyQuery {
+      q,
+      marker: std::marker::PhantomData,
+    }
+  }
+}
+
+impl<<generic_types>> mlua::UserData for LuaPropertyQuery<<generic_types>>
+where
+  VertexId:   Clone + 'static,
+  EdgeId:     Clone + 'static,
+  PropertyId: Clone + 'static,
+  VFilter:    Clone + 'static,
+  EFilter:    Clone + 'static,
+{
+  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    <<prop_query_lua_functions>>
+  }
+}
+----
+
+====
+
+PropertyQueries können nur ganz am Anfang verwendet werden um Vertex
+oder Edge Queries zu erzeugen. Entweder
+
+* man hat bereits die Id einer Eigenschaft (Property)
++
+[[property_query_fields]]
+[source, rust]
+----
+/// Query a specific property
+Specific(PropertyId),
+----
++
+[[property_query_functions]]
+[source, rust]
+----
+pub fn from_id(id: PropertyId) -> Self {
+  PropertyQuery::Specific(id)
+}
+----
+
+* oder man sucht die Eigenschaften die auf die andere Eigenschaften
+  verlinken bzw auf die eine andere Eigenschaft verlinkt.
++
+[[property_query_fields]]
+[source, rust]
+----
+/// All properties that use this property
+ReferencingProperties(Box<PropertyQuery<PropertyId>>),
+/// All properties that are used by this property
+ReferencedProperties(Box<PropertyQuery<PropertyId>>),
+----
++
+[[property_query_functions]]
+[source, rust]
+----
+/// Properties, die diese Property verwenden
+pub fn referencing_properties(self) -> Self {
+  PropertyQuery::ReferencingProperties(Box::new(self))
+}
+
+/// Properties, auf die diese Property verweist
+pub fn referenced_properties(self) -> Self {
+  PropertyQuery::ReferencedProperties(Box::new(self))
+}
+----
+
+Da Eigenschaften der wohl häufigste Einstiegspunkt sind definieren
+wir weitere Funktionen, die einen einfachen Übergang zu Knoten und
+Verbindungen erlauben. So ermöglichen wir das intuitive Method chaining
+zu verwenden, ohne dass man als Benutzer den Übergang zwischen den Typen
+bemerkt.
+
+[[property_query_functions]]
+[source, rust]
+----
+pub fn referencing_vertices<
+  VertexId,
+  EdgeId,
+  VFilter,
+  EFilter,
+>(self,
+) -> VertexQuery<<generic_types>> {
+  VertexQuery::Property(self)
+}
+
+pub fn referencing_edges<
+  VertexId,
+  EdgeId,
+  VFilter,
+  EFilter,
+>(
+  self,
+) -> EdgeQuery<<generic_types>> {
+  EdgeQuery::Property(self)
+}
+----
+
+[%collapsible]
+.Implementierung der Lua API
+====
+
+[[init_lua]]
+[source, rust]
+----
+globals.set("pq_from_id", lua.create_function(|_, id: PropertyId| {
+  Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
+    q: PropertyQuery::from_id(id),
+    marker: std::marker::PhantomData,
+  })
+})?)?;
+----
+
+[[prop_query_lua_functions]]
+[source, rust]
+----
+methods.add_function("referencing_properties", |_, q: Self| {
+  let q = q.q;
+  Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from_property_query(q.referencing_properties()))
+});
+methods.add_function("referenced_properties", |_, q: Self| {
+  let q = q.q;
+  Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from_property_query(q.referenced_properties()))
+});
+methods.add_function("referencing_vertices", |_, q: Self| {
+  Ok(q.q.referencing_vertices::<VertexId, EdgeId, VFilter, EFilter>())
+});
+methods.add_function("referencing_edges", |_, q: Self| {
+  Ok(q.q.referencing_edges::<VertexId, EdgeId, VFilter, EFilter>())
+});
+----
+
+====
+
+=== Die Suche ausweiten
+Sobald wir eine Vertex oder Edge Query als Beginn haben können wir uns
+von dort aus Vorwärts hangeln.
+
+Die Schritte lassen sich hierbei in Kategorien einteilen:
+
+Traversals:: Hiermit "hangeln" wir uns zu benachbarten Knoten oder
+Verbindungen vor. Sie sind nützlich um strukturelle Muster zu finden.
+
+Filter:: Dadurch können wir feststellen, ob der Knoten/die Verbindung
+welche wir gerade untersuchen unseren vorgegebenen Kriterien entspricht.
+
+Seiteneffekte:: Hier können wir Informationen aus den bereits
+untersuchten Daten heraussuchen und diese zur späteren Verwendung
+speichern.
+
+TODO Aggregate
+
+Die Kategorien gehen wir nun durch, wobei wir sowohl die Strukturen
+definieren, die nötig sind um den jeweiligen Ausdruck zu speichern und
+zu versenden als auch Funktionen, die ermöglichen bestehende Abfragen
+mit dem jeweiligen Schritt zu erweitern.
+
+[[traversals]]
+=== Sprünge zu den nächsten Knoten (Traversals)
+Wir beginnen mit den `Traversals`. Ausgehend von einem <<start_points,
+Startpunkt>> können wir zu den jeweils verbundenen ausgehenden und
+eingehenden Knoten bzw Verbindungen vordringen.
+
+[[vertex_query_fields]]
+[source, rust]
+----
+/// Select all vertices on the outgoing side of
+/// edges.
+Out(EdgeQuery<<generic_types>>),
+/// Select all vertices on the incoming side of
+/// edges.
+In(EdgeQuery<<generic_types>>),
+----
+
+[[edge_query_fields]]
+[source, rust]
+----
+/// Select all edges on the outgoing side of
+/// vertices.
+Out(Box<VertexQuery<<generic_types>>>),
+/// Select all edges on the incoming side of
+/// vertices.
+In(Box<VertexQuery<<generic_types>>>),
+----
+
+[[vertex_query_functions]]
+[source, rust]
+----
+pub fn outgoing(self) -> EdgeQuery<<generic_types>> {
+  EdgeQuery::Out(Box::new(self))
+}
+
+pub fn ingoing(self) -> EdgeQuery<<generic_types>> {
+  EdgeQuery::In(Box::new(self))
+}
+----
+
+=== Filter
+Neben den <<traversals, Sprüngen von einem Knoten zum nächsten>> wollen
+wir auch unsere Ergebnisse filtern. Dadurch können wir die Menge unserer
+Ergebnisse nach Kriterien eingrenzen.
+
+Der naheliegenste Filter ist, dass wir gerne prüfen möchten, ob die
+Eigenschaften (Properties) eines Knotens oder einer Verbindung unseren
+Vorstellungen exakt entsprechen.
+
+Die Einschränkung, dass die Eigenschaften *exakt* gleich sein müssen
+macht sie zwar weniger mächtig als die allgemeinen Filterfunktionen
+(TODO link) aber wird dennoch häufig benötigt um strukturelle Abfragen
+zu machen (z.B. weis man oft genau den Verbindungstyp zwischen zwei
+Knoten). Der Vorteil ist, dass diese Abfrage weitere Optimierungen zur
+Laufzeit zulässt, da man indirekt weitere <<start_points, Startpunkte>>
+bekommt.
+
+[[vertex_query_fields]]
+[source, rust]
+----
+//PropertyFilter(Box<VertexQuery<<generic_types>>>, PropertyQuery<PropertyId>),
+----
+
+[[edge_query_fields]]
+[source, rust]
+----
+//PropertyFilter(Box<EdgeQuery<<generic_types>>>, PropertyQuery<PropertyId>),
+----
+
+Eine Menge Filter können wir auch mithilfe der Mengenlehre (TODO link)
+definieren. Diese erlaubt uns die Ergebnisse von Subabfragen miteinander
+zu verbinden. Das bietet den Vorteil, dass man dafür nichts über den
+eigentlichen Inhalt der Knoten und Verbindungen wissen muss und sich
+oft Abfragen mit einem gleichen Resultat eryeugen lassen, die aber eine
+andere Reihenfolge der Mengenoperationen haben. Das wiederum ist eine
+große Hilfe um Abfragen zu optimieren.
+
+TODO Jeweils Links auf Wikipedia und Venn Diagramme bei jedem Filtertyp.
+
+Die verfügbaren Operationen sind:
+
+* *union*: Hier werden alle Ergebnisse der Subabfragen vereinigt.
++
+image::img/venn_union.svg[width=100]
++
+[[vertex_query_fields]]
+[source, rust]
+----
+/// Create a union with all vertices in the query
+/// context (side effect).
+Union(Box<VertexQuery<<generic_types>>>, Box<VertexQuery<<generic_types>>>),
+----
++
+[[query_functions_template]]
+[source, rust]
+----
+pub fn union(self, q: <<Type>>Query<<generic_types>>) -> Self {
+  <<Type>>Query::Union(Box::new(self), Box::new(q))
+}
+----
+
+* *intersection*: Hier werden alle Ergebnisse behalten, welche sowohl in
+  der einen, als auch in der anderen Subabfrage gefunden wurden
+  (Schnittmenge).
++
+image::img/venn_intersection.svg[width=100]
++
+[[vertex_query_fields]]
+[source, rust]
+----
+/// Create an intersection with all vertices in
+/// the query context (side effect).
+Intersect(Box<VertexQuery<<generic_types>>>, Box<VertexQuery<<generic_types>>>),
+----
++
+[[query_functions_template]]
+[source, rust]
+----
+pub fn intersect(self, q: <<Type>>Query<<generic_types>>) -> Self {
+  <<Type>>Query::Intersect(Box::new(self), Box::new(q))
+}
+----
+
+* *substract*: Hier wird die Differenzmenge gebildet, es bleiben also
+  nur die Ergebnisse, der ersten Subabfrage über, welche _nicht_ auch
+  durch die zweite Subabfrage gefunden wurden.
++
+image::img/venn_substract.svg[width=100]
++
+[[vertex_query_fields]]
+[source, rust]
+----
+/// Remove all vertices in the current query from
+/// the query context (side effect).
+Substract(Box<VertexQuery<<generic_types>>>, Box<VertexQuery<<generic_types>>>),
+----
++
+[[query_functions_template]]
+[source, rust]
+----
+pub fn substract(self, q: <<Type>>Query<<generic_types>>) -> Self {
+  <<Type>>Query::Substract(Box::new(self), Box::new(q))
+}
+----
+
+* *disjunctive_union*: Hier wird die symetrische Differenzmenge
+  gebildet. Das bedeutet, es werden alle Ergebnisse behalten, die
+  entweder in der einen oder anderen Subabfrage gefunden wurden, aber
+  _nicht von beiden_.
++
+image::img/venn_disjunctive_union.svg[width=100]
++
+[[vertex_query_fields]]
+[source, rust]
+----
+/// Store all vertices in the query context which
+/// are either in the current selection or in the
+/// query context but not in both (side effect).
+DisjunctiveUnion(Box<VertexQuery<<generic_types>>>, Box<VertexQuery<<generic_types>>>),
+----
+
+[[edge_query_fields]]
+[source, rust]
+----
+/// Create a union with all edges in the query
+/// context (side effect).
+Union(Box<EdgeQuery<<generic_types>>>, Box<EdgeQuery<<generic_types>>>),
+/// Create an intersection with all edges in
+/// the query context (side effect).
+Intersect(Box<EdgeQuery<<generic_types>>>, Box<EdgeQuery<<generic_types>>>),
+/// Remove all edges in the current query from
+/// the query context (side effect).
+Substract(Box<EdgeQuery<<generic_types>>>, Box<EdgeQuery<<generic_types>>>),
+/// Store all edges in the query context which
+/// are either in the current selection or in the
+/// query context but not in both (side effect).
+DisjunctiveUnion(Box<EdgeQuery<<generic_types>>>, Box<EdgeQuery<<generic_types>>>),
+----
+
+[%collapsible]
+.Implementierung der Lua API
+====
+
+[[query_lua_functions]]
+[source, rust]
+----
+methods.add_function("union", |_, queries: (Self, Self)| {
+  let (q1, q2) = queries;
+  Ok(q1.union(q2))
+});
+methods.add_function("intersect", |_, queries: (Self, Self)| {
+  let (q1, q2) = queries;
+  Ok(q1.intersect(q2))
+});
+methods.add_function("substract", |_, queries: (Self, Self)| {
+  let (q1, q2) = queries;
+  Ok(q1.substract(q2))
+});
+----
+
+TODO Funktion für DisjunctiveUnion in Lua API aufnehmen.
+TODO Im Metatable mit Funktionen für + - etc verbinden. Dadurch wird eine sehr natürliche und lesbare verwendung in Lua möglich.
+
+====
+
+==== Filter mit beliebigen Kriterien
+Die vorigen Filter sind sehr nützlich, da sie sich gut optimieren
+lassen. Aber irgenwann kommt man nicht darum herum beliebige Kriterien
+an seine Filter anzulegen um bei den Möglichkeiten nicht eingeschränkt
+zu sein. Hier wird es möglich beliebige Kriterien an einen Knoten, eine
+Verbindung oder eine Property anzulegen.
+
+Dabei gilt aber die Grundregel: Wenn man einen oder eine Kombination der
+anderen Filter verwenden kann um das gleiche zu erreichen sollte man das
+tun, da sie besser optimiert werden können.
+
+Diese Filter können sehr individuell festgelegt werden. Die einzelnen
+Datenbankimplementierungen können dabei selbst festlegen welche
+Implementierung sie für beliebige Filter zulassen wollen (oder auch
+selbst eine Implementierung liefern). Dazu gibt es Filter für
+
+* Knoten [[generic_types_inner]]`VFilter`
+* Verbindungen [[generic_types_inner]]`EFilter`
+
+[[vertex_query_fields]]
+[source, rust]
+----
+/// Filter some vertices by function
+Filter(Box<VertexQuery<<generic_types>>>, VFilter),
+----
+
+[[edge_query_fields]]
+[source, rust]
+----
+/// Filter some edges by function
+Filter(Box<EdgeQuery<<generic_types>>>, EFilter),
+----
+
+[[vertex_query_functions]]
+[source, rust]
+----
+pub fn filter(self, filter: VFilter) -> Self {
+  VertexQuery::Filter(Box::new(self), filter)
+}
+----
+
+Diese Filter bekommen ein Programm übergeben welches jeweils auf den
+Kontext der Abfrage zugreifen kann. Anhand dessen kann es entscheiden,
+ob der entsprechende Kontext den Kriterien entspricht.
+
+Der Kontext für Knoten bzw Verbindungen besteht dabei aus der Id des
+aktuell erreichten Elementes (also des aktuellen Knotens oder der
+aktuellen Verbindung), dem Pfad dorthin und Variablen, die durch
+Seiteneffekte (TODO link) gesetzt wurden.
+
+[[structs]]
+[source, rust]
+----
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VertexQueryContext<<ctx_generics>> {
+  // The current vertex
+  pub id: VertexId,
+  // The path that led till here
+  pub path: Vec<(VertexId, EdgeId)>,
+  // If the path started by an edge it
+  // set here
+  pub start: Option<EdgeId>,
+  // Variables that were set in side effects
+  pub variables: HashMap<String, serde_json::Value>,
+}
+
+impl<<ctx_generics>> VertexQueryContext<VertexId, EdgeId> {
+  <<vertex_ctx_functions|join="\n\n">>
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EdgeQueryContext<<ctx_generics>> {
+  // The current vertex
+  pub id: EdgeId,
+  // The path that led till here
+  pub path: Vec<(VertexId, EdgeId)>,
+  // If the path started by an edge it
+  // set here
+  pub start: Option<EdgeId>,
+  // Variables that were set in side effects
+  pub variables: HashMap<String, serde_json::Value>,
+}
+
+impl<<ctx_generics>> EdgeQueryContext<VertexId, EdgeId> {
+  <<edge_ctx_functions|join="\n\n">>
+}
+----
+
+Dafür benötigen wir einige Traits und Strukturen
+
+[[imports]]
+[source, rust]
+----
+use core::hash::Hash;
+use std::collections::{HashMap, HashSet};
+----
+
+Alle Ids müssen hashable und vergleichbar sein, um in einer HashMap
+verwendet werden zu können.
+
+[[ctx_generics]]
+[source, rust]
+----
+<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone>
+----
+
+Eine mögliche Implementierung eines universalen Filters ist eine
+shell Funktion. Gibt diese 0 zurück so wird das entsprechende Element
+verwendet, ansonsten wird es herausgefiltert.
+
+[[structs]]
+[source, rust]
+----
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShellFilter {
+  pub interpreter: String,
+  pub script: String,
+}
+----
+
+Dem jeweiligen Interpreter müsste die id des Knotens als Variable
+übergeben werden und am besten auch der Inhalt der Property (Eventuell
+auch der Schlüssel der Property, so dass der Filter sie bei Bedarf
+selbst auslesen kann.
+
+Diese Funktion hat Vor- und Nachteile:
+
+Vorteile::
+** Es gibt unzählige nützliche Shell Programme die wir nutzen können
+   ohne sie implementieren zu müssen (z.B. `grep`, `jq`, etc).
+Nachteile::
+** Die Funktion ist schwer zu kontrollieren. Man könnte beliebige
+   Programme auf dem Host ausführen.
+** Nicht alle Programme sind auf dem Host vorhanden oder es muss eine
+   bestimmte Version verwendet werden.
+
+Ein alternativer Universeller Filter könnte eine WASM Funktion
+aufrufen. Das würde es ermöglichen die Grenzen der Sandbox sehr einfach
+festzulegen und dennoch Funktionen in den unterschiedlichsten Sprachen
+bereitzustellen. Da der Code auch sehr kompakt ist, kann er leicht
+mit über das Internet verschickt werden (wenn man z.B. Abfragen auf
+verteilten Systemen ausführen will) und die Performance ist sehr gut.
+
+Für weitere Infos zur Implementierung siehe
+https://medium.com/wasmer/executing-webassembly-in-your-rust-application-d5cd32e8ce46
+https://wasmer.io/ und https://docs.wasmer.io/
+
+TODO Um die Funktionen sinnvoll nutzen zu können wäre es gut als zusätzlichen Parameter ein trait auf den Datastore zu übergeben. So könnten z.B. Properties abgefragt werden, welche für den Filter etc relevant sind.
+
+=== Seiteneffekte
+Seiteneffekte sind etwas, was man beim programmieren oft gerne
+vermeiden möchte. Sie ermöglichen das erzeugen eines Zustandes,
+so dass das Ergebnis der Abfrage nicht nur von den Eingangsdaten
+und den nachfolgenden Schritten, sondern auch vom internen Zustand
+und (eventuell) sogar von einem externen Zustand, der durch die
+Seiteneffekte erzeugt und/oder abgefragt wird abhängig ist. Das kann
+sehr nützlich sein, ist aber mitunter auch schwer kontrollierbar. Aus
+diesem Grund ist es wichtig bei Seiteneffekten umsichtig zu sein.
+
+Mit `Store` haben wir die Möglichkeiten das aktuelle Ergebnis in einen
+Zwischenspeicher zu packen. Das kann sehr hilfreich sein, wenn man die
+aktuell vorhandenen Daten abfragen möchte aber dieses Ergebnis noch
+durch weitere, abgeleitete Abfragen erweitern will.
+
+[[vertex_query_fields]]
+[source, rust]
+----
+/// Store the current selected vertices in the
+/// query context (side effect).
+///
+/// If there is allready a selection of vertices
+/// the old selection will be lost.
+Store(Box<VertexQuery<<generic_types>>>),
+----
+
+[[edge_query_fields]]
+[source, rust]
+----
+/// Store the current selected edges in the
+/// query context (side effect).
+///
+/// If there is allready a selection of edges
+/// the old selection will be lost.
+Store(Box<EdgeQuery<<generic_types>>>),
+----
+
+[[vertex_query_functions]]
+[source, rust]
+----
+pub fn store(self) -> Self {
+  VertexQuery::Store(Box::new(self))
+}
+----
+
+Manchmal braucht man die rohe Gewalt beliebiger Seiteneffekte. Hier
+kann man machen, was immer man will mit dem Kontext (TODO link). But
+remember: With great power comes great responsability.
+
+[[vertex_query_fields]]
+[source, rust]
+----
+//  /// Execute some arbitrary function to modify
+//  /// the query context (side effect).
+//  SideEffect(Box<VertexQuery<<generic_types>>>, Fn(VertexId, QueryContext<VertexId, EdgeId>) -> QueryContext<VertexId, EdgeId>),
+----
+
+[[edge_query_fields]]
+[source, rust]
+----
+//  /// Execute some arbitrary function to modify
+//  /// the query context (side effect).
+//  SideEffect(Box<EdgeQuery<<generic_types>>>, Fn(EdgeId, QueryContext<VertexId, EdgeId>) -> QueryContext<VertexId, EdgeId>),
+----
+
+=== Rekursion
+TODO Soweit ich das beurteilen kann, könnte diese Abfrage Sprache alles außer Rekursion. Benötigen wir Recursion? Oder reicht uns das was ohne möglich ist?
+
+== Update Queries (den Graph schreibend verändern)
+Bisher waren alle Abfragen die wir gemacht haben reine lesende Abfragen
+(Bei Filtern und Seiteneffekten kann man nicht ganz sicher sein, da wir
+keinen Einfluss darauf haben, ob der Code darin die Datenbank verändert
+(das wäre Aufgabe der Sandbox, die das umsetzt aber nicht unserer
+Sprachdefinition).
+
+TODO Spracherweiterung, die eine Query übernimmt und einen schreibenden Befehl ausführt. Graphstores könnten dann entscheiden, ob sie diesen Teil der Sprache mit implementieren oder nur den lesenden Teil.
+
+== Lua Umgebung
+Die Rust Definition der Typen reicht vollständig aus, um die Sprache
+sehr effektiv zu speichern, serialisieren und über das Netzwerk zu
+verschicken.
+
+Manchmal möchte man allerdings keine auf Geschwindigkeit optimierte
+kompilierte Sprache verwenden um Abfragen zu erzeugen, sondern eine
+Scriptsprache. Das hat den Vorteil, dass man komfortabeler mit der Repl
+dynamisch die Abfragen erstellen kann. Theoretisch ist es mit jeder
+Sprache möglich die Json-Serialisierung der Abfragetypen zu erstellen,
+doch um es den Benutzern besonders einfach zu machen, stellen wir eine
+Implementierung für die Programmiersprache https://www.lua.org/[lua]
+direkt bereit.
+
+Wir tun dies, indem wir eine Initialisierungsfunktion für die Lua
+Umgebung implementieren. Diese kann dann später benutzt werden, um in
+der Lua-VM alle Funktionen und Typen der Zoe Abfragesprache bereit zu
+stellen.
+
+[[structs]]
+[source, rust]
+----
+pub fn init_lua<<generic_types>>(lua: &mlua::Lua) -> mlua::Result<()>
+where
+  for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + mlua::FromLua<'lua>,
+  VFilter:    Clone + 'static,
+  EFilter:    Clone + 'static,
+{
+  let globals = lua.globals();
+  <<init_lua>>
+
+  Ok(())
+}
+
+<<implement_lua_types|join="\n\n">>
+----
+
+== Boilerplate-Code
+
+[source, rust, save]
+.src/ql.rs
+----
+<<imports>>
+use serde::{Serialize, Deserialize};
+
+<<structs|join="\n\n">>
+----
+
+Für Module, die die Verwendung dieser Sprache implementieren (z.B.
+Graphstores) ist es sehr nützlich einen Datentyp zu haben, welcher die
+Abfrageergebnisse zusammenfasst.
+
+[[structs]]
+[source, rust]
+----
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryResult<<ctx_generics>> {
+  // All vertices matched by the query
+  pub vertices: HashSet<VertexId>,
+  // All edges matched by the query
+  pub edges: HashSet<EdgeId>,
+  // All Paths matched by the query
+  pub paths: Vec<Vec<(VertexId, Option<EdgeId>)>>,
+  pub variables: HashMap<String, serde_json::Value>,
+}
+
+impl<<ctx_generics>> QueryResult<VertexId, EdgeId> {
+  pub fn new() -> Self {
+    QueryResult {
+      vertices: HashSet::default(),
+      edges: HashSet::default(),
+      paths: Vec::new(),
+      variables: HashMap::default(),
+    }
+  }
+}
+----
+
+=== Nützliche Funktionen
+
+==== Konstruktoren
+Für viele unserer Strukturen ist es praktisch `new` Funktionen zu haben
+um sie leichter erzeugen zu können.
+
+[[vertex_ctx_functions]]
+[source, rust]
+----
+pub fn new(id: VertexId) -> Self {
+  VertexQueryContext {
+    id,
+    path: Vec::new(),
+    start: None,
+    variables: HashMap::default(),
+  }
+}
+----
+
+[[edge_ctx_functions]]
+[source, rust]
+----
+pub fn new(id: EdgeId) -> Self {
+  EdgeQueryContext {
+    id: id.clone(),
+    path: Vec::new(),
+    start: Some(id),
+    variables: HashMap::default(),
+  }
+}
+----
+
+==== Umwandeln von Kontexten
+Wir haben Abfragen, die auf Knoten arbeiten und Abfragen, die auf
+Verbindungen arbeiten. Beide sind sehr ähnlich und liegen (wie die
+Daten) nebeneinander. Oftmals ist es nötig einen EdgeQueryContext
+in einen VertexQueryContext umzuwandeln und umgekehrt wenn man
+die Traversal-Funktionen verwendet. Aus diesem Grund stellen wir
+Umwandlungsfunktionen zur Verfügung.
+
+[[vertex_ctx_functions]]
+[source, rust]
+----
+pub fn into_edge_ctx(self, id: EdgeId) -> EdgeQueryContext<VertexId, EdgeId> {
+  let VertexQueryContext {
+    id: vid,
+    mut path,
+    start,
+    variables,
+  } = self;
+
+  path.push((vid, id.clone()));
+
+  EdgeQueryContext {
+    id,
+    path,
+    start,
+    variables,
+  }
+}
+----
+
+[[edge_ctx_functions]]
+[source, rust]
+----
+pub fn into_vertex_ctx(self, id: VertexId) -> VertexQueryContext<VertexId, EdgeId> {
+  let EdgeQueryContext {
+    id: _,
+    path,
+    start,
+    variables,
+  } = self;
+
+  VertexQueryContext {
+    id,
+    path,
+    start,
+    variables,
+  }
+}
+----
+
+Am Ende einer Abfrage möchten wir den jeweiligen Kontext in unsere
+Ergebnis-Struktur umwandeln.
+
+[[imports]]
+[source, rust]
+----
+use std::convert::From;
+----
+
+[[structs]]
+[source, rust]
+----
+impl<<ctx_generics>> From<HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>>> for QueryResult<VertexId, EdgeId> {
+  fn from(mut item: HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>>) -> Self {
+    let QueryResult {
+      mut vertices,
+      edges,
+      paths,
+      mut variables,
+    } = QueryResult::new();
+
+    for (id,ctx) in item.drain() {
+      vertices.insert(id);
+
+      let VertexQueryContext {
+        id: _,
+        path: _,
+        start: _,
+        variables: ctx_vars,
+      } = ctx;
+
+      // TODO paths
+
+      variables.extend(ctx_vars.into_iter());
+    }
+
+    QueryResult {
+      vertices,
+      edges,
+      paths,
+      variables,
+    }
+  }
+}
+
+impl<<ctx_generics>> From<HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>> for QueryResult<VertexId, EdgeId> {
+  fn from(mut item: HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>) -> Self {
+    let QueryResult {
+      vertices,
+      mut edges,
+      paths,
+      mut variables,
+    } = QueryResult::new();
+
+    for (id,ctx) in item.drain() {
+      edges.insert(id);
+
+      let EdgeQueryContext {
+        id: _,
+        path: _,
+        start: _,
+        variables: ctx_vars,
+      } = ctx;
+
+      // TODO paths
+
+      variables.extend(ctx_vars.into_iter());
+    }
+
+    QueryResult {
+      vertices,
+      edges,
+      paths,
+      variables,
+    }
+  }
+}
+----
+

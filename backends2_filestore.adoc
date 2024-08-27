@@ -1,0 +1,2395 @@
+= Eine Graphstore-Implementierung auf dem Dateisystem
+
+TODO Der GraphStore kann abstrahiert werden auf einen Store, der auf beliebigen Key Value Stores aufbaut und nicht auf dem Dateisystem. Dazu muss man nur eine entsprechende Schnittstelle definieren und dann alle Aufrufe der Dateisystem-API durch diese Schnittstelle führen. Anschließend kann man alternative Implementierungen des KV-Stores entwickeln und hat dadurch automatisch auch alternative GraphStore-Implementierungen.
+
+[[structs]]
+[source, rust]
+----
+use gravity::KVStore;
+use std::ffi::OsStr;
+use std::os::unix::ffi::OsStrExt;
+
+pub struct FsKvStore {
+  base_path: PathBuf,
+}
+
+impl FsKvStore {
+  fn key_to_path(&self, key: &[u8]) -> PathBuf {
+    let path = Path::new(OsStr::from_bytes(key));
+    PathBuf::from(self.base_path.join(path))
+  }
+}
+
+impl<E> KVStore<E> for FsKvStore
+{
+  type Error = std::io::Error;
+
+  fn create_bucket(&self, key: &[u8]) -> Result<(), Self::Error> {
+    std::fs::create_dir_all(self.key_to_path(key))
+  }
+
+  fn delete_record(&self, key: &[u8]) -> Result<(), Self::Error> {
+    std::fs::remove_file(self.key_to_path(key))
+  }
+
+  fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error> {
+    std::fs::write(self.key_to_path(key), value)
+  }
+
+  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error> {
+    std::fs::read(self.key_to_path(key))
+  }
+
+  fn exists(&self, key: &[u8]) -> Result<bool, Self::Error> {
+    Ok(self.key_to_path(key).exists())
+  }
+}
+----
+
+Beieits in `backends.md` habe ich einen dateisystembasierten Graphstore vorgestellt. Hier soll nun ein zweiter Versuch sein (vorraussichtlich recht ähnlich).
+
+== Vorteile des Dateisystems
+Ich denke die meisten würden nicht sagen, dass das Dateisystem eine gute Basis ist um eine Graphendatenbank zu implementieren (wobei das reine Vermutung ist. Bisher hat niemand etwas derartiges zu mir gesagt). Es gibt aber einige Vorzüge, die das Dateisystem hat:
+
+* Auf jedem normalen Computer ist bereits eins installiert
+* Es wird seit Jahrzehnten benutzt und weiterentwickelt. Man kann davon ausgehen, dass viele Optimierungen welche in Key-Value Stores eingebaut werden auch in Dateisystemen zu finden sind.
+** Ein Dateisystem *ist* ein Key-Value Store. Es sollte daher nicht schwer sein die API später auf einen anderen KV-Store zu portieren.
+* Es gibt eine Unmenge verschiedener Dateisystem Implementierungen. Wählt man das Richtige für den Anwendungsfall bekommt man Optimierungen und/oder zusätzliche Features
+** Zusätzliche Features wären z.B. verteilte Dateisysteme welche viele Möglichkeiten bieten um die Availability zu steigern.
+** Gleichzeitig werden das auch einige als ein Gegenargument aufführen können: Da es so viele verschiedene Implementierungen gibt (und diese für den Benutzer transparent sind) verlieren wir die Kontrolle über die eigentliche Implementierung und haben am Ende eventuell eine schlechte Performance nur weil der Benutzer ein schlecht geeignetes Dateisystem verwendet (oder es schlecht konfguriert ist)
+* Es gibt unzählige Tools für das Dateisystem welche man bei der Entwicklung, Wartung und in unserem eigenen Prozess verwenden kann:
+** Dateimanager und Editoren ermöglichen ein interaktives Untersuchen unseres Systems
+** Tools wie `grep`,`sed`,`find` und `awk` erlauben eine sehr flexibele und doch schnelle Suche über das Gesamtsystem.
+** Versionskontrollsysteme erlauben Synchronisiation von außen bereitszustellen. Wenn wir einen geschickten Diff Mechnismus bereitstellen können sie beinahe nahtlos eingefügt werden.
+*** Das ist ein absolutes Killer Feature welches mit riesigem Aufwand verbunden wäre wenn wir es selbst implementieren wollten (was wir aber vielleicht eines Tages möchten :) ) aber gleichzeitig Anwendungsfälle und Möglichkeiten bietet die derzeit kaum (vielleicht kein?) allgemeines Datenbank System ermöglicht.
+** etc (Tools die Funktionen für das Dateisystem bereitsstellen gibt es zu Hauf. Eventuell erlauben einige Anwendungen welche uns noch gar nicht bekannt sind)
+* Es ist recht skalierbar
+
+== Struktur für die Ablage der Daten
+Zunächst beschäftigen wir uns mit der Strukturierung der Datenablage um zu sehen wie unsere Daten aussehen. Anschließend konzentieren wir uns auf die Funktionen um diese Dateien zu erzeugen und manipulieren.
+
+Ich stelle mir folgende Baumstruktur vor:
+
+[source]
+.Dateibaumstruktur der Datenbank
+----
+
+db/--+
+     +-nodes/--+
+     |         +-<uuid>
+     |         +-...
+     +-edges/--+
+     |         +-<hash string>
+     |         +-...
+     +-props/--+
+     |         +-<hash string>
+     |         +-...
+     +-indexes/--+
+     |           +-...
+     +-config/--+
+     |          +-...
+     +-...
+----
+
+[%collapsible]
+.Implementierungsdetails um die Dateibaumstruktur zu pflegen
+====
+
+Bei einer neuen Datenbank erzeugen wir zunächst all diese Ordner.
+
+[[create_db_directories]]
+[source, rust]
+----
+fs::create_dir_all(&path.join("nodes/"))?;
+fs::create_dir_all(&path.join("edges/"))?;
+fs::create_dir_all(&path.join("props/"))?;
+fs::create_dir_all(&path.join("indexes/"))?;
+----
+
+Wird eine bestehende Datenbank geöffnet muss überprüft werden, ob die entsprechenden Ordner vorhanden sind.
+
+[[check_db_directories]]
+[source, rust]
+----
+if !&path.join("nodes/").is_dir() ||
+  !&path.join("edges/").is_dir() ||
+  !&path.join("props/").is_dir() ||
+  !&path.join("indexes/").is_dir() {
+    return Err(Error::MalformedDB);
+}
+----
+
+Falls die Struktur nicht eingehalten wurde geben wir einen Fehler aus.
+
+[[errors]]
+[source, rust]
+----
+#[error("wrongly formatted database at path TODO")]
+MalformedDB,
+----
+
+====
+
+Innerhalb dieser Ordner (oder der meisten dieser Ordner denn z.B. config enthält ja nur Beschreibungsdaten) werden die Datensätze als Dateien abgelegt. Der Dateiname ist dabei der Schlüssel mit dem man auf die Daten zugreift und der Dateiinhalt ist der Wert. Als Schlüssel wird entweder ein `Hash` oder eine `Uuid` verwendet.
+
+Hash:: Ein https://en.wikipedia.org/wiki/Cryptographic_hash_function[Hash] ist die eindeutige Zusammenfassung des Inhalts als eine Zahl. Alles was einen `hash` als Schlüssel hat ist somit ein https://en.wikipedia.org/wiki/Content-addressable_storage[content addressable store] da mit dem Schlüssel der Inhalt fest verbunden ist. Der verwendete Hash Algorithmus kann über die Konfiguration festgelegt werden. Das hat ein paar Vorteile:
+** Die Daten können nur entweder erstellt oder gelöscht werden aber nicht verändert. Daraus ergeben sich eine Menge Möglichkeiten für die Synchronisierung und Prüfung der Datenintegrität.
+Uuid:: Eine https://en.wikipedia.org/wiki/Universally_unique_identifier[Uuid] ist eine eindeutige Id bei der nicht die Gefahr besteht, das zwei unterschiedliche Prozesse die gleiche id erstellen (nicht mal wenn die Prozesse auf unabhängigen und nicht miteinander kommunizierenden Computern ablaufen). Datensätze welche eine `uuid` als Schlüssel verwenden können modifiziert werden.
+
+Wie wir später noch sehen werden hat diese Strukturierung Vorteile um die Daten gut <<sync, synchronisieren>> und effektiv durchsuchen zu können.
+
+Um diese Keys umzusetzen verwenden wir die https://docs.rs/uuid[uuid] und https://docs.rs/sha2[sha2] crates. Für sie definieren wir eine Hilfsschnittstelle, um die Umwandlung in einen Datenbankschlüssel zu erlauben.
+
+[[helper_functions]]
+[source, rust]
+----
+fn uuid_to_key(id: uuid::Uuid) -> String {
+  id
+    .to_hyphenated()
+    .encode_lower(&mut uuid::Uuid::encode_buffer())
+    .to_string()
+}
+----
+
+Als Schlüssel betrachten wir hier den zusammengefassten Dateinamen aus allen Ordnernamen unterhalb der hier aufgeführten Struktur und dem Dateinamen (ohne die Trennzeichen wie z.B `/`). Wie viele Ordner verwendet werden sollen und ob die Tiefe dynamisch angepasst werden soll hängt von der Konfiguration ab. Dadurch ist es möglich die Abfragegeschwindigkeiten zu optimieren je nachdem wie voll die Datenbank ist.
+
+Dateinamen sind im Grunde Strings, weshalb wir unsere Hashes in diesem Fall als String definieren können.
+
+[[structs]]
+[source, rust]
+----
+type HashId = String;
+----
+
+Als Hash Funktion nutzen wir (vorerst) sha256. Dafür importieren wir die Digest traits.
+
+[[imports]]
+[source, rust]
+----
+use sha2::Digest;
+----
+
+=== Die einzelnen Datentypen
+Nun wollen wir die Einzelheiten und Schemata der einzelnen Datentypen besprechen.
+
+Die Dateiinhalte sind Key-Value Stores welche die Werte das Datensatzes enthalten. Man kann dafür z.B. Json, messagepack oder etwas anderes verwenden (theoretisch könnte man sogar wieder das Datesystem verwenden, da ein Ordner ja auch nichts anderes als ein Key-Value-Store ist). Das verwendete Dateiformat kann über die Konfiguration festgelegt werden (das Schema dagegen besprechen wir in den folgenden Abschnitten). Zu Beginn mag es nützlich sein Json zu verwenden, da es leicht zum Debuggen geeignet ist.
+
+Um uns die Flexibilität zu erhalten verwenden wir zunächst https://serde.rs/[serde] zur Serialisierung. Dadurch lässt sich das Datenformat für unsere Datentypen leicht austauschen. Natürlich kann man als Properties (TODO link) beliebige Dateien und Formate abspeichern.
+
+[[imports]]
+[source, rust]
+----
+use serde::{Serialize, Deserialize};
+----
+
+Zu Beginn nutzen wir json als Serialisierungsformat footnote:[Das gilt nur für unsere internen Datenstrukturen innerhalb der Datenbank. Jedes Schema kann völlig frei seine eigene Serialisierung wählen]. Dazu nutzen wir `serde_json`.
+
+Wir verwenden die Schema Traits (TODO link) von gravity um die Datentypen zu definieren. Dadurch haben wir später die Möglichkeit zum validieren (TODO link) und optimieren (TODO link), was gerade bei Transaktionen (TODO link) von großem Nutzen ist.
+
+[[imports]]
+[source, rust]
+----
+use gravity::schema::SchemaElement;
+----
+
+=== Knoten (nodes)
+Der Ordner `nodes` enthält die Knoten (oder Vertices). Diese sind für mich der Einstiegspunkt in die Daten (wenn ich eine Suche beginne ist das in den meisten Fällen mit einem Knoten. Manchmal möchte ich auch eine Property abfragen, doch dafür durchsuche ich entweder den gesamten Store (wenn die Abfrage etwas außergewöhniches ist) oder ich lege einen Index an (und indexe sind wieder Knoten).
+
+Eine Knoten Datei hat folgendes Schema:
+
+[source, json]
+----
+{
+  "uuid": uint64,
+  "props": uint64,
+  "edges": {
+    "in": [ uint64, uint64, ... ],
+    "out": [ uint64, uint64, ... ],
+  }
+}
+----
+
+[[imports]]
+[source, rust]
+----
+use std::collections::BTreeSet;
+----
+
+[[structs]]
+[source, rust]
+----
+#[derive(Deserialize, Serialize, Debug)]
+pub struct NodeData {
+  pub id: uuid::Uuid,
+  // Schlüssel des Datensatzes, welcher die Eigenschaften
+  // des Knotens enthält
+  pub properties: HashId,
+  // Hashes der eingehenden Verbindungen (Edges)
+  pub incoming: BTreeSet<HashId>,
+  // Hashes der ausgehenden Verbindungen (Edges)
+  pub outgoing: BTreeSet<HashId>,
+}
+
+impl SchemaElement<String, Error> for NodeData
+{
+  fn get_key(&self) -> String {
+    uuid_to_key(self.id)
+  }
+
+  fn serialize(&self) -> Result<Vec<u8>, Error> {
+    Ok(serde_json::to_vec(self)?)
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, Error>
+  where
+    Self: Sized,
+  {
+    Ok(serde_json::from_slice(data)?)
+  }
+}
+----
+
+Die `uuid` ist ja der Key und somit im Dateinamen enthalten. Es könnte aber interessant sein um Überprüfungen vorzunehmen und so z.B. reagieren zu können falls eine Datei umbenannt wurde oder bei einer Synchronisierung falsch übertragen wurde.
+
+Der Hash bei `props` ist ein Verweis auf den jeweiligen Datensatz im entsprechenden store.
+
+TODO Eventuell kann durch die Konfiguration ein etwas anderes Schema unterhalb von `edges` festgelegt werden. Das würde helfen sobald man eine Menge Verbindungen zwischen den einzelnen Knoten hätte und hängt somit stark von der Füllung der Datenbank ab, als auch von der Struktur der Daten selbst.
+
+=== Verbindungen (edges)
+Im Ordner `edges` werden die Verbindungen (oder Edges, Relationships, Links) gespeichert. Sie haben folgendes Schema:
+
+[source, json]
+----
+{
+  "props": uint64,
+  "in": uint64,
+  "out": uint64
+}
+----
+
+[[structs]]
+[source, rust]
+----
+#[derive(Deserialize, Serialize, Debug)]
+pub struct EdgeData {
+  pub properties: HashId,
+  pub n1: uuid::Uuid,
+  pub n2: uuid::Uuid,
+}
+
+impl SchemaElement<HashId, Error> for EdgeData
+{
+  fn get_key(&self) -> HashId {
+    let data = serde_json::to_vec(self).unwrap();
+    format!("{:X}", sha2::Sha256::digest(&data))
+  }
+
+  fn serialize(&self) -> Result<Vec<u8>, Error> {
+    Ok(serde_json::to_vec(self)?)
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, Error>
+  where
+    Self: Sized,
+  {
+    Ok(serde_json::from_slice(data)?)
+  }
+}
+----
+
+`props` ist wieder ein Verweis auf den Eintrag im entsprechenden Store.
+
+Die Datenbank lässt nur gerichtete Verbindungen zu.
+
+`in` bezieht sich auf die uuid vom eingehenden Knoten.
+
+`out` bezieht sich auf die uuid vom ausgehenden Knoten.
+
+=== Eigenschaften (properties)
+Im Ordner `properties` können beliebige Daten gespeichert werden. Diese Dateien enthalten das, was man im Allgemeinen als die eigentlichen Nutzdaten betrachten würde.
+
+In einem herkömmlichen Arbeitsprozess (also ohne Graphendatenbank) sind alle Dateien die man erzeugt und bearbeitet mit Properties gleichzusetzen. Und in einer SQL Datenbank entspräche der Inhalt aller Zeilen, die keine Primary- oder Foreign-Keys enthalten, den Properties.
+
+Dementsprechend ist es sinnvoll für jede Anwendung ein eigenes Schema (TODO link) für die Properties zu entwerfen und benutzen (ähnlich wie man es bei einer SQL Datenbank auch tun würde).
+
+Allerdings möchten wir, dass unsere Datenbank auch verwendbar ist, ohne das jeder zuerst ein Schema erdenken und anschließend die Datenbank mit diesem Schema gemeinsam kompilieren muss. Aus diesem Grund definieren wir ein sehr allgemeines Schema, welches beliebige Daten (wie bespielsweise Dateien auf dem Computer) aufnehmen kann. Seine sehr laxe Validierung erlaubt direkt mit der Datenbank zu arbeiten.
+
+[[structs]]
+[source, rust]
+.Allgemeines Schema für beliebige Properties
+----
+#[derive(Debug, Clone)]
+pub struct GenericProperty(Vec<u8>);
+
+impl SchemaElement<HashId, Error> for GenericProperty
+{
+  fn get_key(&self) -> HashId {
+    format!("{:X}", sha2::Sha256::digest(&self.0))
+  }
+
+  fn serialize(&self) -> Result<Vec<u8>, Error> {
+    Ok(self.0.clone())
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, Error>
+  where
+    Self: Sized,
+  {
+    Ok(GenericProperty(data.to_vec()))
+  }
+}
+
+impl Property<String, Error> for GenericProperty {
+  fn nested(&self) -> Vec<Self> { Vec::new() } // <1>
+}
+----
+<1> Wir bilden keine Verweise der Dateien untereinander ab, da wir ja bei dieser allgemeinen Fassung des Schemas die Dateien selbst gar nicht auswerten.
+
+Daten die man hier verwendet können beliebige Inhalte haben. Es wäre aber klug (wenn auch nicht erforderlich) zu versuchen nicht deterministische Daten wie Änderungszeitstempel (oder Zeitstempel allgemein) vor dem Abspeichern aus den Dateien zu entfernen. Tut man das nicht, kann der nicht-Determinismus die Synchronisiation stark belasten. Es wäre also gut zu überdenken ob man einen direkten Anwendungsfall für die Auswertung solcher veränderlichen Daten hat oder die Daten sich sehr selten verändern, bevor man sich entschließt nicht deterministische Daten abzuspeichern.
+
+=== Indexe und Garbarge-Collection
+Wenn wir Elemente löschen, ergibt sich die Aufgabe, dass wir eventuell verbundene Elemente mit löschen müssen wenn kein Verweis mehr darauf existiert. Dazu legen wir eine zweite Ordnerstruktur (im Ordner `indexes` TODO eventuell sollten wir einen Unterordner von `indexes` verwenden um weitere unsichtbare Verweistypen zu ermöglichen) an. Diese enthält redundante Daten, die aber dafür schnellere Zugriffe ermöglichen.
+
+Eine Alternative dazu wäre garbarge-collection als einen eigenen Befehl zu implementieren, der manuell aufgerufen werden müsste. Dies hätte den Nachteil, dass dafür immer die gesamte Datenbank durchsucht werden müsste. Andererseits wären Daten, die oft gelöscht und wieder angelegt werden weiter im Cache und dadurch würden einige Schreibaktionen weniger Aufwand verursachen.
+
+Ein Vorteil der automatisch gepflegten Indexe für die Garbarge-Collection ist, dass sie gleichzeitig eine deutlich schnellere Suche nach Knoten oder Verbindungen deren Eigenschaften (Properties) bekannt sind, ermöglichen. Dafür gibt es sehr viele Anwendungsfälle.
+
+==== Struktur des Indexes
+Wir legen alle Properties als Ordner an. In diesen Ordnern befinden sich jeweils alle darauf verweisenden Elemente (egal ob Node, Edge oder Property) als Links.
+
+----
+indexes/--+
+          +-<property-hash>-+
+          |                 +-props_<hash> # -> db/indexes/<linking-property-hash>
+          |                 +-nodes_<uuid> # -> db/nodes/<uuid>
+          |                 +-...
+          +-<linking-property-hash>-+
+          |                         +-...
+          +-...
+----
+
+Da wir also recht häufig einen entsprechenden Link anlegen müssen verwenden wir dafür eine Hilfsfunktion.
+
+Als Parameter übergeben wir unter anderem die Art des Backlinks (node, edge oder property). Daraus läßt sich einerseits der Pfad ermitteln und andererseits erleichtert man das <<process_property_query, Filtern>>, indem man den Namen anhängt (z.B. node_<uuid> oder edge_<hashid>).
+
+[[structs]]
+[source, rust]
+----
+pub enum BacklinkType {
+  Node,
+  Edge,
+  Property,
+}
+----
+
+[[fs_store_functions]]
+[source, rust]
+----
+/// props_hash: the hash_id of the property that holds the index
+/// id:         the id of the node, edge or property that references
+///             the property and needs a backling
+/// ty:         the type of the element that needs a backlink
+fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> std::io::Result<()> {
+  let index_path = self.base_path.join("indexes/");
+  let index_path = index_path.join(props_hash.to_string() + "/");
+  fs::create_dir_all(&index_path)?;
+
+  let prefix = match ty {
+    BacklinkType::Node => "nodes",
+    BacklinkType::Edge => "edges",
+    BacklinkType::Property => "props",
+  };
+  let backlink_path = index_path.join(prefix.to_owned() + "_" + id);
+  let path = self.base_path.join(prefix).join(id);
+  fs::hard_link(path, backlink_path)?;
+
+  Ok(())
+}
+----
+
+Zudem haben wir eine Funktion um die links wieder zu löschen. Ist keine weitere Referenz vorhanden wird auch die Eigenschaft aus dem Store gelöscht.
+
+[[fs_store_functions]]
+[source, rust]
+----
+fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> std::io::Result<bool> {
+  let index_path = self.base_path.join("indexes/");
+  let index_path = index_path.join(props_hash.to_string() + "/");
+
+  let prefix = match ty {
+    BacklinkType::Node => "nodes",
+    BacklinkType::Edge => "edges",
+    BacklinkType::Property => "props",
+  };
+  let backlink_path = index_path.join(prefix.to_owned() + "_" + id);
+  fs::remove_file(backlink_path)?;
+
+  if fs::read_dir(&index_path)?.next().is_none() {
+    fs::remove_dir(&index_path)?;
+
+    Ok(true)
+  } else {
+    Ok(false)
+  }
+}
+----
+
+==== Suche nach Properties
+Durch den zuvor beschriebenen Index ergibt sich eine besondere Möglichkeit nach Eigenschaften zu suchen.
+
+Will man zum Beispiel nach Einträgen suchen, die sich auf den Begriff "Suche" beziehen könnte man folgendermaßen vorgehen:
+
+. Man erstellt den Datensatz footnote:[Der Datensatz und das Format hängen vom Schema ab. Das ist nicht Teil dieses Dokumentes sondern muss separat definiert werden. Dieser Datastore ist in der Lage mit beliebigen Schemata umzugehen.]
++
+[source, json]
+----
+{ "concept": { "name": "Suche" } }
+----
+
+. Man erzeugt den hash. Dazu kann es nötig sein, den Datensatz zu sortieren, komprimieren und verändern (z.B. nur Kleinbuchstaben) um auch wirklich sicher den gleichen Hash zu bekommen.
++
+[source, sh]
+----
+hash=`sha256sum < ${dataset}`
+----
+
+. Man gibt den Hash ein und ließt die verweisenden Daten aus
++
+[source, sh]
+----
+ls db/indexes/${hash}
+----
+
+[[wal_transactions]]
+== Write-Ahed-Log
+Wenn man die Daten in der Datenbank manipuliert ist es wichtig, dass die Datenbank nicht unbrauchbar wird oder kapput geht wenn irgend etwas schief geht. Man spricht hier von atomaren Opterationen die entweder als ganzes funktionieren oder abgebrochen werden aber die Anwendung nicht in einem Zwischenzustand zurück lassen. Zu diesem Zweck hat man https://en.wikipedia.org/wiki/Database_transaction[Transaktionen] erdacht footnote:[Weitere Informationen sind unter https://en.wikipedia.org/wiki/ACID und https://en.wikipedia.org/wiki/Transaction_log und https://en.wikipedia.org/wiki/Shadow_paging und https://sqlite.org/wal.html Ich bin mir nicht ganz sicher, ob die hier von mir beschriebene Technik wirklich Write-Ahead-logging ist, oder ob es sich eher um Shadow-Paging handelt].
+
+Wir versuchen das Problem folgendermaßen zu lösen:
+
+Zunächst arbeiten wir mit zwei Kopien der Datenbank (da einige Bereiche mit hashes addressiert werden und daher content addressable stores sind) können wir hier Hart-Links (TODO linK) verwenden.
+
+Auf der Hauptebene haben wir dann eine Datei welche als Information enthält welcher der beiden stores gerade der aktuelle ist (zum lesen. Dieser muss immer valid sein) und welcher Prozess auf den anderen Store zum schreiben zugreift (kann auch leer also kein Prozess sein).
+
+Will ein Prozess zum schreiben zugreifen so muss er zuerst ein Datei anlegen, welche zeigt das er gerade den Zugriff hat und dann diese Datei verschieben, so dass sie den offiziellen Zeiger ersezt (verschieben von Dateien ist eine atomare Operation und kann daher nicht aus Versehen unterbrochen werden).
+
+Dann kann er den Store bearbeiten. Sobald er fertig ist geht er mit der gelichen Technik wie am Anfang vor um zu zeigen, das nun der andere Store der valide Lese-Store ist.
+
+TODO Natürlich brauchen wir auch eine Möglichkeit damit die lesenden Prozesse anzeigen können, dass sie gerade lesen und daher kein schreibender Prozess zugreifen kann bevor sie mit lesen fertig sind. Eventuell kann man hier bei Bedarf die Stores beliebig oft kopieren um lange Lesezugriffe zuzulassen ohne den Schreibzugriff dauerhaft zu blockieren (könnte man als eine Art Thread Pool betrachten wenn auch sicher die Technik an sich ganz anders funktioniert).
+
+[[sync]]
+== Synchronisierung
+Dies dürfte eins der Killer-Features dieses Stores sein. Man könnte bestehende vcs-Systeme wie https://git-scm.com/[git] oder https://pijul.org/[pijul] verwenden um die Daten zu synchronisieren (und zwar asynchron und verteilt).
+
+Die Vorgehensweise dazu ist folgende:
+
+Immer wenn eine Transaktion abgeschlossen ist (siehe <<wal_transactions>>) wird zunächst ein prozess ausgeführt, dem alle Änderungen übergeben werden. Konkret heist das:
+
+* Welche Knoten angelegt wurden
+* Welche Knoten verändert wurden
+** z.B. andere Properties oder andere edges
+* Welche Knoten gelöscht wurden
+** zudem alle damit verbundenen Edges da diese alle mit gelöscht wurden
+* Welche Edges angelegt wurden
+* Welche Edges gelöscht wurden
+* Bei welchen Edges die Properties verändert wurden
+** Das entspricht dem löschen der alten Edge und dem anlegen einer neuen Edge
+* Auf welche Properties neu verwiesen wird
+** recursiv falls Properties auf properties verweisen
+* Auf welche Properties niemand mehr verweist
+** recursiv falls Properties auf properties verweisen
+
+Aus diesen Informationen macht man dann einen Commit (oder die jeweilige Entsprechung in einem anderen vcs System).
+
+[[structs]]
+[source, rust]
+----
+pub struct Change {
+  pub created: ChangeSet,
+  pub modified: BTreeSet<NodeChange>,
+  pub deleted: ChangeSet,
+  pub depends_on: BTreeSet<HashId>, // <1>
+}
+
+pub struct NodeChange {
+  pub id: uuid::Uuid,
+  pub properties: HashId,
+}
+
+pub struct ChangeSet {
+  pub nodes: BTreeSet<NodeChange>,
+  pub edges: BTreeSet<EdgeData>,
+  //pub properties: BTreeSet<Property>,
+}
+----
+<1> Zusätzlich zu den eigentlichen Änderungen haben wir auch eine Liste der vorhergehenden `Change` Einträge, von denen dieser Change abhängig ist. Das macht es uns bei der Synchronisierung leichter zwischen Konflickten und problemlosen Zusammenführungen zu unterscheiden.
+
+Wenn wir zusätzlich einen guten Diff Mechanismus bereitstellen (und da wir die Datenstruktur gut kenn könnten wir das wahrscheinlich tun) könnten wir dem Benutzer eine sehr komfortable Umgebung bereitstellen um Konflikte zu lösen.
+
+Beim Synchronisieren (mergen) könnten wir Algorithmen zur Verfügung stellen welche Ähnlichkeiten zwischen neu angelegten Datensätzen aufzeigen (z.B. wenn ein neuer Knoten teilweise übereistimmende Edges hat und ein Teil seiner Property Werte ähnlich ist). Dadurch könnte man schnell erkennen, dass man an verschiedenen Stellen das gleiche Ziel hatte (wenn man es auch nicht identisch umgesetzt hat). So kann man frühzeitig solche Datensätze wieder zu einem zusammenführen oder aber erkennen, dass man sie klarer voneinander abgrenzen muss oder sehen, dass es eine andere interessierte Partei gibt (welche einem bis dahin vielleicht unbekannt war) und das man sich absprechen sollte.
+
+== Sharding
+Sharding ist das aufteilen der Datenbank in kleinere Subdatenbanken welche aber miteinander verbunden sein können. Das wäre ebenfalls ein Killer-Feature, weil es ermöglichen würde kleinere Teile der Datenbank zu lagern und somit mit kleinen Geräten (wie Handys) den für sie relevanten Teil der Datenbank zu verwalten und damit bei Bedarf offline zu arbeiten und gleichzeitig eine große Datenbank zu haben welche übergreifende Analysen und/oder rechenintensive Operationen durchführt. Außerdem erlaubt es die Synchronisation all dieser kleinen Datenbanken (welche ja mitunter nicht den gleichen Ausschnitt der Gesamtdaten enthalten). Eine weitere Anwendung wäre sicherheitskritische Daten abzutrennen und dennoch im sync mit den normalen Operationsdaten zu halten.
+
+Allerdings stellt uns das ganze vor einige schwierige Herausforderungen. Es ist sehr schwer zu entscheiden welcher Datensatz welcher Datenpartition zugeordnent werden soll. Was ist mit Verbindungen zwischen zwei Partitionen?
+
+TODO Beschreibung der Probleme, möglicher Lösungen (sowohl algoritmisch als auch manuell), der Konfiguration und der Auswirkungen auf die Dateistruktur und die nötigen Anpassungen an den <<sync, Synchronisierungsmechnismen>>.
+
+== Implementierung
+
+Da wir alles aus dem Dateisystem auslesen müssen wir auch die ensprechenden Traits importieren.
+
+[[imports]]
+[source, rust]
+----
+use std::fs;
+----
+
+=== CRUD Funktionen
+Wir benötigen natürlich zunächst die allgemeinenen Funktionen für eine Datenbank.
+
+In unserer Datenbank gibt es drei grundlegende Typen: Nodes, Edges und Properties.
+
+[[fs_store_functions]]
+[source, rust]
+.Funktionen für Knoten
+----
+pub fn create_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), Error> {
+  <<check_if_node_exists_allready>>
+  <<create_node>>
+  let props_hash = self.create_property(properties)?;
+  let node = NodeData {
+    id: id,
+    properties: props_hash.clone(),
+    incoming: BTreeSet::new(),
+    outgoing: BTreeSet::new(),
+  };
+  let id = node.get_key();
+  let node = SchemaElement::serialize(&node)?;
+
+  let path = self.base_path.join("nodes/");
+  let path = path.join(&id);
+
+  if path.exists() {
+    log::error!("node {:?} allready exists", path);
+    return Err(Error::NodeExists);
+  };
+
+  <<write_node>>
+  log::debug!("creating node file {:?} with content {}", path, String::from_utf8_lossy(&node));
+  fs::write(&path, &node)?;
+
+  self.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+
+  Ok(())
+}
+
+pub fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error> {
+  let path = self.base_path.join("nodes/");
+  let path = path.join(&uuid_to_key(id));
+
+  let data = fs::read(path)?;
+  let node = SchemaElement::deserialize(&data)?;
+  Ok(node)
+}
+
+pub fn update_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), Error> {
+  <<create_new_property>>
+  let props_hash = self.create_property(properties)?;
+  <<update_node_data>>
+  let path = self.base_path.join("nodes/");
+  let path = path.join(uuid_to_key(id));
+  let NodeData {
+    id,
+    properties: old_properties,
+    incoming,
+    outgoing,
+  } = self.read_node(id)?;
+  let node = NodeData {
+    id: id,
+    properties: props_hash.clone(),
+    incoming: incoming,
+    outgoing: outgoing,
+  };
+  let node = SchemaElement::serialize(&node)?;
+  fs::write(&path, &node)?;
+
+  let id = uuid_to_key(id);
+  let last_reference = self.delete_property_backlink(&old_properties, &id, BacklinkType::Node)?;
+  if last_reference {
+    self.delete_property(&old_properties)?;
+  }
+
+  self.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+
+  Ok(())
+}
+
+pub fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), Error> {
+  let NodeData {
+    id,
+    properties,
+    incoming: _,
+    outgoing: _,
+  } = self.read_node(id)?;
+
+  let id = uuid_to_key(id);
+  let path = self.base_path.join("nodes/");
+  let path = path.join(&id);
+
+  let last_reference = self.delete_property_backlink(&properties, &id, BacklinkType::Node)?;
+  if last_reference {
+    self.delete_property(&properties)?;
+  }
+
+  fs::remove_file(path)?;
+  Ok(())
+}
+----
+
+Wir müssen zudem mögliche Fehler vom Dateisystem abfangen.
+
+[[errors]]
+[source, rust]
+----
+#[error("io error")]
+Io { #[from] source: std::io::Error },
+----
+
+Wenn bereits ein Knoten mit entsprechender ID existiert kann er nicht erzeugt werden (höchstens aktualisiert).
+
+[[errors]]
+[source, rust]
+----
+#[error("node allready exists")]
+NodeExists,
+----
+
+[[fs_store_functions]]
+[source, rust]
+.Funktionen für Verbindungen
+----
+pub fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, Error> {
+  let props_hash = self.create_property(properties)?;
+  let edge = EdgeData {
+    n1: n1,
+    n2: n2,
+    properties: props_hash.clone(),
+  };
+
+  let path = self.base_path.join("edges/");
+  let hash = edge.get_key();
+  let path = path.join(&hash);
+
+  let edge = SchemaElement::serialize(&edge)?;
+  fs::write(&path, &edge)?;
+
+  self.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
+
+  let path = self.base_path.join("nodes/");
+  let path = path.join(uuid_to_key(n1));
+  let NodeData {
+    id,
+    properties,
+    incoming,
+    mut outgoing,
+  } = self.read_node(n1)?;
+  outgoing.insert(hash.clone());
+  let node = NodeData {
+    id,
+    properties,
+    incoming,
+    outgoing,
+  };
+  let node = SchemaElement::serialize(&node)?;
+  fs::write(&path, &node)?;
+
+  let path = self.base_path.join("nodes/");
+  let path = path.join(uuid_to_key(n2));
+  let NodeData {
+    id,
+    properties,
+    mut incoming,
+    outgoing,
+  } = self.read_node(n2)?;
+  incoming.insert(hash.clone());
+  let node = NodeData {
+    id,
+    properties,
+    incoming,
+    outgoing,
+  };
+  let node = SchemaElement::serialize(&node)?;
+  fs::write(&path, &node)?;
+
+  Ok(hash)
+}
+
+pub fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error> {
+  let path = self.base_path.join("edges/");
+  let path = path.join(id);
+
+  let data = fs::read(path)?;
+  let edge = SchemaElement::deserialize(&data)?;
+  Ok(edge)
+}
+
+pub fn delete_edge(&mut self, id: &HashId) -> Result<(), Error> {
+  let EdgeData {
+    properties: props_hash,
+    n1,
+    n2,
+  } = self.read_edge(id)?;
+
+  let path = self.base_path.join("edges/");
+  let path = path.join(id);
+
+  fs::remove_file(&path)?;
+
+  let path = self.base_path.join("nodes/");
+  let path = path.join(uuid_to_key(n1));
+  let NodeData {
+    id: _id,
+    properties,
+    incoming,
+    mut outgoing,
+  } = self.read_node(n1)?;
+  outgoing.remove(id);
+  let node = NodeData {
+    id: n1,
+    properties,
+    incoming,
+    outgoing,
+  };
+  let node = SchemaElement::serialize(&node)?;
+  fs::write(&path, &node)?;
+
+  let path = self.base_path.join("nodes/");
+  let path = path.join(uuid_to_key(n2));
+  let NodeData {
+    id: _id,
+    properties,
+    mut incoming,
+    outgoing,
+  } = self.read_node(n2)?;
+  incoming.remove(id);
+  let node = NodeData {
+    id: n2,
+    properties,
+    incoming,
+    outgoing,
+  };
+  let node = SchemaElement::serialize(&node)?;
+  fs::write(&path, &node)?;
+
+  let last_reference = self.delete_property_backlink(&props_hash, &id, BacklinkType::Edge)?;
+  if last_reference {
+    self.delete_property(&props_hash)?;
+  }
+
+  Ok(())
+}
+----
+
+[[errors]]
+[source, rust]
+----
+#[error("json error")]
+Json { #[from] source: serde_json::Error },
+----
+
+[[fs_store_functions]]
+[source, rust]
+.Eigenschaften speichern
+----
+pub fn create_property(&mut self, properties: &T) -> Result<HashId, Error> {
+  let path = self.base_path.join("props/");
+  let hash = properties.get_key();
+  let path = path.join(&hash);
+
+  let data = properties.serialize()?;
+  log::debug!("creating property file {:?} with content {}", path, String::from_utf8_lossy(&data));
+  fs::write(&path, &data)?;
+
+  <<store_nested_properties>>
+
+  Ok(hash)
+}
+----
+
+Da Eigenschaften in einer Baumstruktur angelegt werden können (TODO Link aufs Schema) wollen wir, dass auch alle zugehörigen Datensätze abgelegt werden (mit anderen Worten: Die Funktion soll rekursiv aufgerufen werden). Hier kann es schnell vorkommen, dass Datensätze bereits verwendet wurden (und deshalb bereits gespeichert sind). Das betrachten wir nicht als Fehler.
+
+[[store_nested_properties]]
+[source, rust]
+----
+properties.nested().iter().try_for_each(|nested| {
+  match self.create_property(nested) {
+    Ok(nested_hash) => {
+      self.create_idx_backlink(&nested_hash, &hash, BacklinkType::Property)?;
+      Ok(())
+    }
+    Err(e) => {
+      use Error::*;
+      match e {
+        ExistedBefore => Ok(()),
+        _ => Err(e),
+      }
+    }
+  }
+})?;
+----
+
+[[fs_store_functions]]
+[source, rust]
+.Eigenschaften auslesen
+----
+pub fn read_property(&mut self, id: &HashId) -> Result<T, Error> {
+  let path = self.base_path.join("props/");
+  let path = path.join(id);
+
+  let data = fs::read(path)?;
+  let property = SchemaElement::deserialize(&data)?;
+  Ok(property)
+}
+----
+
+[[fs_store_functions]]
+[source, rust]
+.Eigenschaften aus der Datenbank löschen
+----
+pub fn delete_property(&mut self, id: &HashId) -> Result<(), Error> {
+  let path = self.base_path.join("props/");
+  let path = path.join(id);
+
+  <<delete_nested_properties>>
+
+  fs::remove_file(path)?;
+  Ok(())
+}
+----
+
+Wenn wir Eigenschaften löschen müssen wir natürlich auch die Indexe von allen Eigenschaften löschen, die auf sie verweisen.
+
+[[delete_nested_properties]]
+[source, rust]
+----
+let data = fs::read(&path)?;
+let properties: T = SchemaElement::deserialize(&data)?;
+
+for nested in properties.nested().iter() {
+  let nested_hash = nested.get_key();
+  let last_reference = self.delete_property_backlink(&nested_hash, id, BacklinkType::Property)?;
+  if last_reference {
+    self.delete_property(&nested_hash)?;
+  }
+}
+----
+
+TODO Überprüfen, ob noch Knoten oder Verbindungen auf eine Eigenschaft verweisen. In diesem Fall darf sie nicht gelöscht werden.
+
+=== Die allgemeine Schnittstelle
+Die vorigen CRUD Funktionen haben ein sehr niedriges Level. Die Benutzer der Datenbank sollen allgemeinere Funktionen nutzen können. Dazu implementieren wir die Schnittstellen der Gravity Graphen API (TODO link).
+
+[[imports]]
+[source, rust]
+----
+use gravity::GraphBuilder;
+----
+
+[[interface_implementations]]
+[source, rust]
+----
+impl<N, P> GraphBuilder<N, P, Error> for FsStore<P>
+where
+  N: Node<P>,
+  P: Property<HashId, Error>,
+{
+  fn add_node(&mut self, node: N) -> Result<(), Error> {
+    let p = node.properties();
+    self.create_node(node.id(), &p)
+  }
+
+  fn add_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), Error> {
+    self.create_edge(n1.id(), n2.id(), p)?;
+    Ok(())
+  }
+
+  fn delete_node(&mut self, node: &N) -> Result<(), Error> {
+    self.delete_node(node.id())?;
+    Ok(())
+  }
+
+  fn delete_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), Error> {
+    let props_hash = p.get_key();
+    let edge = EdgeData {
+      n1: n1.id(),
+      n2: n2.id(),
+      properties: props_hash,
+    };
+
+    self.delete_edge(&edge.get_key())?;
+    Ok(())
+  }
+}
+----
+
+=== Schema Schnittstellen für Knoten, Verbindungen und Eigenschaften
+Unsere Datenbank erlaubt es ein Schema zu definieren. Damit das möglich ist müssen die einzelnen Elemente Schnittstellen bereitstellen.
+
+[[imports]]
+[source, rust]
+----
+use gravity::schema::Property;
+----
+
+[[traits]]
+[source, rust]
+----
+pub trait Node<P: Property<HashId, Error>> {
+  fn id(&self) -> uuid::Uuid;
+  fn properties(&self) -> P;
+}
+----
+
+[[errors]]
+[source, rust]
+----
+#[error("the element existed before")]
+ExistedBefore,
+----
+
+=== Abfrage Sprache einlesen
+Abfragen können in der verschiedensten Form formuliert werden. Wir verwenden die Zoe (TODO link) Sprache um unsere Abfragen zu definieren. Allerdings haben wir die Möglichkeit andere Sprachen zu nutzen und diese in eine gleichwertige Zoe Abfrage umzuwandeln. Dafür müssen wir zunächst die Sprache importieren.
+
+[[imports]]
+[source, rust]
+----
+use gravity::ql;
+use std::collections::HashMap;
+----
+
+Anschliessend definieren wir unseren eigenen Dialekt indem wir die grundlegenden Datentypen festlegen footnote:[Dieser Dialekt wird durch die Anwendung noch weiter verfeinert, sobald das Schema festgelegt wird].
+
+[[structs]]
+[source, rust]
+----
+type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+type QueryResult = ql::QueryResult<uuid::Uuid, HashId>;
+----
+
+Wir gehen davon aus, dass die Abfragen als Json codiert übermittelt werden.
+
+[[helper_functions]]
+[source, rust]
+----
+pub fn to_query(data: &Vec<u8>) -> Result<BasicQuery, Error> {
+  // TODO Verschiedene Query Sprachen über zweiten Parameter
+  // TODO Internes Schema verwenden um Abfragen zu verbessern
+  let query = serde_json::from_slice(data)?;
+
+  Ok(query)
+}
+----
+
+Das eigentlich Interessante an einer Datenbank sind natürlich die Abfragen selbst. Daher wollen wir uns als nächstes damit beschäftigen, wie wir aus der Abfrage an die Daten in der Datenbank kommen.
+
+[[fs_store_functions]]
+[source, rust]
+----
+pub fn query(&self, q: BasicQuery) -> Result<QueryResult, Error> {
+  let context = match q {
+    BasicQuery::V(q) => {
+      self.query_nodes(q)?.into()
+    }
+    BasicQuery::E(q) => {
+      self.query_edges(q)?.into()
+    }
+    BasicQuery::P(q) => {
+      self.query_property_nodes(q)?.into()
+    }
+  };
+
+  Ok(context)
+}
+----
+
+=== Abfragen verarbeiten
+Alle unsere Abfragen arbeiten mit einem Startpunkt. Von diesem Startpunkt aus arbeiten wir uns vorwärts indem wir bei allen angrenzenden Elementen (Bei Knoten Verbindungen und umgekehrt) überprüfen, ob sie die Bedingungen erfüllen. Falls ja, nehmen wir das aktuelle Element in den Pfad, den unsere Abfrage bis jetzt genommen hat, mit auf und übernehmen das angrenzende Element als neuen Startpunkt.
+
+Das bedeutet also, dass wir als Ergebniswerte unserer Abfrageschritte, eine Liste aller angrenzenden Elemente (die die Filterkriterien erfüllen) und die jeweils zu ihnen hinführenden Pfade bekommen.
+
+[[structs]]
+[source, rust]
+.Ergebnistypen eines Abfrageschrittes
+----
+type NodeCtx = HashMap<uuid::Uuid, ql::VertexQueryContext<uuid::Uuid, HashId>>;
+type EdgeCtx = HashMap<HashId, ql::EdgeQueryContext<uuid::Uuid, HashId>>;
+----
+
+Unsere Funktionen bekommen demnach eine Abfrage übergeben und geben eine entsprechende Ergebnismenge zurück.
+
+[[fs_store_functions]]
+[source, rust]
+----
+fn query_nodes(
+  &self,
+  q: ql::VertexQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>
+) -> Result<NodeCtx, Error> {
+  use ql::VertexQuery::*;
+
+  let result = match q {
+    <<process_vertex_query>>
+  };
+
+  Ok(result)
+}
+
+fn query_edges(
+  &self,
+  q: ql::EdgeQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>,
+) -> Result<EdgeCtx, Error> {
+  use ql::EdgeQuery::*;
+
+  let result = match q {
+    <<process_edge_query>>
+  };
+
+  Ok(result)
+}
+----
+
+[[fs_store_functions]]
+[source, rust]
+----
+fn query_property_nodes(
+  &self,
+  q: ql::PropertyQuery<HashId>
+) -> Result<NodeCtx, Error> {
+  let mut result = HashMap::default();
+
+  let properties = self.query_properties(q)?;
+  // TODO Wie bei ReferencedProperties properties aber Verweise auf Knoten herausfiltern
+
+  Ok(result)
+}
+----
+
+Bei den Abfragen auf Eigenschaften ist es ganz ähnlich. Allerdings verwenden wir sie ganz am Anfang (z.B. um Startpunkte zu finden). Daher haben wir hier noch keinen Pfad zu dem Punkt den wir dem Abfrageschritt mit übergeben müssten (Es ist ja der allererste Schritt).
+
+[[imports]]
+[source, rust]
+----
+use std::collections::HashSet;
+----
+
+[[fs_store_functions]]
+[source, rust]
+----
+fn query_properties(
+  &self,
+  q: ql::PropertyQuery<HashId>
+) -> Result<HashSet<HashId>, Error> {
+  use ql::PropertyQuery::*;
+
+  let mut result = HashSet::default();
+
+  match q {
+    <<process_property_query>>
+  };
+
+  Ok(result)
+}
+----
+
+==== Abfragen auf Knoten
+Alle Knoten abzufragen ist einfach. Wir müssen einfach nur alle Einträge im `db/nodes/` Ordner (TODO link) auflisten.
+
+[[process_vertex_query]]
+[source, rust]
+----
+All => {
+  let mut result = HashMap::default();
+
+  for entry in fs::read_dir(self.base_path.join("nodes/"))? {
+    let entry = entry?;
+    let id = entry
+      .file_name()
+      .into_string()
+      .or(Err(Error::MalformedDB))?;
+    let id = uuid::Uuid::parse_str(&id)?;
+    result.insert(id, ql::VertexQueryContext::new(id));
+  }
+
+  result
+}
+----
+
+[[errors]]
+[source, rust]
+----
+#[error("uuid parsing error (corrupted db)")]
+Uuid { #[from] source: uuid::Error },
+----
+
+Bei einer Abfrage auf alle Verbindungen ist es ähnlich (nur das wir hier den Ordner `edges` auflisten).
+
+[[process_edge_query]]
+[source, rust]
+----
+All => {
+  let mut result = HashMap::default();
+
+  for entry in fs::read_dir(self.base_path.join("edges/"))? {
+    let entry = entry?;
+    let id = entry
+      .file_name()
+      .into_string()
+      .or(Err(Error::MalformedDB))?;
+    let key = id.clone();
+    result.insert(id, ql::EdgeQueryContext::new(key));
+  }
+
+  result
+}
+----
+
+Ist bereits eine id angegeben müssen wir sie nur die bestehenden durch sie ersetzen.
+
+[[process_vertex_query]]
+[source, rust]
+----
+Specific(ids) => {
+  let mut result = HashMap::default();
+
+  for id in ids.into_iter() {
+    result.insert(id, ql::VertexQueryContext::new(id));
+  }
+
+  result
+}
+----
+
+[[process_edge_query]]
+[source, rust]
+----
+Specific(ids) => {
+  let mut result = HashMap::default();
+
+  for id in ids.into_iter() {
+    let key = id.clone();
+    result.insert(id, ql::EdgeQueryContext::new(key));
+  }
+
+  result
+}
+----
+
+Suchen wir nach einer bestimmten Eigenschaft müssen wir zunächst den Filter dort ansätzen. Dann suchen wir nach Links zu Knoten (TODO link) die auf diese Eigenschaften verweisen.
+
+[[process_property_query]]
+[source, rust]
+----
+Specific(id) => {
+  if self
+    .base_path
+    .join("props/")
+    .join(&id)
+    .exists()
+  {
+    result.insert(id);
+  }
+}
+ReferencingProperties(q) => {
+  for prop_id in self.query_properties(*q)? {
+    let index_path = self.base_path.join("indexes/");
+    let index_path = index_path.join(prop_id + "/");
+    for entry in fs::read_dir(&index_path)?.into_iter() {
+      if let Ok(entry) = entry {
+        let reference = entry
+          .file_name()
+          .into_string()
+          .or(Err(Error::MalformedDB))?;
+        let (prefix, reference) = reference
+          .split_once("_")
+          .ok_or(Error::MalformedDB)?;
+        if prefix == "props" {
+          result.insert(reference.to_string());
+        }
+      }
+    }
+  }
+}
+ReferencedProperties(q) => {
+  // TODO Hier benötigen wir das Schema
+}
+----
+
+Bei Knoten und Verbindungen deren die auf eine Eigenschaft verweisen ist es ganz ähnlich. Wir verwenden zunächst die Suche nach Eigenschaften um Start-Eigenschaften zu finden und suchen dann alle verweisenden Knoten mit dem Prefix `nodes` heraus.
+
+[[process_vertex_query]]
+[source, rust]
+----
+Property(q) => {
+  let mut result = HashMap::default();
+
+  for prop_id in self.query_properties(q)? {
+    let index_path = self.base_path.join("indexes/");
+    let index_path = index_path.join(prop_id + "/");
+    for entry in fs::read_dir(&index_path)?.into_iter() {
+      if let Ok(entry) = entry {
+        let reference = entry
+          .file_name()
+          .into_string()
+          .or(Err(Error::MalformedDB))?;
+        let (prefix, reference) = reference
+          .split_once("_")
+          .ok_or(Error::MalformedDB)?;
+        if prefix == "nodes" {
+          let id = uuid::Uuid::parse_str(reference)?;
+          result.insert(id, ql::VertexQueryContext::new(id));
+        }
+      }
+    }
+  }
+
+  result
+}
+----
+
+Bzw bei Verbindungen mit dem Prefix `edges`.
+
+[[process_edge_query]]
+[source, rust]
+----
+Property(q) => {
+  let mut result = HashMap::default();
+
+  for prop_id in self.query_properties(q)? {
+    let index_path = self.base_path.join("indexes/");
+    let index_path = index_path.join(prop_id + "/");
+    for entry in fs::read_dir(&index_path)?.into_iter() {
+      if let Ok(entry) = entry {
+        let reference = entry
+          .file_name()
+          .into_string()
+          .or(Err(Error::MalformedDB))?;
+        let (prefix, reference) = reference
+          .split_once("_")
+          .ok_or(Error::MalformedDB)?;
+        if prefix == "edges" {
+          let id = reference.to_string();
+          let key = id.clone();
+          result.insert(id, ql::EdgeQueryContext::new(key));
+        }
+      }
+    }
+  }
+
+  result
+}
+----
+
+Beim Union Befehl werden die Ergebnisse alle Queries zusammengefasst. Wir führen also alle Abfragen aus und vereinigen dann alle Ergebnisse zu einem großen Ergebnis.
+
+TODO Paralell ausführen
+
+[[process_vertex_query]]
+[source, rust]
+----
+Union(sub1, sub2) => {
+  node_union(
+    self.query_nodes(*sub1)?,
+    self.query_nodes(*sub2)?
+  )
+}
+----
+
+[[process_edge_query]]
+[source, rust]
+----
+Union(sub1, sub2) => {
+  let mut result = self.query_edges(*sub1)?;
+
+  result.extend(self.query_edges(*sub2)?.into_iter());
+  result
+}
+----
+
+Um die Kontexte zu vereinigen benutzen wir eine Hilfsfunktion.
+
+TODO Wahrscheinlich ist die Struktur für den Kontext nicht korrekt. So ist es z.B. nicht möglich mehrere Pfade nebeneinander abzuspeichern.
+
+[[helper_functions]]
+[source, rust]
+----
+fn node_union(
+  c1: NodeCtx,
+  c2: NodeCtx
+) ->
+  NodeCtx
+{
+  let mut result = c1;
+
+  result.extend(c2.into_iter());
+  result
+}
+----
+
+Bei einer Intersection übernehmen wir nur die Ergebnisse, wo die Knoten in allen Unterabfragen vorhanden sind.
+
+TODO Wir wollen alle Pfade entfernen, die zu einem Knoten gehören, der nicht von beiden Abfragen erfasst wird.
+
+[[process_vertex_query]]
+[source, rust]
+----
+Intersect(sub1, sub2) => {
+  node_intersection(
+    self.query_nodes(*sub1)?,
+    self.query_nodes(*sub2)?,
+  )
+}
+----
+
+[[process_edge_query]]
+[source, rust]
+----
+Intersect(sub1, sub2) => {
+  let mut result = self.query_edges(*sub1)?;
+  let mut c2 = self.query_edges(*sub2)?;
+
+  c2.retain(|k, _v| result.contains_key(k));
+  result.retain(|k, _v| c2.contains_key(k));
+  result
+}
+----
+
+[[helper_functions]]
+[source, rust]
+----
+fn node_intersection(
+  c1: NodeCtx,
+  c2: NodeCtx
+) ->
+  NodeCtx
+{
+  let mut result = c1;
+  let mut c2 = c2;
+
+  c2.retain(|k, _v| result.contains_key(k));
+  result.retain(|k, _v| c2.contains_key(k));
+  result
+}
+----
+
+Bei der Substract Aktion werden alle Ergebnisse der zweiten Abfrage von der ersten abgezogen.
+
+[[process_vertex_query]]
+[source, rust]
+----
+Substract(sub1, sub2) => {
+  let mut subcontext = self.query_nodes(*sub1)?;
+  let subcontext2 = self.query_nodes(*sub2)?;
+
+  subcontext
+    .retain(|k, _v| !subcontext2.contains_key(k));
+
+  subcontext
+}
+----
+
+[[process_edge_query]]
+[source, rust]
+----
+Substract(sub1, sub2) => {
+  let mut subcontext = self.query_edges(*sub1)?;
+  let subcontext2 = self.query_edges(*sub2)?;
+
+  subcontext
+    .retain(|k, _v| !subcontext2.contains_key(k));
+
+  subcontext
+}
+----
+
+`DisjunctiveUnion` Aktionen übernehmen alle Knoten, die von der einen oder der anderen Abfrage erfasst wurden aber nicht von beiden.
+
+[[process_vertex_query]]
+[source, rust]
+----
+DisjunctiveUnion(sub1, sub2) => {
+  let mut subcontext = self.query_nodes(*sub1)?;
+  let mut subcontext2 = self.query_nodes(*sub2)?;
+
+  let mut result = HashMap::default();
+
+  result.extend(subcontext.clone().into_iter().filter(|(k, _)| subcontext2.contains_key(k)));
+  result.extend(subcontext2.into_iter().filter(|(k, _)| subcontext.contains_key(k)));
+
+  result
+}
+----
+
+[[process_edge_query]]
+[source, rust]
+----
+DisjunctiveUnion(sub1, sub2) => {
+  let mut subcontext = self.query_edges(*sub1)?;
+  let mut subcontext2 = self.query_edges(*sub2)?;
+
+  let mut result = HashMap::default();
+
+  result.extend(subcontext.clone().into_iter().filter(|(k, _)| subcontext2.contains_key(k)));
+  result.extend(subcontext2.into_iter().filter(|(k, _)| subcontext.contains_key(k)));
+
+  result
+}
+----
+
+Die `Store` Aktion ist eigentlich eine Kurzschreibweise für eine `Union` der aktuell erfassten Knoten und der nachfolgenden Abfragen.
+
+Es wird bereits ein Kontext benötigt, um ihn abspeichern zu können. Daher kann `Store` nicht zu Beginn einer Abfragekette kommen.
+
+[[process_vertex_query]]
+[source, rust]
+----
+Store(_q) => unreachable!(),
+----
+
+[[process_edge_query]]
+[source, rust]
+----
+Store(_q) => unreachable!(),
+----
+
+Bei `In` und `Out` hangelt man sich zu benachbarten Verbindungen durch. Dazu muss bereits ein Startpunkt vorhanden sein.
+
+[[process_vertex_query]]
+[source, rust]
+----
+Out(q) => {
+  let context = self.query_edges(q)?;
+
+  let mut result = HashMap::default();
+
+  for (edge_id, ctx) in context.into_iter() {
+    let edge = self.read_edge(&edge_id)?;
+    result.insert(edge.n2, ctx.into_vertex_ctx(edge.n2));
+  }
+
+  result
+}
+In(q) => {
+  let context = self.query_edges(q)?;
+
+  let mut result = HashMap::default();
+
+  for (edge_id, ctx) in context.into_iter() {
+    let edge = self.read_edge(&edge_id)?;
+    result.insert(edge.n1, ctx.into_vertex_ctx(edge.n1));
+  }
+
+  result
+}
+----
+
+[[process_edge_query]]
+[source, rust]
+----
+Out(q) => {
+  let context = self.query_nodes(*q)?;
+
+  let mut result = HashMap::default();
+
+  for (node_id, ctx) in context.into_iter() {
+    let node = self.read_node(node_id)?;
+    for edge_id in node.outgoing.into_iter() {
+      let key = edge_id.clone();
+      result.insert(edge_id, ctx.clone().into_edge_ctx(key));
+    }
+  }
+
+  result
+}
+In(q) => {
+  let context = self.query_nodes(*q)?;
+
+  let mut result = HashMap::default();
+
+  for (node_id, ctx) in context.into_iter() {
+    let node = self.read_node(node_id)?;
+    for edge_id in node.incoming.into_iter() {
+      let key = edge_id.clone();
+      result.insert(edge_id, ctx.clone().into_edge_ctx(key));
+    }
+  }
+
+  result
+}
+----
+
+TODO Die übrigen beschreiben
+
+[[process_vertex_query]]
+[source, rust]
+----
+Filter(_q, _filter) => unreachable!(),
+----
+
+[[process_edge_query]]
+[source, rust]
+----
+Filter(_q, _filter) => unreachable!(),
+----
+
+[[process_chain_vertex_query]]
+[source, rust]
+----
+Filter(_q, _filter) => {
+  HashMap::default()
+  // TODO
+}
+----
+
+=== Abfragen optimieren
+TODO
+
+=== Dateiorganisation des Crates
+Wie überall benötigt man einiges an Boilerplate-Code.
+
+[source, rust, save]
+.src/lib.rs
+----
+<<imports>>
+
+<<traits|join="\n\n">>
+
+<<structs|join="\n\n">>
+
+<<interface_implementations|join="\n\n">>
+
+<<helper_functions|join="\n\n">>
+----
+
+Die wichtigste Struktur ist natürlich der Store selbst.
+
+[[structs]]
+[source, rust]
+----
+pub struct FsStore<T: Property<HashId, Error>> {
+  p_marker: std::marker::PhantomData<T>,
+  <<fs_store_vars>>
+}
+
+impl<T: Property<HashId, Error>> FsStore<T> {
+  <<fs_store_functions|join="\n\n">>
+}
+----
+
+Bevor wir Abfragen auf unserer Datenbank ausführen können müssen wir erst einmal wissen wo sie ist. Dazu speichern wir den Pfad als interne Variable ab.
+
+[[imports]]
+[source, rust]
+----
+use std::path::{Path, PathBuf};
+----
+
+[[fs_store_vars]]
+[source, rust]
+----
+base_path: PathBuf,
+----
+
+Um eine bestehende Datenbank zu benutzen legen wir eine entsprechende Funktion an. Zunächst wird überprüft, ob die Dateistruktur im Ordner der Datenbank korrekt ist.
+
+[[fs_store_functions]]
+[source, rust]
+----
+pub fn open(path: &Path) -> Result<Self, Error> {
+  if !path.is_dir() {
+    return Err(Error::MalformedDB);
+  }
+  <<check_db_directories>>
+
+  Ok(FsStore {
+    base_path: path.to_path_buf(),
+    p_marker: std::marker::PhantomData,
+  })
+}
+----
+
+Wenn noch gar keine Datenbank existiert müssen wir sie zunächst initialisieren.
+
+[[fs_store_functions]]
+[source, rust]
+----
+pub fn init(path: &Path) -> Result<Self, Error> {
+  if !path.is_dir() {
+    if path.exists() {
+      return Err(Error::MalformedDB);
+    } else {
+      fs::create_dir_all(&path)?;
+    }
+  }
+
+  <<create_db_directories>>
+
+  Ok(FsStore {
+    base_path: path.to_path_buf(),
+    p_marker: std::marker::PhantomData,
+  })
+}
+----
+
+==== Fehlerbehandlung
+Wir verwenden den https://docs.rs/thiserror/1.0.26/thiserror/[thiserror] crate um die Fehlerbehandlung zu implementieren.
+
+[[imports]]
+[source, rust]
+----
+use thiserror::Error;
+----
+
+[[structs]]
+[source, rust]
+----
+#[derive(Error, Debug)]
+pub enum Error {
+  <<errors>>
+}
+----
+
+== Cmd-Tools
+Wir nutzen einige Tools um die Datenbank über die Kommandozeile zu manipulieren.
+
+Die Tools, die wir hier bereitstellen, sind dazu gedacht die Datenbank sofort mit unvalidierten Daten nutzen zu können. Es existiert also kein auf den Anwendungsfall zugeschnittenes Schema. Um ein Schema zu verwenden, wird man sehr ähnliche Tools brauchen. Deshalb legen wir uns eine Bibliothek mit Hilfsfunktionen an.
+
+[[imports]]
+[source, rust]
+----
+pub mod cli_helpers;
+----
+
+[[tool_imports]]
+[source, rust]
+----
+use gravitydb_filestore::cli_helpers;
+----
+
+[source, rust, save]
+.src/cli_helpers.rs
+----
+<<util_imports>>
+
+<<tool_helper_functions|join="\n\n">>
+
+<<cli_template_functions|join="\n\n">>
+----
+
+Wir stellen dabei ein Programm-Template bereit, welches alle wichtigen db Funktionen über Sub-Kommandos bereitstellt footnote:[Diesen Style von Kommandozeilen Parametern kennt man vielleicht von Tools wie git].
+
+[[cli_template_functions]]
+[source, rust]
+----
+pub fn db_cmds<T>() -> Result<()>
+where
+  T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
+{
+  <<cli_parse_cmd_options>>
+
+  use CmdOpts::*;
+  match opt.cmd {
+    <<run_cli_cmds>>
+  }
+
+  Ok(())
+}
+----
+
+[source, rust, save]
+.src/bin/gravitydb.rs
+----
+<<tool_imports>>
+
+fn main() -> Result<()> {
+  cli_helpers::db_cmds::<gravitydb_filestore::GenericProperty>()
+}
+----
+
+=== create_node
+Wir benötigen ein Programm um neue Knoten zu erzeugen.
+
+[[cmd_options]]
+[source, rust]
+----
+/// create a new node
+CreateNode {
+  <<create_node_args>>
+},
+----
+
+Normalerweise wird ein Argument mit der [[create_node_params]]`id` mit
+übergeben. Dadurch kann man fest vorgeben, welche id man verwenden
+möchte.
+
+[[create_node_args]]
+[source, rust]
+----
+#[structopt(long)]
+id: Option<uuid::Uuid>,
+----
+
+Um allerdings nicht aus Versehen ständig neue Knoten zu erzeugen,
+brechen wir ab, wenn eine Property bereits existiert und nicht explizit
+angegeben wurde, dass man eine id erzeugen möchte. Dafür haben wir das
+Flag [[create_node_params]]`create_id`.
+
+[[create_node_args]]
+[source, rust]
+----
+#[structopt(long)]
+create_id: bool,
+----
+
+Manchmal wollen wir die bestehenden Eigenschaften eines Knotens
+aktualisieren. Allerdings möchten wir verhindern dass das automatisch
+geschieht (da sonst quasi ausversehen Daten verloren gehen könnten).
+Wenn man einen bestehenden Knoten aktualisieren will muss man das flag
+[[create_node_params]]`update` benutzen.
+
+[[create_node_args]]
+[source, rust]
+----
+#[structopt(short, long)]
+update: bool,
+----
+
+Ein weiterer häufiger Anwendungsfall ist, dass man einen Datensatz
+anlegen und anschließend mit ihm arbeiten möchte (z.B. um weitere
+Datensätze zu verlinken). Ist der Datensatz bereits vorhanden möchte man
+dennoch seine Id benutzen um weiter zu arbeiten.
+
+Dafür ist es notwendig, dass bisher kein Knoten mit diesem Datensatz
+(Properties) existiert (in diesem Fall legen wir ihn an) oder *exakt
+ein* Knoten mit dem entsprechenden Datensatz vorhanden ist (in diesem
+Fall gehen wir davon aus, dass das der Datensatz ist, den wir angelegt
+hätten. Wenn mehr Datensätze vorhanden sind, wissen wir nicht welchen
+Knoten wir verwenden müssen. Für diesen Anwendungsfall stellen wir die
+Option [[create_node_params]]`get_or_create` auf der Kommandozeile zur
+Verfügung.
+
+[[create_node_args]]
+[source, rust]
+----
+#[structopt(short, long)]
+get_or_create: bool,
+----
+
+[[util_imports]]
+[source, rust]
+----
+use gravity::schema::{SchemaElement, Property};
+use crate::{HashId, Error};
+use anyhow::bail;
+----
+
+[[run_cli_cmds]]
+[source, rust]
+----
+CreateNode {<<create_node_params|join=", ">>} => {
+  if update && id.is_none() {
+    bail!("to update a node you need to provide an id");
+  }
+
+  if create_id && get_or_create {
+    bail!("you can either for creating an id or using an existing one if possible but not both");
+  }
+
+  let properties = read_input(opt.input)?;
+  let properties: T = SchemaElement::deserialize(&properties)?;
+  let id = match id {
+    Some(id) => id,
+    None => {
+      let hash = properties.get_key();
+      if opt
+        .db_path
+        .join("props/")
+        .join(&hash)
+        .exists()
+      {
+        if create_id {
+          uuid::Uuid::new_v4()
+        } else if get_or_create {
+          let index_path = opt.db_path.join("indexes/").join(hash + "/");
+          let mut nodes: Vec<uuid::Uuid> = std::fs::read_dir(&index_path)?.into_iter()
+            .filter(|entry| {
+              match entry {
+                Ok(entry) => {
+                  let reference = entry
+                    .file_name()
+                    .into_string()
+                    .unwrap();
+                  let (prefix, reference) = reference
+                    .split_once("_")
+                    .unwrap();
+                  if prefix == "nodes" {
+                    true
+                  } else {
+                    false
+                  }
+                }
+                Err(_) => false
+              }
+            })
+            .take(2)
+            .map(|entry| {
+              let entry = entry.unwrap();
+              let reference = entry
+                .file_name()
+                .into_string()
+                .unwrap();
+              let (prefix, reference) = reference
+                .split_once("_")
+                .unwrap();
+              uuid::Uuid::parse_str(reference).unwrap()
+            })
+            .collect();
+          if nodes.len() == 1 {
+            nodes.pop().unwrap()
+          } else {
+            bail!("There are several nodes with the same properties. Can't deside which one to use. Please use `--id` to specify the exact node");
+          }
+        } else {
+          bail!("node allready exists. Please use `--create-id` to create a node with equal data anyway");
+        }
+      } else {
+        uuid::Uuid::new_v4()
+      }
+    }
+  };
+
+  let mut db = FsStore::open(&opt.db_path)?;
+  if !update {
+    db.create_node(id, &properties)?;
+  } else {
+    db.update_node(id, &properties)?;
+  }
+
+  println!("{}", id); // TODO opt.output, opt.output_fmt
+}
+----
+
+=== delete_node
+Dieses Tool erlaubt einen Knoten aus der Datenbank zu löschen.
+
+[[cmd_options]]
+[source, rust]
+----
+/// delete a node
+DeleteNode {
+  <<delete_node_args>>
+},
+----
+
+Dazu übergeben wir die uuid des Knotens.
+
+[[delete_node_args]]
+[source, rust]
+----
+#[structopt(long)]
+id: uuid::Uuid,
+----
+
+[[run_cli_cmds]]
+[source, rust]
+----
+DeleteNode {id} => {
+  let mut db = FsStore::<T>::open(&opt.db_path)?;
+  db.delete_node(id)?;
+  log::info!("deleted node {}", id);
+}
+----
+
+=== create_edge
+Mit diesem Befehl können wir Verbindungen zwischen zwei Knoten schaffen.
+
+[[cmd_options]]
+[source, rust]
+----
+/// create a new edge
+CreateEdge {
+  <<create_edge_args>>
+},
+----
+
+Alle Verbindungen sind immer gerichtet. Wir übergeben die id der Knoten `--in` und `--out`.
+
+[[create_edge_args]]
+[source, rust]
+----
+#[structopt(long="in")]
+n1: uuid::Uuid,
+#[structopt(long="out")]
+n2: uuid::Uuid,
+----
+
+[[run_cli_cmds]]
+[source, rust]
+----
+CreateEdge { n1, n2 } => {
+  let properties = read_input(opt.input)?;
+  let properties: T = SchemaElement::deserialize(&properties)?;
+
+  let mut db = FsStore::open(&opt.db_path)?;
+  let id = db.create_edge(n1, n2, &properties)?;
+
+  println!("{}", id); // TODO opt.output, opt.output_fmt
+}
+----
+
+=== delete_edge
+
+=== create_property
+
+TODO Flag List connected properties
+
+=== delete_property
+
+TODO Flag Don't delete from cache
+TODO Flag Don't delete connected properties from cache
+
+=== property_id
+Diese Funktion ist vor allem für Schema Implementierungen wichtig. Hier kann man Daten übergeben und die Funktion gibt die vom Schema erzeugte Id zurück. Wenn das Schema die Daten als ungültig identifiziert wird mit einer Fehlermeldung abgebrochen.
+
+[[cmd_options]]
+[source, rust]
+----
+/// calculate property id from content
+PropertyId,
+----
+
+[[run_cli_cmds]]
+[source, rust]
+----
+PropertyId => {
+  let properties = read_input(opt.input)?;
+  let properties: T = SchemaElement::deserialize(&properties)?;
+  let hash = properties.get_key();
+
+  println!("{}", hash); // TODO opt.output, opt.output_fmt
+}
+----
+
+=== property_blob
+Diese Funktion ist ebenfalls vor allem für Schema Implementierungen wichtig. Hier kann man Daten übergeben und die Funktion gibt den vom Schema erzeugten Datenstrom (Blob) zurück. Wenn das Schema die Daten als ungültig identifiziert wird mit einer Fehlermeldung abgebrochen.
+
+[[cmd_options]]
+[source, rust]
+----
+/// create property storage blob from content
+PropertyBlob,
+----
+
+[[run_cli_cmds]]
+[source, rust]
+----
+PropertyBlob => {
+  let properties = read_input(opt.input)?;
+  let properties: T = SchemaElement::deserialize(&properties)?;
+
+  io::stdout().write_all(&SchemaElement::serialize(&properties)?)?;
+}
+----
+
+Um so direkt schreiben zu können, müssen wir zunächst das `Write` Trait importieren.
+
+[[util_imports]]
+[source, rust]
+----
+use std::io::{self, Write};
+----
+
+=== query_db
+Gibt einen Filter auf die aktuelle Datenbank in der Abfragesprache Zoe (TODO link) zurück.
+
+[[cmd_options]]
+[source, rust]
+----
+/// run a query on the database
+QueryDb,
+----
+
+TODO Verschiedene Query Sprachen
+Zunächst lesen wir die Abfrage ein und dann interpretieren wir sie.
+
+[[run_cli_cmds]]
+[source, rust]
+----
+QueryDb => {
+  let query = read_input(opt.input)?;
+  let query = crate::to_query(&query)?;
+
+  let db = FsStore::<T>::open(&opt.db_path)?;
+  let result = db.query(query)?;
+
+  <<get_connected_data>>
+
+  // TODO verschiedene output formate
+  println!("{}", serde_json::to_string_pretty(&result)?); // TODO wenn kein Terminal sondern eine pipe verwendet wird kann man kompakteres json ausgeben.
+
+  // TODO Umschliessende Huelle? Alle miteinander verbundenen Edges und Vertices?
+}
+----
+
+=== repl
+Erlaubt die interaktive Manipulation der Datenbank mit einer lua repl.
+
+[[cmd_options]]
+[source, rust]
+----
+/// lua repl for the database
+Repl,
+----
+
+Der Ablauf ist wie bei jeder anderen repl auch:
+
+* Wir lesen das Script soweit ein, wie möglich
+* Dann für wir das eingelesene Statement des Scripts aus
+** Kommt es zu Fehlern untersuchen wir ob das Script noch nicht
+   vollständig ist, oder ob wir die Verarbeitung abbrechen müssen.
+* Wir formatieren die Ausgabe und geben sie für den Benutzer aus.
+* Und dann kehren wir zum Anfang zurück (lesen das nächste Statement des
+  Scripts ein).
+
+[[run_cli_cmds]]
+[source, rust]
+----
+Repl => {
+  use mlua::{Error, Lua, MultiValue};
+  use rustyline::Editor;
+
+  let lua = Lua::new();
+  let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
+
+  <<init_lua_environment>>
+
+  loop {
+    let mut prompt = "> ";
+    let mut line = String::new();
+
+    loop {
+      let input = editor.readline(prompt)?;
+      line.push_str(&input);
+
+      match lua.load(&line).eval::<MultiValue>() {
+        Ok(values) => {
+          editor.add_history_entry(line);
+          println!(
+            "{}",
+            values
+              .iter()
+              .map(|value| format!("{:?}", value))
+              .collect::<Vec<_>>()
+              .join("\t")
+          );
+          break;
+        }
+        Err(Error::SyntaxError {
+          incomplete_input: true,
+          ..
+        }) => {
+          // continue reading input and append it to `line`
+          line.push_str("\n"); // separate input lines
+          prompt = ">> ";
+        }
+        Err(e) => {
+          eprintln!("error: {}", e);
+          break;
+        }
+      }
+    }
+  }
+}
+----
+
+Damit man mit der Repl auch etwas anfangen kann, muss sie auch
+Funktionen bieten um die Datenbank zu manipulieren. Dazu binden wir den
+`FsStore` Typ in unsere Lua Umgebung ein:
+
+[[interface_implementations]]
+[source, rust]
+----
+impl<P> mlua::UserData for FsStore<P>
+where
+  P: Property<HashId, Error> + mlua::UserData + std::clone::Clone + 'static,
+{
+  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    use mlua::prelude::LuaError;
+
+    methods.add_method_mut("create_node", |_, db, props: P| {
+      let id = uuid::Uuid::new_v4();
+      match db.create_node(id, &props) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(LuaError::external(e))
+      }
+    });
+  }
+}
+
+impl mlua::UserData for GenericProperty {}
+----
+
+Und wir benötigen einige Constructor Funktionen um die Datenbank
+verfügbar zu machen.
+
+[[init_lua_environment]]
+[source, rust]
+----
+let globals = lua.globals();
+let db_open = lua.create_function(|_, path: String| {
+  use mlua::prelude::LuaError;
+  use std::sync::Arc;
+
+  let path = crate::Path::new(&path);
+  match FsStore::<T>::open(&path) {
+    Ok(db) => Ok(db),
+    Err(e) => Err(LuaError::ExternalError(Arc::new(e))),
+  }
+})?;
+globals.set("db_open", db_open)?;
+----
+
+Zudem laden wir die Funktionen der Abfragesprache Zoe (TODO link) in
+unsere Lua Umgebung.
+
+[[init_lua_environment]]
+[source, rust]
+----
+ql::init_lua::<String, HashId, HashId, String, String>(&lua)?; // <1>
+----
+<1> Die generischen Parameter besetzen wir mit den in der Db
+    hardverdrahteten Id Typen
+
+[[util_imports]]
+[source, rust]
+----
+use gravity::ql;
+----
+
+=== result_outer_hull
+Das Ergebnis unserer Abfrage ist eine Liste mit Knoten, Verbindungen und weiteren Variablen. Oft möchten wir das weiter ausweiten, indem wir alle Verbindungen zwischen den Knoten ebenfalls anzeigen möchten.
+
+TODO
+
+=== result_inner_hull
+Ebenso wie eine umschließende Hülle interessiert uns manchmal eine innere Hülle, bei der wir alle Verbindungen entfernen, die nicht zwischen zwei Knoten der Ergebnismenge liegen.
+
+TODO
+
+=== result_data
+Unsere Ergebnisse sind im allgemeinen nur die Ids von Knoten und
+Verbindungen aber für die Verarbeitung (und vor allem Darstellung)
+interessieren uns viel mehr die Eigenschaften. Mit diesem Befehl
+können wir eine Ergebnissmenge nehmen und mit den dazugehörigen Daten
+anreichern.
+
+[[cmd_options]]
+[source, rust]
+----
+/// get property data for query result
+ResultData,
+----
+
+TODO
+
+[[run_cli_cmds]]
+[source, rust]
+----
+ResultData => {
+  let data = read_input(opt.input)?;
+  //let mut data: crate::ql::QueryResult = serde_json::from_slice(&data)?;
+
+  let db = FsStore::<T>::open(&opt.db_path)?;
+  //TODO Über die db die Variablen im mit den Properties füllen
+
+  // TODO verschiedene output formate
+  println!("{}", serde_json::to_string_pretty(&data)?); // TODO wenn kein Terminal sondern eine pipe verwendet wird kann man kompakteres json ausgeben.
+}
+----
+
+
+=== db_info
+Gibt Informationen über die Datenbank als Json Format aus
+
+* Number of Nodes
+* Number of Edges
+* Schema Info
+
+=== db_init
+Zu Beginn möchte man die Datenbank erstmal initialisieren. Dazu
+verwenden wir den Befehl `init`.
+
+[[cmd_options]]
+[source, rust]
+----
+/// initialize a new database
+Init,
+----
+
+[[run_cli_cmds]]
+[source, rust]
+----
+Init => {
+  FsStore::<T>::init(&opt.db_path)?;
+}
+----
+
+=== doctor
+TODO Dieser Befehl überprüft, ob die Datenbank valid ist und listet Fehler auf.
+
+TODO Fehler im Datei-Baum
+TODO Fehler in der Schema Validierung
+TODO Fehler in der Schema Validierung der Historie
+
+=== Allgemeines
+Natürlich benötigen wir in allen Tools den File Store.
+
+[[util_imports]]
+[source, rust]
+----
+use crate::FsStore;
+----
+
+==== Allgemeingültige Kommandozeilen Parameter
+Einige Kommandozeilenparameter sind für alle tools nützlich. Wir
+verwenden den https://docs.rs/structopt/[structopt] crate als basis um
+die Eingabe zu parsen.
+
+[[util_imports]]
+[source, rust]
+----
+use std::path::PathBuf;
+use structopt::StructOpt;
+----
+
+[[cli_parse_cmd_options]]
+[source, rust]
+----
+#[derive(StructOpt)]
+pub struct Opt {
+  <<basic_tool_args>>
+  #[structopt(subcommand)]
+  cmd: CmdOpts,
+}
+
+#[derive(StructOpt)]
+pub enum CmdOpts {
+  <<cmd_options>>
+}
+
+let opt = Opt::from_args();
+simple_logger::init_with_level(opt.verbosity)?;
+----
+
+Es muss immer angegeben werden, wo sich die Datenbank überhaupt
+befindet. Falls nichts angegeben wird gehen wir davon aus, dass sie sich
+im Unterordner `db` des aktuellen Ordners befindet.
+
+[[basic_tool_args]]
+[source, rust]
+----
+#[structopt(parse(from_os_str), long)]
+#[structopt(default_value = "./db")]
+db_path: PathBuf,
+----
+
+Normalerweise gibt es eine Eingabedatei die wir einlesen. Wird sie
+nicht angegeben geht das Programm davon aus, dass die Daten von `stdin`
+eingelesen werden.
+
+[[basic_tool_args]]
+[source, rust]
+----
+#[structopt(parse(from_os_str), long, short)]
+input: Option<PathBuf>,
+----
+
+Genauso ist es mit der Ausgabedatei. Wird sie nicht angegeben, wird auf
+`stdout` ausgegeben.
+
+[[basic_tool_args]]
+[source, rust]
+----
+#[structopt(parse(from_os_str), long, short)]
+output: Option<PathBuf>,
+----
+
+Wir benutzen ein Hilfsfunktion um entweder die Daten aus einer Datei zu
+lesen oder vom `stdin`.
+
+[[util_imports]]
+[source, rust]
+----
+use std::io::Read;
+----
+
+[[tool_helper_functions]]
+[source, rust]
+----
+pub fn read_input(input: Option<PathBuf>) -> Result<Vec<u8>> {
+  let data = match input {
+    Some(path) => std::fs::read(path)?,
+    None => {
+      let mut data = Vec::new();
+      std::io::stdin().read_to_end(&mut data)?;
+      data
+    }
+  };
+  Ok(data)
+}
+----
+
+TODO Input Format
+TODO Output Format
+TODO Output File (Default stdout)
+
+Wir wollen logging Informationen über die Kommandozeile anfordern. Je
+öfter wir das Flag `v` angeben, desto mehr Daten werden angezeigt.
+
+[[basic_tool_args]]
+[source, rust]
+----
+#[structopt(parse(from_occurrences = log_level), short)]
+verbosity: log::Level,
+----
+
+[[tool_helper_functions]]
+[source, rust]
+----
+pub fn log_level(level: u64) -> log::Level {
+  use log::Level::*;
+  match level {
+    0 => Warn,
+    1 => Info,
+    2 => Debug,
+    _ => Trace,
+  }
+}
+----
+
+TODO Version information
+
+==== Fehlerbehandlung
+Bei den Kommandozeilen Tools möchten wir alle Fehler abfangen. Dazu
+verwenden wir die https://docs.rs/anyhow[anyhow] Bibliothek.
+
+[[tool_imports]]
+[source, rust]
+----
+use anyhow::Result;
+----
+
+[[util_imports]]
+[source, rust]
+.Bei den util Funktionen verwenden
+----
+use anyhow::Result;
+----
