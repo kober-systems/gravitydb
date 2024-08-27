@@ -90,13 +90,7 @@ pub trait KVStore {
   fn exists(&self, key: &[u8]) -> Result<bool, Self::Error>;
 }
 
-pub trait GraphStore<K, T> {
-  type Error;
-
-  /// helper functions used to implement the default api
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Self::Error>;
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Self::Error>;
-
+pub trait GraphStore<K, T, E> {
   // CRUD functions
   //      TODO these functions should have a default implementation
   //fn create_node(&mut self, id: NodeK, properties: &T) -> Result<(), Self::Error>;
@@ -107,10 +101,17 @@ pub trait GraphStore<K, T> {
   //fn read_edge(&self, id: &HashId) -> Result<EdgeData, E>;
   //fn delete_edge(&mut self, id: &HashId) -> Result<(), E>;
   //fn create_property(&mut self, properties: &T) -> Result<HashId, E>;
-  fn read_property(&mut self, id: K) -> Result<T, Self::Error>;
+  fn read_property(&mut self, id: K) -> Result<T, E>;
   //fn delete_property(&mut self, id: &HashId) -> Result<(), E>;
 
   // Query functions
   //       TODO these functions should have a default implementation
   //fn query(&self, q: BasicQuery) -> Result<QueryResult, E>;
 }
+
+pub trait GraphStoreHelper<E> {
+  /// helper functions used to implement the default api
+  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), E>;
+  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
+}
+

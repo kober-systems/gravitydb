@@ -17,7 +17,7 @@ pub trait Node<P: Property<HashId, Error>> {
   fn properties(&self) -> P;
 }
 
-use gravity::{KVStore, GraphStore, BacklinkType};
+use gravity::{KVStore, GraphStoreHelper, BacklinkType};
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
@@ -158,22 +158,12 @@ impl<T: Property<HashId, Error>> KVStore for FsStore<T>
   }
 }
 
-impl<T: Property<HashId, Error>> GraphStore<&HashId, T> for FsStore<T> {
-  type Error = Error;
-
-  fn read_property(&mut self, id: &HashId) -> Result<T, Self::Error> {
-    let path = "props/".to_string() + id;
-
-    let data = self.fetch_record(path.as_bytes())?;
-    let property = SchemaElement::deserialize(&data)?;
-    Ok(property)
-  }
-
+impl<T: Property<HashId, Error>> GraphStoreHelper<Error> for FsStore<T> {
   /// props_hash: the hash_id of the property that holds the index
   /// id:         the id of the node, edge or property that references
   ///             the property and needs a backling
   /// ty:         the type of the element that needs a backlink
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Self::Error> {
+  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
     self.create_bucket(index_path.as_bytes())?;
 
@@ -189,7 +179,7 @@ impl<T: Property<HashId, Error>> GraphStore<&HashId, T> for FsStore<T> {
     Ok(())
   }
 
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Self::Error> {
+  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
 
     let prefix = match ty {
@@ -439,6 +429,14 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     })?;
 
     Ok(hash)
+  }
+
+  pub fn read_property(&mut self, id: &HashId) -> Result<T, Error> {
+    let path = "props/".to_string() + id;
+
+    let data = self.fetch_record(path.as_bytes())?;
+    let property = SchemaElement::deserialize(&data)?;
+    Ok(property)
   }
 
   pub fn delete_property(&mut self, id: &HashId) -> Result<(), Error> {
