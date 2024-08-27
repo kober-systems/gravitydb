@@ -238,18 +238,16 @@ impl<T: Property<HashId, Error>> FsStore<T> {
   }
 
   pub fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error> {
-    let path = self.base_path.join("nodes/");
-    let path = path.join(&uuid_to_key(id));
+    let path = "nodes/".to_string() + &uuid_to_key(id);
 
-    let data = self.fetch_record(path.as_os_str().as_bytes())?;
+    let data = self.fetch_record(path.as_bytes())?;
     let node = SchemaElement::deserialize(&data)?;
     Ok(node)
   }
 
   pub fn update_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), Error> {
     let props_hash = self.create_property(properties)?;
-    let path = self.base_path.join("nodes/");
-    let path = path.join(uuid_to_key(id));
+    let path = "nodes/".to_string() + &uuid_to_key(id);
     let NodeData {
       id,
       properties: old_properties,
@@ -263,7 +261,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing: outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.store_record(&path.as_os_str().as_bytes(), &node)?;
+    self.store_record(&path.as_bytes(), &node)?;
 
     let id = uuid_to_key(id);
     let last_reference = self.delete_property_backlink(&old_properties, &id, BacklinkType::Node)?;
@@ -285,15 +283,14 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     } = self.read_node(id)?;
 
     let id = uuid_to_key(id);
-    let path = self.base_path.join("nodes/");
-    let path = path.join(&id);
+    let path = "nodes/".to_string() + &id;
 
     let last_reference = self.delete_property_backlink(&properties, &id, BacklinkType::Node)?;
     if last_reference {
       self.delete_property(&properties)?;
     }
 
-    self.delete_record(path.as_os_str().as_bytes())?;
+    self.delete_record(path.as_bytes())?;
     Ok(())
   }
 
@@ -305,17 +302,15 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       properties: props_hash.clone(),
     };
 
-    let path = self.base_path.join("edges/");
     let hash = edge.get_key();
-    let path = path.join(&hash);
+    let path = "edges/".to_string() + &hash;
 
     let edge = SchemaElement::serialize(&edge)?;
-    self.store_record(&path.as_os_str().as_bytes(), &edge)?;
+    self.store_record(&path.as_bytes(), &edge)?;
 
     self.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
 
-    let path = self.base_path.join("nodes/");
-    let path = path.join(uuid_to_key(n1));
+    let path = "nodes/".to_string() + &uuid_to_key(n1);
     let NodeData {
       id,
       properties,
@@ -330,10 +325,9 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.store_record(&path.as_os_str().as_bytes(), &node)?;
+    self.store_record(&path.as_bytes(), &node)?;
 
-    let path = self.base_path.join("nodes/");
-    let path = path.join(uuid_to_key(n2));
+    let path = "nodes/".to_string() + &uuid_to_key(n2);
     let NodeData {
       id,
       properties,
@@ -348,16 +342,15 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.store_record(&path.as_os_str().as_bytes(), &node)?;
+    self.store_record(&path.as_bytes(), &node)?;
 
     Ok(hash)
   }
 
   pub fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error> {
-    let path = self.base_path.join("edges/");
-    let path = path.join(id);
+    let path = "edges/".to_string() + id;
 
-    let data = self.fetch_record(path.as_os_str().as_bytes())?;
+    let data = self.fetch_record(path.as_bytes())?;
     let edge = SchemaElement::deserialize(&data)?;
     Ok(edge)
   }
@@ -369,13 +362,11 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       n2,
     } = self.read_edge(id)?;
 
-    let path = self.base_path.join("edges/");
-    let path = path.join(id);
+    let path = "edges/".to_string() + id;
 
-    self.delete_record(&path.as_os_str().as_bytes())?;
+    self.delete_record(&path.as_bytes())?;
 
-    let path = self.base_path.join("nodes/");
-    let path = path.join(uuid_to_key(n1));
+    let path = "nodes/".to_string() + &uuid_to_key(n1);
     let NodeData {
       id: _id,
       properties,
@@ -390,10 +381,9 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.store_record(&path.as_os_str().as_bytes(), &node)?;
+    self.store_record(&path.as_bytes(), &node)?;
 
-    let path = self.base_path.join("nodes/");
-    let path = path.join(uuid_to_key(n2));
+    let path = "nodes/".to_string() + &uuid_to_key(n2);
     let NodeData {
       id: _id,
       properties,
@@ -408,7 +398,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.store_record(&path.as_os_str().as_bytes(), &node)?;
+    self.store_record(&path.as_bytes(), &node)?;
 
     let last_reference = self.delete_property_backlink(&props_hash, &id, BacklinkType::Edge)?;
     if last_reference {
@@ -419,13 +409,12 @@ impl<T: Property<HashId, Error>> FsStore<T> {
   }
 
   pub fn create_property(&mut self, properties: &T) -> Result<HashId, Error> {
-    let path = self.base_path.join("props/");
     let hash = properties.get_key();
-    let path = path.join(&hash);
+    let path = "props/".to_string() + &hash;
 
     let data = properties.serialize()?;
     log::debug!("creating property file {:?} with content {}", path, String::from_utf8_lossy(&data));
-    self.store_record(&path.as_os_str().as_bytes(), &data)?;
+    self.store_record(&path.as_bytes(), &data)?;
 
     properties.nested().iter().try_for_each(|nested| {
       match self.create_property(nested) {
@@ -447,19 +436,17 @@ impl<T: Property<HashId, Error>> FsStore<T> {
   }
 
   pub fn read_property(&mut self, id: &HashId) -> Result<T, Error> {
-    let path = self.base_path.join("props/");
-    let path = path.join(id);
+    let path = "props/".to_string() + id;
 
-    let data = self.fetch_record(path.as_os_str().as_bytes())?;
+    let data = self.fetch_record(path.as_bytes())?;
     let property = SchemaElement::deserialize(&data)?;
     Ok(property)
   }
 
   pub fn delete_property(&mut self, id: &HashId) -> Result<(), Error> {
-    let path = self.base_path.join("props/");
-    let path = path.join(id);
+    let path = "props/".to_string() + id;
 
-    let data = self.fetch_record(&path.as_os_str().as_bytes())?;
+    let data = self.fetch_record(&path.as_bytes())?;
     let properties: T = SchemaElement::deserialize(&data)?;
 
     for nested in properties.nested().iter() {
@@ -470,7 +457,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       }
     }
 
-    self.delete_record(path.as_os_str().as_bytes())?;
+    self.delete_record(path.as_bytes())?;
     Ok(())
   }
 
