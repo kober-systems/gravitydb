@@ -259,6 +259,7 @@ dependencies = [
  "mlua",
  "serde",
  "serde_json",
+ "sha2",
  "typetag",
 ]
 

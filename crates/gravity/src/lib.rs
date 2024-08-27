@@ -115,3 +115,19 @@ pub trait GraphStoreHelper<E> {
   fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
 }
 
+use crate::schema::SchemaElement;
+
+impl<Store, E> GraphStore<&str, Vec<u8>, E> for Store
+where
+  Store: KVStore,
+  E: std::convert::From<<Store as KVStore>::Error>,
+  //T: SchemaElement<String, E>,
+{
+  fn read_property(&mut self, id: &str) -> Result<Vec<u8>, E> {
+    let path = "props/".to_string() + id;
+
+    let data = self.fetch_record(path.as_bytes())?;
+    let property = SchemaElement::deserialize(&data)?;
+    Ok(property)
+  }
+}

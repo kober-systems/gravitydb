@@ -41,3 +41,21 @@ where
   pub constraints: Vec<SchemaConstraint<VertexId, EdgeId, PropertyId, VFilter, EFilter>>,
   _err_type: std::marker::PhantomData<E>,
 }
+
+use sha2::Digest;
+
+impl<E> SchemaElement<String, E> for Vec<u8>
+{
+  fn get_key(&self) -> String {
+    format!("{:X}", sha2::Sha256::digest(&self))
+  }
+
+  fn serialize(&self) -> Result<Self, E> {
+    Ok(self.clone())
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, E> {
+    Ok(data.to_vec())
+  }
+}
+
