@@ -17,7 +17,7 @@ pub trait Node<P: Property<HashId, Error>> {
   fn properties(&self) -> P;
 }
 
-use gravity::KVStore;
+use gravity::{KVStore, GraphStore, BacklinkType};
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
@@ -104,12 +104,6 @@ impl Property<String, Error> for GenericProperty {
   fn nested(&self) -> Vec<Self> { Vec::new() }
 }
 
-pub enum BacklinkType {
-  Node,
-  Edge,
-  Property,
-}
-
 pub struct Change {
   pub created: ChangeSet,
   pub modified: BTreeSet<NodeChange>,
@@ -164,17 +158,14 @@ impl<T: Property<HashId, Error>> KVStore for FsStore<T>
   }
 }
 
-impl<T: Property<HashId, Error>> FsStore<T> {
-  fn key_to_path(&self, key: &[u8]) -> PathBuf {
-    let path = Path::new(OsStr::from_bytes(key));
-    PathBuf::from(self.base_path.join(path))
-  }
+impl<T: Property<HashId, Error>> GraphStore for FsStore<T> {
+  type Error = std::io::Error;
 
   /// props_hash: the hash_id of the property that holds the index
   /// id:         the id of the node, edge or property that references
   ///             the property and needs a backling
   /// ty:         the type of the element that needs a backlink
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> std::io::Result<()> {
+  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Self::Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
     self.create_bucket(index_path.as_bytes())?;
 
@@ -190,7 +181,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     Ok(())
   }
 
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> std::io::Result<bool> {
+  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Self::Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
 
     let prefix = match ty {
@@ -209,6 +200,13 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     } else {
       Ok(false)
     }
+  }
+}
+
+impl<T: Property<HashId, Error>> FsStore<T> {
+  fn key_to_path(&self, key: &[u8]) -> PathBuf {
+    let path = Path::new(OsStr::from_bytes(key));
+    PathBuf::from(self.base_path.join(path))
   }
 
   pub fn create_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), Error> {
