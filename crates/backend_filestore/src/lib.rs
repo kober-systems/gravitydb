@@ -158,8 +158,16 @@ impl<T: Property<HashId, Error>> KVStore for FsStore<T>
   }
 }
 
-impl<T: Property<HashId, Error>> GraphStore for FsStore<T> {
+impl<T: Property<HashId, Error>> GraphStore<&HashId, T> for FsStore<T> {
   type Error = Error;
+
+  fn read_property(&mut self, id: &HashId) -> Result<T, Self::Error> {
+    let path = "props/".to_string() + id;
+
+    let data = self.fetch_record(path.as_bytes())?;
+    let property = SchemaElement::deserialize(&data)?;
+    Ok(property)
+  }
 
   /// props_hash: the hash_id of the property that holds the index
   /// id:         the id of the node, edge or property that references
@@ -431,14 +439,6 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     })?;
 
     Ok(hash)
-  }
-
-  pub fn read_property(&mut self, id: &HashId) -> Result<T, Error> {
-    let path = "props/".to_string() + id;
-
-    let data = self.fetch_record(path.as_bytes())?;
-    let property = SchemaElement::deserialize(&data)?;
-    Ok(property)
   }
 
   pub fn delete_property(&mut self, id: &HashId) -> Result<(), Error> {

@@ -90,7 +90,7 @@ pub trait KVStore {
   fn exists(&self, key: &[u8]) -> Result<bool, Self::Error>;
 }
 
-pub trait GraphStore {
+pub trait GraphStore<K, T> {
   type Error;
 
   /// helper functions used to implement the default api
@@ -99,15 +99,15 @@ pub trait GraphStore {
 
   // CRUD functions
   //      TODO these functions should have a default implementation
-  //fn create_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), E>;
-  //fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, E>;
+  //fn create_node(&mut self, id: NodeK, properties: &T) -> Result<(), Self::Error>;
+  //fn read_node(&self, id: NodeK) -> Result<NodeData, Self::Error>;
   //fn update_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), E>;
   //fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), E>;
   //fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, E>;
   //fn read_edge(&self, id: &HashId) -> Result<EdgeData, E>;
   //fn delete_edge(&mut self, id: &HashId) -> Result<(), E>;
   //fn create_property(&mut self, properties: &T) -> Result<HashId, E>;
-  //fn read_property(&mut self, id: &HashId) -> Result<T, E>;
+  fn read_property(&mut self, id: K) -> Result<T, Self::Error>;
   //fn delete_property(&mut self, id: &HashId) -> Result<(), E>;
 
   // Query functions
