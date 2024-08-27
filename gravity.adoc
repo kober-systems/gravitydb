@@ -334,7 +334,7 @@ pub enum BacklinkType {
   Property,
 }
 
-pub trait KVStore<E> {
+pub trait KVStore {
   type Error;
   //type KeyIterator: Iterator<Item = AsRef<[u8]>>;
 

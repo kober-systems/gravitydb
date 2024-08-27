@@ -32,7 +32,7 @@ impl FsKvStore {
   }
 }
 
-impl<E> KVStore<E> for FsKvStore
+impl KVStore for FsKvStore
 {
   type Error = std::io::Error;
 
