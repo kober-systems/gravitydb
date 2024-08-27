@@ -117,6 +117,12 @@ pub trait GraphStoreHelper<E> {
 
 use crate::schema::SchemaElement;
 
+// TODO Soll die generische Implementierung wie hier geschehen, oder
+// sollen lieber Supertraits verwendet werden?
+// für supertraits siehe https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#using-supertraits-to-require-one-traits-functionality-within-another-trait
+// Vorteine von Supertraits wären, dass man ein Grundtrait implementieren könnte und anschließend das Supertrait
+// automatisch implementiert werden kann. Man kann aber auch einzelne Methoden des Supertraits
+// überschreiben.
 impl<Store, E> GraphStore<&str, Vec<u8>, E> for Store
 where
   Store: KVStore + GraphStoreHelper<E>,
