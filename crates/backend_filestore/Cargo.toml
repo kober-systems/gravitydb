@@ -1,0 +1,22 @@
+[package]
+name = "gravitydb-filestore"
+version = "0.1.0"
+authors = ["Benjamin Kober <benko@kober-systems.com>"]
+edition = "2018"
+
+[dependencies]
+gravity = { path = "../gravity" }
+thiserror = "1.0"
+sha2 = "0.9.5"
+uuid = { version = "0.8", features = ["serde", "v4"] }
+serde = { version = "1.0", features = ["derive"] }
+# maybe we use a more compact serialisation format later for production
+serde_json = "1.0"
+
+mlua = { version = "0.8", features = ["luau", "serialize"] }
+rustyline = "10.0"
+structopt = "0.3"
+log = "0.4.8"
+simple_logger = "1.6.0"
+anyhow = "1.0"
+
