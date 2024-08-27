@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
+echo "==========================="
+echo "generate sources"
+cd crates/gravity/
+lisi -o /dev/null ../../gravity.adoc
+lisi -o /dev/null ../../query_language.adoc
+lisi -o /dev/null ../../schema.adoc
+cd ../..
+cd crates/backend_filestore/
+lisi -o /dev/null ../../backends2_filestore.adoc
+cd ../..
+
+echo "==========================="
+echo "build and test"
 cargo test
 
