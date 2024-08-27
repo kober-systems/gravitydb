@@ -1,0 +1,106 @@
+Graph update queries
+====================
+
+== Übersicht
+Es gibt ein grundlegendes und wiederkehrendes Problem, wenn man Daten in einer
+Graphendatenbank manipulieren möchte: Zu unterscheiden, wann man einen neuen
+Datenpunkt anlegen möchte und wann man einen bestehenden verändert
+(Wahrscheinlich existiert das Problem in relationalen Datenbanken genauso. Da
+man sich dort aber weniger mit stark vernetzten Daten beschäftigt, fällt es kaum
+auf und hat selten praktische Auswirkungen).
+
+Das Problem kommt unter anderem daher, das man für eine Abfrage einen Startpunkt
+benötigt. Zu Beginn der Abfrage wird dieser Startpunkt ermittelt und es ist
+entweder ein Vertex, eine Edge oder eine feste Gruppe von Vertices und Edges.
+Sie alle können nur mit uuids eindeutig bestimmt werden. Diese uuids sind aber
+zu Beginn einer Abfrage fast nie bekannt (so, wie man von einem Menschen (selbst
+wenn es ein guter Freund ist) wohl den Namen und andere Eigenschaften kennt aber
+in den seltensten Fällen seine Personalausweisnummer).
+
+=== Praktische Beispiele
+Stellen wir uns vor wir haben folgende Informationen in unserer
+Graphendatenbank:
+
+* Peter ist der Mann von Claudia
+* ein anderer Peter ist der Mann von Waltraud
+
+Jezt wollen wir folgende Information hinzufügen:
+
+* Peter ist 42 Jahre alt.
+* Gerd ist der Kumpel von Peter.
+
+Hier ergibt sich in beiden Fällen ein Problem: Welcher Peter?
+
+Um dieses Problem zu lösen müssen wir den Kontext kennen. Dieser kann sich
+allerdings mit der Zeit verändern. Angenommen wir sagen: Der Peter, der der Mann
+von Claudia ist, ist 42 Jahre alt, haben wir das Problem gelöst. Wenn aber unser
+Datenbank wächst und es gibt mehr als ein Paar Peter und Claudia stehen wir
+wieder vor dem gleichen Problem. Dementsprechend können wir nicht davon
+ausgehen, dass eine Abfrage die heute gültig ist, in einem sich verändernden
+System dauerhaft gültig bleibt.
+
+== Lösungsansätze
+Wollen wir in eine wachsende Datenbank keine Fehler einbringen brauchen wir ein
+System um eindeutige Startpunkte zu erstellen.
+
+=== Create or retrieve
+Eine Möglichkeit einen eindeutigen Startpunkt zu bekommen ist:
+
+* Zuerst eine Abfrage nach Merkmalen abzusetzen um vorhandene Daten in der
+  Datenbank zu empfangen.
+* Diese Daten auf Eindeutigekeit überprüfen.
+* Danach unsere Daten ergänzen
+
+Bei der Abfrage starten wir mit einer ganz normalen Datenbankabfrage. Diese kann
+beliebig einfach oder komplex sein.
+
+Dann prüfen wir ob
+
+kein Ergebnis zurückkommt:: In diesem Fall können wir sicher sein, dass der
+  Datensatz noch nicht existiert und wir können ihn problemlos erzeugen und
+  weiter verwenden.
+genau ein Ergebnis zurückkommt:: In diesem Fall brauchen wir keinen Datensatz
+  erzeugen, sondern können den vorhandenen weiter verwenden. Dabei ist es
+  allerdings wichtig die Grundabfrage mit sinnvoller Detailtiefe zu entwerfen.
+  Würde man z.B. im Beispiel oben direkt zu Beginn mit der Vorgabe "Wenn eine
+  Person existiert deren Name Peter ist" starten. So käme man nicht mal bis zur
+  Ausgangslage, sondern hätte einen Peter, der mit Claudia und Waltraud
+  gleichzeitig verheiratet ist.
+mehr als ein Ergebnis zurückkommt:: In diesem Fall weis man, dass die
+  Grundabfrage nicht detailiert genug war und muss sie verfeinern, um zu einem
+  der anderen Ergebnisse zu kommen.
+
+....
+enum query_start {
+  vertex: uuid;
+  edge: (in: uuid, out: uuid);
+  graph_set: set<vertex, edge>;
+};
+....
+
+
+=== Session und Schema
+Eine Hilfe beim Erzeugen von sinnvollen Abfragen, ist es ein Schema zu haben.
+Dadurch kann man schneller zu eindeutigen und sinnvollen Ergebnissen kommen.
+Folgende Festlegungen würden beispielsweise helfen im obigen Beispiel einfache
+Grundabfragen zu formulieren:
+
+* Keine Person kann mit mehr als einer anderen Person verheiratet sein.
+* Keine Person kann an mehr als einem Ort geboren sein.
+* Keine Person kann zu mehr als einer Zeit geboren sein.
+* Keine Person kann zur gleichen Zeit an mehreren Orten sein.
+
+Allerdings wird man bei komplexeren Datenbanken im Laufer der Zeit feststellen,
+das viele der Vorgaben, die man für fest hielt, doch nicht so klar sind (so
+könnte z.B. eine Person zu unterschiedlichen Zeiten mit verschiedenen Personen
+verheiratet sein. In anderen Kulturkreisen gilt diese Annahme vielleicht gar
+nicht).
+
+=== Uuids speichern
+Wenn man sehr viele Abfragen zu einem einzigen Vertex (oder einigen wenigen
+Vertices) vornimmt. Kann es sinnvoll sein die entsprechende uuid direkt zu
+verwenden. Dadurch muss man allerdings die Query nach dem ersten benutzen
+wahrscheinlich ändern. Und wenn die Datenbank einmal migriert wird, werden
+vielleicht die uuids ihre Gültigkeit verlieren. Auch dieser Ansatz ist also
+nicht völlig problemfrei.
+
