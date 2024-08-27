@@ -46,22 +46,28 @@ pub enum VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 }
 
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
-  pub fn all() -> Self {VertexQuery::All
+  pub fn all() -> Self {
+    VertexQuery::All
   }
 
-  pub fn from_ids(ids: Vec<VertexId>) -> Self {VertexQuery::Specific(ids)
+  pub fn from_ids(ids: Vec<VertexId>) -> Self {
+    VertexQuery::Specific(ids)
   }
 
-  pub fn from_property(p: PropertyQuery<PropertyId>) -> Self {VertexQuery::Property(p)
+  pub fn from_property(p: PropertyQuery<PropertyId>) -> Self {
+    VertexQuery::Property(p)
   }
 
-  pub fn union(self, q: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {VertexQuery::Union(Box::new(self), Box::new(q))
+  pub fn union(self, q: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {
+    VertexQuery::Union(Box::new(self), Box::new(q))
   }
 
-  pub fn intersect(self, q: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {VertexQuery::Intersect(Box::new(self), Box::new(q))
+  pub fn intersect(self, q: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {
+    VertexQuery::Intersect(Box::new(self), Box::new(q))
   }
 
-  pub fn substract(self, q: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {VertexQuery::Substract(Box::new(self), Box::new(q))
+  pub fn substract(self, q: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {
+    VertexQuery::Substract(Box::new(self), Box::new(q))
   }
 
   pub fn outgoing(self) -> EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
@@ -124,22 +130,28 @@ pub enum EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 }
 
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
-  pub fn all() -> Self {EdgeQuery::All
+  pub fn all() -> Self {
+    EdgeQuery::All
   }
 
-  pub fn from_ids(ids: Vec<EdgeId>) -> Self {EdgeQuery::Specific(ids)
+  pub fn from_ids(ids: Vec<EdgeId>) -> Self {
+    EdgeQuery::Specific(ids)
   }
 
-  pub fn from_property(p: PropertyQuery<PropertyId>) -> Self {EdgeQuery::Property(p)
+  pub fn from_property(p: PropertyQuery<PropertyId>) -> Self {
+    EdgeQuery::Property(p)
   }
 
-  pub fn union(self, q: EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {EdgeQuery::Union(Box::new(self), Box::new(q))
+  pub fn union(self, q: EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {
+    EdgeQuery::Union(Box::new(self), Box::new(q))
   }
 
-  pub fn intersect(self, q: EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {EdgeQuery::Intersect(Box::new(self), Box::new(q))
+  pub fn intersect(self, q: EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {
+    EdgeQuery::Intersect(Box::new(self), Box::new(q))
   }
 
-  pub fn substract(self, q: EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {EdgeQuery::Substract(Box::new(self), Box::new(q))
+  pub fn substract(self, q: EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {
+    EdgeQuery::Substract(Box::new(self), Box::new(q))
   }
 }
 
