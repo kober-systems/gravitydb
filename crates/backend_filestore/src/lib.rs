@@ -213,7 +213,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
   fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> std::io::Result<()> {
     let index_path = self.base_path.join("indexes/");
     let index_path = index_path.join(props_hash.to_string() + "/");
-    fs::create_dir_all(&index_path)?;
+    self.create_bucket(index_path.as_os_str().as_bytes())?;
 
     let prefix = match ty {
       BacklinkType::Node => "nodes",
@@ -237,7 +237,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       BacklinkType::Property => "props",
     };
     let backlink_path = index_path.join(prefix.to_owned() + "_" + id);
-    fs::remove_file(backlink_path)?;
+    self.delete_record(backlink_path.as_os_str().as_bytes())?;
 
     if fs::read_dir(&index_path)?.next().is_none() {
       fs::remove_dir(&index_path)?;
@@ -268,7 +268,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     };
 
     log::debug!("creating node file {:?} with content {}", path, String::from_utf8_lossy(&node));
-    fs::write(&path, &node)?;
+    self.store_record(&path.as_os_str().as_bytes(), &node)?;
 
     self.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
 
@@ -279,7 +279,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     let path = self.base_path.join("nodes/");
     let path = path.join(&uuid_to_key(id));
 
-    let data = fs::read(path)?;
+    let data = self.fetch_record(path.as_os_str().as_bytes())?;
     let node = SchemaElement::deserialize(&data)?;
     Ok(node)
   }
@@ -301,7 +301,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing: outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    fs::write(&path, &node)?;
+    self.store_record(&path.as_os_str().as_bytes(), &node)?;
 
     let id = uuid_to_key(id);
     let last_reference = self.delete_property_backlink(&old_properties, &id, BacklinkType::Node)?;
@@ -331,7 +331,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       self.delete_property(&properties)?;
     }
 
-    fs::remove_file(path)?;
+    self.delete_record(path.as_os_str().as_bytes())?;
     Ok(())
   }
 
@@ -348,7 +348,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     let path = path.join(&hash);
 
     let edge = SchemaElement::serialize(&edge)?;
-    fs::write(&path, &edge)?;
+    self.store_record(&path.as_os_str().as_bytes(), &edge)?;
 
     self.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
 
@@ -368,7 +368,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    fs::write(&path, &node)?;
+    self.store_record(&path.as_os_str().as_bytes(), &node)?;
 
     let path = self.base_path.join("nodes/");
     let path = path.join(uuid_to_key(n2));
@@ -386,7 +386,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    fs::write(&path, &node)?;
+    self.store_record(&path.as_os_str().as_bytes(), &node)?;
 
     Ok(hash)
   }
@@ -395,7 +395,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     let path = self.base_path.join("edges/");
     let path = path.join(id);
 
-    let data = fs::read(path)?;
+    let data = self.fetch_record(path.as_os_str().as_bytes())?;
     let edge = SchemaElement::deserialize(&data)?;
     Ok(edge)
   }
@@ -410,7 +410,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     let path = self.base_path.join("edges/");
     let path = path.join(id);
 
-    fs::remove_file(&path)?;
+    self.delete_record(&path.as_os_str().as_bytes())?;
 
     let path = self.base_path.join("nodes/");
     let path = path.join(uuid_to_key(n1));
@@ -428,7 +428,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    fs::write(&path, &node)?;
+    self.store_record(&path.as_os_str().as_bytes(), &node)?;
 
     let path = self.base_path.join("nodes/");
     let path = path.join(uuid_to_key(n2));
@@ -446,7 +446,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    fs::write(&path, &node)?;
+    self.store_record(&path.as_os_str().as_bytes(), &node)?;
 
     let last_reference = self.delete_property_backlink(&props_hash, &id, BacklinkType::Edge)?;
     if last_reference {
@@ -463,7 +463,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
 
     let data = properties.serialize()?;
     log::debug!("creating property file {:?} with content {}", path, String::from_utf8_lossy(&data));
-    fs::write(&path, &data)?;
+    self.store_record(&path.as_os_str().as_bytes(), &data)?;
 
     properties.nested().iter().try_for_each(|nested| {
       match self.create_property(nested) {
@@ -488,7 +488,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     let path = self.base_path.join("props/");
     let path = path.join(id);
 
-    let data = fs::read(path)?;
+    let data = self.fetch_record(path.as_os_str().as_bytes())?;
     let property = SchemaElement::deserialize(&data)?;
     Ok(property)
   }
@@ -497,7 +497,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     let path = self.base_path.join("props/");
     let path = path.join(id);
 
-    let data = fs::read(&path)?;
+    let data = self.fetch_record(&path.as_os_str().as_bytes())?;
     let properties: T = SchemaElement::deserialize(&data)?;
 
     for nested in properties.nested().iter() {
@@ -508,7 +508,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       }
     }
 
-    fs::remove_file(path)?;
+    self.delete_record(path.as_os_str().as_bytes())?;
     Ok(())
   }
 
