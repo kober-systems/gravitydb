@@ -159,7 +159,7 @@ impl<T: Property<HashId, Error>> KVStore for FsStore<T>
 }
 
 impl<T: Property<HashId, Error>> GraphStore for FsStore<T> {
-  type Error = std::io::Error;
+  type Error = Error;
 
   /// props_hash: the hash_id of the property that holds the index
   /// id:         the id of the node, edge or property that references
