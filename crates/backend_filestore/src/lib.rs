@@ -21,42 +21,6 @@ use gravity::KVStore;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
-pub struct FsKvStore {
-  base_path: PathBuf,
-}
-
-impl FsKvStore {
-  fn key_to_path(&self, key: &[u8]) -> PathBuf {
-    let path = Path::new(OsStr::from_bytes(key));
-    PathBuf::from(self.base_path.join(path))
-  }
-}
-
-impl KVStore for FsKvStore
-{
-  type Error = std::io::Error;
-
-  fn create_bucket(&self, key: &[u8]) -> Result<(), Self::Error> {
-    std::fs::create_dir_all(self.key_to_path(key))
-  }
-
-  fn delete_record(&self, key: &[u8]) -> Result<(), Self::Error> {
-    std::fs::remove_file(self.key_to_path(key))
-  }
-
-  fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error> {
-    std::fs::write(self.key_to_path(key), value)
-  }
-
-  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error> {
-    std::fs::read(self.key_to_path(key))
-  }
-
-  fn exists(&self, key: &[u8]) -> Result<bool, Self::Error> {
-    Ok(self.key_to_path(key).exists())
-  }
-}
-
 type HashId = String;
 
 #[derive(Deserialize, Serialize, Debug)]
