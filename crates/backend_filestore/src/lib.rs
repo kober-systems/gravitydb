@@ -133,22 +133,9 @@ pub struct FsStore<T: Property<HashId, Error>> {
   base_path: PathBuf,
 }
 
-pub struct FsStoreKeyIterator<'a> {
-  iter: std::marker::PhantomData<&'a [u8]>,
-}
-
-impl<'a> Iterator for FsStoreKeyIterator<'a> {
-  type Item = &'a [u8];
-
-  fn next(&mut self) -> Option<Self::Item> {
-    None
-  }
-}
-
-impl<'a, T: Property<HashId, Error>> KVStore<'a> for FsStore<T>
+impl<'a, T: Property<HashId, Error>> KVStore for FsStore<T>
 {
   type Error = std::io::Error;
-  type KeyIterator = FsStoreKeyIterator<'a>;
 
   fn create_bucket(&self, key: &[u8]) -> Result<(), Self::Error> {
     std::fs::create_dir_all(self.key_to_path(key))
@@ -166,8 +153,15 @@ impl<'a, T: Property<HashId, Error>> KVStore<'a> for FsStore<T>
     std::fs::read(self.key_to_path(key))
   }
 
-  fn list_records(&self, key: Option<&[u8]>) -> Result<Self::KeyIterator, Self::Error> {
-    Ok(FsStoreKeyIterator { iter: std::marker::PhantomData })
+  fn list_records(&self, key: Option<&[u8]>) -> Result<Vec<Vec<u8>>, Self::Error> {
+    let key = key.unwrap_or("".as_bytes());
+    let iter: Vec<Vec<u8>> = fs::read_dir(self.key_to_path(key))?.into_iter().filter_map(|entry| {
+      match entry {
+        Ok(entry) => Some(entry.file_name().into_encoded_bytes()),
+        Err(_) => None,
+      }
+    }).collect();
+    Ok(iter)
   }
 
   fn exists(&self, key: &[u8]) -> Result<bool, Self::Error> {

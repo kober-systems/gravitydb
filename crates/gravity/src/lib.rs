@@ -73,16 +73,15 @@ pub enum BacklinkType {
   Property,
 }
 
-pub trait KVStore<'a> {
+pub trait KVStore {
   type Error;
-  type KeyIterator: Iterator<Item = &'a [u8]>;
 
   /// creates a new bucket
   fn create_bucket(&self, key: &[u8]) -> Result<(), Self::Error>;
   /// delete a data record (could also be a bucket)
   fn delete_record(&self, key: &[u8]) -> Result<(), Self::Error>;
   /// list all records and buckets inside a bucket
-  fn list_records(&self, key: Option<&[u8]>) -> Result<Self::KeyIterator, Self::Error>;
+  fn list_records(&self, key: Option<&[u8]>) -> Result<Vec<Vec<u8>>, Self::Error>;
   /// store a data record
   fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error>;
   /// fetch a data record
