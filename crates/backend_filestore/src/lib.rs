@@ -133,9 +133,22 @@ pub struct FsStore<T: Property<HashId, Error>> {
   base_path: PathBuf,
 }
 
-impl<T: Property<HashId, Error>> KVStore for FsStore<T>
+pub struct FsStoreKeyIterator<'a> {
+  iter: std::marker::PhantomData<&'a [u8]>,
+}
+
+impl<'a> Iterator for FsStoreKeyIterator<'a> {
+  type Item = &'a [u8];
+
+  fn next(&mut self) -> Option<Self::Item> {
+    None
+  }
+}
+
+impl<'a, T: Property<HashId, Error>> KVStore<'a> for FsStore<T>
 {
   type Error = std::io::Error;
+  type KeyIterator = FsStoreKeyIterator<'a>;
 
   fn create_bucket(&self, key: &[u8]) -> Result<(), Self::Error> {
     std::fs::create_dir_all(self.key_to_path(key))
@@ -151,6 +164,10 @@ impl<T: Property<HashId, Error>> KVStore for FsStore<T>
 
   fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error> {
     std::fs::read(self.key_to_path(key))
+  }
+
+  fn list_records(&self, key: Option<&[u8]>) -> Result<Self::KeyIterator, Self::Error> {
+    Ok(FsStoreKeyIterator { iter: std::marker::PhantomData })
   }
 
   fn exists(&self, key: &[u8]) -> Result<bool, Self::Error> {
