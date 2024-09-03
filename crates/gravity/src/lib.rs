@@ -73,28 +73,26 @@ pub enum BacklinkType {
   Property,
 }
 
-pub trait KVStore {
-  type Error;
-
+pub trait KVStore<E> {
   /// creates a new bucket
-  fn create_bucket(&self, key: &[u8]) -> Result<(), Self::Error>;
+  fn create_bucket(&self, key: &[u8]) -> Result<(), E>;
   /// delete a data record (could also be a bucket)
-  fn delete_record(&self, key: &[u8]) -> Result<(), Self::Error>;
+  fn delete_record(&self, key: &[u8]) -> Result<(), E>;
   /// list all records and buckets inside a bucket
-  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, Self::Error>;
+  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, E>;
   /// store a data record
-  fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error>;
+  fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), E>;
   /// fetch a data record
-  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error>;
+  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, E>;
   /// check if an entry exists in the database
-  fn exists(&self, key: &[u8]) -> Result<bool, Self::Error>;
+  fn exists(&self, key: &[u8]) -> Result<bool, E>;
 
   // helper functions used to implement the default api
 
   /// create a backlink to an entry
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Self::Error>;
+  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), E>;
   /// delete a backlink from an entry
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Self::Error>;
+  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
 }
 
 pub trait GraphStore<K, T, E> {

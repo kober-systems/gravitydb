@@ -133,27 +133,25 @@ pub struct FsStore<T: Property<HashId, Error>> {
   base_path: PathBuf,
 }
 
-impl<'a, T: Property<HashId, Error>> KVStore for FsStore<T>
+impl<'a, T: Property<HashId, Error>> KVStore<std::io::Error> for FsStore<T>
 {
-  type Error = std::io::Error;
-
-  fn create_bucket(&self, key: &[u8]) -> Result<(), Self::Error> {
+  fn create_bucket(&self, key: &[u8]) -> Result<(), std::io::Error> {
     std::fs::create_dir_all(self.key_to_path(key))
   }
 
-  fn delete_record(&self, key: &[u8]) -> Result<(), Self::Error> {
+  fn delete_record(&self, key: &[u8]) -> Result<(), std::io::Error> {
     std::fs::remove_file(self.key_to_path(key))
   }
 
-  fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error> {
+  fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), std::io::Error> {
     std::fs::write(self.key_to_path(key), value)
   }
 
-  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error> {
+  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, std::io::Error> {
     std::fs::read(self.key_to_path(key))
   }
 
-  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, Self::Error> {
+  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, std::io::Error> {
     let iter: Vec<Vec<u8>> = fs::read_dir(self.key_to_path(key))?.into_iter().filter_map(|entry| {
       match entry {
         Ok(entry) => Some(entry.file_name().into_encoded_bytes()),
@@ -163,7 +161,7 @@ impl<'a, T: Property<HashId, Error>> KVStore for FsStore<T>
     Ok(iter)
   }
 
-  fn exists(&self, key: &[u8]) -> Result<bool, Self::Error> {
+  fn exists(&self, key: &[u8]) -> Result<bool, std::io::Error> {
     Ok(self.key_to_path(key).exists())
   }
 
@@ -171,7 +169,7 @@ impl<'a, T: Property<HashId, Error>> KVStore for FsStore<T>
   /// id:         the id of the node, edge or property that references
   ///             the property and needs a backling
   /// ty:         the type of the element that needs a backlink
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Self::Error> {
+  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), std::io::Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
     self.create_bucket(index_path.as_bytes())?;
 
@@ -187,7 +185,7 @@ impl<'a, T: Property<HashId, Error>> KVStore for FsStore<T>
     Ok(())
   }
 
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Self::Error> {
+  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, std::io::Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
 
     let prefix = match ty {
