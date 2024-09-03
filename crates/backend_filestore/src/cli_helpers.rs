@@ -2,7 +2,7 @@ use gravity::schema::{SchemaElement, Property};
 use crate::{Error, FsKvStore, HashId};
 use anyhow::bail;
 use std::io::{self, Write};
-use gravity::ql;
+use gravity::{ql, GraphStore};
 use crate::FsStore;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;

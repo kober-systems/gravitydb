@@ -95,13 +95,13 @@ pub trait KVStore<E> {
   fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
 }
 
-pub trait GraphStore<PropKey, T, E> {
+pub trait GraphStore<NodeK, PropKey, T, E> {
   // CRUD functions
   //      TODO these functions should have a default implementation
-  //fn create_node(&mut self, id: NodeK, properties: &T) -> Result<(), Self::Error>;
-  //fn read_node(&self, id: NodeK) -> Result<NodeData, Self::Error>;
-  //fn update_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), E>;
-  //fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), E>;
+  fn create_node(&mut self, id: NodeK, properties: &T) -> Result<(), E>;
+  //fn read_node(&self, id: NodeK) -> Result<NodeData, E>;
+  fn update_node(&mut self, id: NodeK, properties: &T) -> Result<(), E>;
+  //fn delete_node(&mut self, id: NodeK) -> Result<(), E>;
   //fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, E>;
   //fn read_edge(&self, id: &HashId) -> Result<EdgeData, E>;
   //fn delete_edge(&mut self, id: &HashId) -> Result<(), E>;

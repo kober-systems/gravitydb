@@ -271,67 +271,12 @@ where
     }
   }
 
-  pub fn create_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), Error> {
-    let props_hash = self.create_property(properties)?;
-    let node = NodeData {
-      id,
-      properties: props_hash.clone(),
-      incoming: BTreeSet::new(),
-      outgoing: BTreeSet::new(),
-    };
-    let id = node.get_key();
-    let node = SchemaElement::serialize(&node)?;
-
-    let path = "nodes/".to_string() + &id;
-
-    if self.kv.exists(path.as_bytes())? {
-      log::error!("node {:?} allready exists", path);
-      return Err(Error::NodeExists);
-    };
-
-    log::debug!("creating node file {:?} with content {}", path, String::from_utf8_lossy(&node));
-    self.kv.store_record(&path.as_bytes(), &node)?;
-
-    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
-
-    Ok(())
-  }
-
   pub fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error> {
     let path = "nodes/".to_string() + &uuid_to_key(id);
 
     let data = self.kv.fetch_record(path.as_bytes())?;
     let node: NodeData = SchemaElement::deserialize(&data)?;
     Ok(node)
-  }
-
-  pub fn update_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), Error> {
-    let props_hash = self.create_property(properties)?;
-    let path = "nodes/".to_string() + &uuid_to_key(id);
-    let NodeData {
-      id,
-      properties: old_properties,
-      incoming,
-      outgoing,
-    } = self.read_node(id)?;
-    let node = NodeData {
-      id,
-      properties: props_hash.clone(),
-      incoming,
-      outgoing,
-    };
-    let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
-
-    let id = uuid_to_key(id);
-    let last_reference = self.kv.delete_property_backlink(&old_properties, &id, BacklinkType::Node)?;
-    if last_reference {
-      self.delete_property(&old_properties)?;
-    }
-
-    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
-
-    Ok(())
   }
 
   pub fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), Error> {
@@ -819,11 +764,66 @@ where
   }
 }
 
-impl<P, K> GraphStore<HashId, P, Error> for FsStore<P, K>
+impl<P, K> GraphStore<uuid::Uuid, HashId, P, Error> for FsStore<P, K>
 where
   P: Property<HashId, Error>,
   K: KVStore<Error>,
 {
+  fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<(), Error> {
+    let props_hash = self.create_property(properties)?;
+    let node = NodeData {
+      id,
+      properties: props_hash.clone(),
+      incoming: BTreeSet::new(),
+      outgoing: BTreeSet::new(),
+    };
+    let id = node.get_key();
+    let node = SchemaElement::serialize(&node)?;
+
+    let path = "nodes/".to_string() + &id;
+
+    if self.kv.exists(path.as_bytes())? {
+      log::error!("node {:?} allready exists", path);
+      return Err(Error::NodeExists);
+    };
+
+    log::debug!("creating node file {:?} with content {}", path, String::from_utf8_lossy(&node));
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+
+    Ok(())
+  }
+
+  fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<(), Error> {
+    let props_hash = self.create_property(properties)?;
+    let path = "nodes/".to_string() + &uuid_to_key(id);
+    let NodeData {
+      id,
+      properties: old_properties,
+      incoming,
+      outgoing,
+    } = self.read_node(id)?;
+    let node = NodeData {
+      id,
+      properties: props_hash.clone(),
+      incoming,
+      outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    let id = uuid_to_key(id);
+    let last_reference = self.kv.delete_property_backlink(&old_properties, &id, BacklinkType::Node)?;
+    if last_reference {
+      self.delete_property(&old_properties)?;
+    }
+
+    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+
+    Ok(())
+  }
+
   fn create_property(&mut self, properties: &P) -> Result<HashId, Error> {
     let hash = properties.get_key();
     let path = "props/".to_string() + &hash;
