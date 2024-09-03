@@ -295,16 +295,14 @@ where
 
     let result = match q {
       All => {
-        let mut result = HashMap::default();
-
-        for entry in self.kv.list_records("nodes/".as_bytes())? {
-          let id = String::from_utf8(entry)
-            .or(Err(Error::MalformedDB))?;
-          let id = uuid::Uuid::parse_str(&id)?;
-          result.insert(id, ql::VertexQueryContext::new(id));
-        }
-
-        result
+        self.kv.list_records("nodes/".as_bytes())?
+          .into_iter()
+          .map(|entry| {
+            let id = String::from_utf8(entry)
+              .or(Err(Error::MalformedDB))?;
+            let id = uuid::Uuid::parse_str(&id)?;
+            Ok((id, ql::VertexQueryContext::new(id)))
+        }).collect::<Result<HashMap<_,_>, Error>>()?
       }
       Specific(ids) => {
         ids.into_iter()
@@ -314,7 +312,7 @@ where
       Property(q) => {
         let mut result = HashMap::default();
 
-        for prop_id in self.query_properties(q)? {
+        for prop_id in self.query_properties(q)?.into_iter() {
           let index_path = "indexes/".to_string() + &prop_id + "/";
           for entry in self.kv.list_records(index_path.as_bytes())? {
             let reference = String::from_utf8(entry)
