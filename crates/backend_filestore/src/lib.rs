@@ -307,13 +307,9 @@ where
         result
       }
       Specific(ids) => {
-        let mut result = HashMap::default();
-
-        for id in ids.into_iter() {
-          result.insert(id, ql::VertexQueryContext::new(id));
-        }
-
-        result
+        ids.into_iter()
+          .map(|id| (id, ql::VertexQueryContext::new(id)))
+          .collect()
       }
       Property(q) => {
         let mut result = HashMap::default();
