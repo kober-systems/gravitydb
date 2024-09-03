@@ -97,7 +97,6 @@ pub trait KVStore<E> {
 
 pub trait GraphStore<NodeK, Node, PropKey, T, E> {
   // CRUD functions
-  //      TODO these functions should have a default implementation
   fn create_node(&mut self, id: NodeK, properties: &T) -> Result<(), E>;
   fn read_node(&self, id: NodeK) -> Result<Node, E>;
   fn update_node(&mut self, id: NodeK, properties: &T) -> Result<(), E>;
