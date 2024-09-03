@@ -331,7 +331,7 @@ where
         result
       }
       Union(sub1, sub2) => {
-        node_union(
+        union(
           self.query_nodes(*sub1)?,
           self.query_nodes(*sub2)?
         )
@@ -433,10 +433,10 @@ where
         result
       }
       Union(sub1, sub2) => {
-        let mut result = self.query_edges(*sub1)?;
-
-        result.extend(self.query_edges(*sub2)?.into_iter());
-        result
+        union(
+          self.query_edges(*sub1)?,
+          self.query_edges(*sub2)?
+        )
       }
       Intersect(sub1, sub2) => {
         let mut result = self.query_edges(*sub1)?;
@@ -897,11 +897,15 @@ pub fn to_query(data: &Vec<u8>) -> Result<BasicQuery, Error> {
   Ok(query)
 }
 
-fn node_union(
-  c1: NodeCtx,
-  c2: NodeCtx
+use core::hash::Hash;
+
+fn union<K, V>(
+  c1: HashMap<K, V>,
+  c2: HashMap<K, V>
 ) ->
-  NodeCtx
+  HashMap<K, V>
+where
+  K: Eq + Hash,
 {
   let mut result = c1;
 
