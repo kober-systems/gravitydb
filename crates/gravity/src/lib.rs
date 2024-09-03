@@ -95,15 +95,15 @@ pub trait KVStore<E> {
   fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
 }
 
-pub trait GraphStore<NodeK, Node, PropKey, T, E> {
+pub trait GraphStore<NodeK, Node, EdgeKey, Edge, PropKey, T, E> {
   // CRUD functions
   fn create_node(&mut self, id: NodeK, properties: &T) -> Result<(), E>;
   fn read_node(&self, id: NodeK) -> Result<Node, E>;
   fn update_node(&mut self, id: NodeK, properties: &T) -> Result<(), E>;
   fn delete_node(&mut self, id: NodeK) -> Result<(), E>;
-  //fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, E>;
-  //fn read_edge(&self, id: &HashId) -> Result<EdgeData, E>;
-  //fn delete_edge(&mut self, id: &HashId) -> Result<(), E>;
+  fn create_edge(&mut self, n1: NodeK, n2: NodeK, properties: &T) -> Result<EdgeKey, E>;
+  fn read_edge(&self, id: &EdgeKey) -> Result<Edge, E>;
+  fn delete_edge(&mut self, id: &EdgeKey) -> Result<(), E>;
   fn create_property(&mut self, properties: &T) -> Result<PropKey, E>;
   fn read_property(&mut self, id: &PropKey) -> Result<T, E>;
   fn delete_property(&mut self, id: &PropKey) -> Result<(), E>;

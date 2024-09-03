@@ -271,120 +271,6 @@ where
     }
   }
 
-  pub fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, Error> {
-    let props_hash = self.create_property(properties)?;
-    let edge = EdgeData {
-      n1,
-      n2,
-      properties: props_hash.clone(),
-    };
-
-    let hash = edge.get_key();
-    let path = "edges/".to_string() + &hash;
-
-    let edge = SchemaElement::serialize(&edge)?;
-    self.kv.store_record(&path.as_bytes(), &edge)?;
-
-    self.kv.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
-
-    let path = "nodes/".to_string() + &uuid_to_key(n1);
-    let NodeData {
-      id,
-      properties,
-      incoming,
-      mut outgoing,
-    } = self.read_node(n1)?;
-    outgoing.insert(hash.clone());
-    let node = NodeData {
-      id,
-      properties,
-      incoming,
-      outgoing,
-    };
-    let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
-
-    let path = "nodes/".to_string() + &uuid_to_key(n2);
-    let NodeData {
-      id,
-      properties,
-      mut incoming,
-      outgoing,
-    } = self.read_node(n2)?;
-    incoming.insert(hash.clone());
-    let node = NodeData {
-      id,
-      properties,
-      incoming,
-      outgoing,
-    };
-    let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
-
-    Ok(hash)
-  }
-
-  pub fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error> {
-    let path = "edges/".to_string() + id;
-
-    let data = self.kv.fetch_record(path.as_bytes())?;
-    let edge = SchemaElement::deserialize(&data)?;
-    Ok(edge)
-  }
-
-  pub fn delete_edge(&mut self, id: &HashId) -> Result<(), Error> {
-    let EdgeData {
-      properties: props_hash,
-      n1,
-      n2,
-    } = self.read_edge(id)?;
-
-    let path = "edges/".to_string() + id;
-
-    self.kv.delete_record(&path.as_bytes())?;
-
-    let path = "nodes/".to_string() + &uuid_to_key(n1);
-    let NodeData {
-      id: _id,
-      properties,
-      incoming,
-      mut outgoing,
-    } = self.read_node(n1)?;
-    outgoing.remove(id);
-    let node = NodeData {
-      id: n1,
-      properties,
-      incoming,
-      outgoing,
-    };
-    let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
-
-    let path = "nodes/".to_string() + &uuid_to_key(n2);
-    let NodeData {
-      id: _id,
-      properties,
-      mut incoming,
-      outgoing,
-    } = self.read_node(n2)?;
-    incoming.remove(id);
-    let node = NodeData {
-      id: n2,
-      properties,
-      incoming,
-      outgoing,
-    };
-    let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
-
-    let last_reference = self.kv.delete_property_backlink(&props_hash, &id, BacklinkType::Edge)?;
-    if last_reference {
-      self.delete_property(&props_hash)?;
-    }
-
-    Ok(())
-  }
-
   pub fn query(&self, q: BasicQuery) -> Result<QueryResult, Error> {
     let context = match q {
       BasicQuery::V(q) => {
@@ -736,7 +622,7 @@ where
   }
 }
 
-impl<P, K> GraphStore<uuid::Uuid, NodeData, HashId, P, Error> for FsStore<P, K>
+impl<P, K> GraphStore<uuid::Uuid, NodeData, HashId, EdgeData, HashId, P, Error> for FsStore<P, K>
 where
   P: Property<HashId, Error>,
   K: KVStore<Error>,
@@ -821,6 +707,120 @@ where
     }
 
     self.kv.delete_record(path.as_bytes())?;
+    Ok(())
+  }
+
+  fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &P) -> Result<HashId, Error> {
+    let props_hash = self.create_property(properties)?;
+    let edge = EdgeData {
+      n1,
+      n2,
+      properties: props_hash.clone(),
+    };
+
+    let hash = edge.get_key();
+    let path = "edges/".to_string() + &hash;
+
+    let edge = SchemaElement::serialize(&edge)?;
+    self.kv.store_record(&path.as_bytes(), &edge)?;
+
+    self.kv.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
+
+    let path = "nodes/".to_string() + &uuid_to_key(n1);
+    let NodeData {
+      id,
+      properties,
+      incoming,
+      mut outgoing,
+    } = self.read_node(n1)?;
+    outgoing.insert(hash.clone());
+    let node = NodeData {
+      id,
+      properties,
+      incoming,
+      outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    let path = "nodes/".to_string() + &uuid_to_key(n2);
+    let NodeData {
+      id,
+      properties,
+      mut incoming,
+      outgoing,
+    } = self.read_node(n2)?;
+    incoming.insert(hash.clone());
+    let node = NodeData {
+      id,
+      properties,
+      incoming,
+      outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    Ok(hash)
+  }
+
+  fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error> {
+    let path = "edges/".to_string() + id;
+
+    let data = self.kv.fetch_record(path.as_bytes())?;
+    let edge = SchemaElement::deserialize(&data)?;
+    Ok(edge)
+  }
+
+  fn delete_edge(&mut self, id: &HashId) -> Result<(), Error> {
+    let EdgeData {
+      properties: props_hash,
+      n1,
+      n2,
+    } = self.read_edge(id)?;
+
+    let path = "edges/".to_string() + id;
+
+    self.kv.delete_record(&path.as_bytes())?;
+
+    let path = "nodes/".to_string() + &uuid_to_key(n1);
+    let NodeData {
+      id: _id,
+      properties,
+      incoming,
+      mut outgoing,
+    } = self.read_node(n1)?;
+    outgoing.remove(id);
+    let node = NodeData {
+      id: n1,
+      properties,
+      incoming,
+      outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    let path = "nodes/".to_string() + &uuid_to_key(n2);
+    let NodeData {
+      id: _id,
+      properties,
+      mut incoming,
+      outgoing,
+    } = self.read_node(n2)?;
+    incoming.remove(id);
+    let node = NodeData {
+      id: n2,
+      properties,
+      incoming,
+      outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    let last_reference = self.kv.delete_property_backlink(&props_hash, &id, BacklinkType::Edge)?;
+    if last_reference {
+      self.delete_property(&props_hash)?;
+    }
+
     Ok(())
   }
 
