@@ -63,8 +63,8 @@ pub trait GraphBuilder<N, P, E> {
   /// Edges are expected to have properties. If an Implementation
   /// does not have them it should use ().
   fn add_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
-  fn delete_node(&mut self, node: &N) -> Result<(), E>;
-  fn delete_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
+  fn remove_node(&mut self, node: &N) -> Result<(), E>;
+  fn remove_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
 }
 
 pub enum BacklinkType {

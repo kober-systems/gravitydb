@@ -746,12 +746,12 @@ where
     Ok(())
   }
 
-  fn delete_node(&mut self, node: &N) -> Result<(), Error> {
+  fn remove_node(&mut self, node: &N) -> Result<(), Error> {
     self.delete_node(node.id())?;
     Ok(())
   }
 
-  fn delete_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), Error> {
+  fn remove_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), Error> {
     let props_hash = p.get_key();
     let edge = EdgeData {
       n1: n1.id(),
