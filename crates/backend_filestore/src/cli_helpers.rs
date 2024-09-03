@@ -127,7 +127,7 @@ where
                         .file_name()
                         .into_string()
                         .unwrap();
-                      let (prefix, reference) = reference
+                      let (prefix, _reference) = reference
                         .split_once("_")
                         .unwrap();
                       if prefix == "nodes" {
@@ -146,7 +146,7 @@ where
                     .file_name()
                     .into_string()
                     .unwrap();
-                  let (prefix, reference) = reference
+                  let (_prefix, reference) = reference
                     .split_once("_")
                     .unwrap();
                   uuid::Uuid::parse_str(reference).unwrap()
