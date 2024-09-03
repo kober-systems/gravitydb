@@ -271,34 +271,6 @@ where
     }
   }
 
-  pub fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error> {
-    let path = "nodes/".to_string() + &uuid_to_key(id);
-
-    let data = self.kv.fetch_record(path.as_bytes())?;
-    let node: NodeData = SchemaElement::deserialize(&data)?;
-    Ok(node)
-  }
-
-  pub fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), Error> {
-    let NodeData {
-      id,
-      properties,
-      incoming: _,
-      outgoing: _,
-    } = self.read_node(id)?;
-
-    let id = uuid_to_key(id);
-    let path = "nodes/".to_string() + &id;
-
-    let last_reference = self.kv.delete_property_backlink(&properties, &id, BacklinkType::Node)?;
-    if last_reference {
-      self.delete_property(&properties)?;
-    }
-
-    self.kv.delete_record(path.as_bytes())?;
-    Ok(())
-  }
-
   pub fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, Error> {
     let props_hash = self.create_property(properties)?;
     let edge = EdgeData {
@@ -764,7 +736,7 @@ where
   }
 }
 
-impl<P, K> GraphStore<uuid::Uuid, HashId, P, Error> for FsStore<P, K>
+impl<P, K> GraphStore<uuid::Uuid, NodeData, HashId, P, Error> for FsStore<P, K>
 where
   P: Property<HashId, Error>,
   K: KVStore<Error>,
@@ -795,6 +767,14 @@ where
     Ok(())
   }
 
+  fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error> {
+    let path = "nodes/".to_string() + &uuid_to_key(id);
+
+    let data = self.kv.fetch_record(path.as_bytes())?;
+    let node: NodeData = SchemaElement::deserialize(&data)?;
+    Ok(node)
+  }
+
   fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<(), Error> {
     let props_hash = self.create_property(properties)?;
     let path = "nodes/".to_string() + &uuid_to_key(id);
@@ -821,6 +801,26 @@ where
 
     self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
 
+    Ok(())
+  }
+
+  fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), Error> {
+    let NodeData {
+      id,
+      properties,
+      incoming: _,
+      outgoing: _,
+    } = self.read_node(id)?;
+
+    let id = uuid_to_key(id);
+    let path = "nodes/".to_string() + &id;
+
+    let last_reference = self.kv.delete_property_backlink(&properties, &id, BacklinkType::Node)?;
+    if last_reference {
+      self.delete_property(&properties)?;
+    }
+
+    self.kv.delete_record(path.as_bytes())?;
     Ok(())
   }
 
