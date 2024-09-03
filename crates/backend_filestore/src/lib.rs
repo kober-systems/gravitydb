@@ -393,26 +393,23 @@ where
 
     let result = match q {
       All => {
-        let mut result = HashMap::default();
-
-        for entry in self.kv.list_records("edges/".as_bytes())? {
+        self.kv.list_records("edges/".as_bytes())?
+          .into_iter()
+          .map(|entry| {
           let id = String::from_utf8(entry)
             .or(Err(Error::MalformedDB))?;
           let key = id.clone();
-          result.insert(id, ql::EdgeQueryContext::new(key));
-        }
-
-        result
+          Ok((id, ql::EdgeQueryContext::new(key)))
+        })
+        .collect::<Result<HashMap<_,_>, Error>>()?
       }
       Specific(ids) => {
-        let mut result = HashMap::default();
-
-        for id in ids.into_iter() {
-          let key = id.clone();
-          result.insert(id, ql::EdgeQueryContext::new(key));
-        }
-
-        result
+        ids.into_iter()
+          .map(|id| {
+            let key = id.clone();
+            (id, ql::EdgeQueryContext::new(key))
+          })
+          .collect()
       }
       Property(q) => {
         let mut result = HashMap::default();
