@@ -1,5 +1,5 @@
 use gravity::schema::{SchemaElement, Property};
-use crate::{HashId, Error};
+use crate::{Error, FsKvStore, HashId};
 use anyhow::bail;
 use std::io::{self, Write};
 use gravity::ql;
@@ -176,7 +176,7 @@ where
       println!("{}", id); // TODO opt.output, opt.output_fmt
     }
     DeleteNode {id} => {
-      let mut db = open(&opt.db_path)?;
+      let mut db = open::<T>(&opt.db_path)?;
       db.delete_node(id)?;
       log::info!("deleted node {}", id);
     }
@@ -206,7 +206,7 @@ where
       let query = read_input(opt.input)?;
       let query = crate::to_query(&query)?;
 
-      let db = open(&opt.db_path)?;
+      let db = open::<T>(&opt.db_path)?;
       let result = db.query(query)?;
 
 
@@ -228,7 +228,7 @@ where
         use std::sync::Arc;
 
         let path = crate::Path::new(&path);
-        match open(&path) {
+        match open::<T>(&path) {
           Ok(db) => Ok(db),
           Err(e) => Err(LuaError::ExternalError(Arc::new(e))),
         }
@@ -277,32 +277,32 @@ where
       let data = read_input(opt.input)?;
       //let mut data: crate::ql::QueryResult = serde_json::from_slice(&data)?;
 
-      let db = open(&opt.db_path)?;
+      let db = open::<T>(&opt.db_path)?;
       //TODO Über die db die Variablen im mit den Properties füllen
 
       // TODO verschiedene output formate
       println!("{}", serde_json::to_string_pretty(&data)?); // TODO wenn kein Terminal sondern eine pipe verwendet wird kann man kompakteres json ausgeben.
     }
     Init => {
-      init(&opt.db_path)?;
+      init::<T>(&opt.db_path)?;
     }
   }
 
   Ok(())
 }
 
-fn open<T>(path: &Path) -> Result<FsStore<T>, Error>
+fn open<T>(path: &Path) -> Result<FsStore<T, FsKvStore<T>>, Error>
 where
   T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
 {
-  let kv = FsStore::<T>::open(path)?;
-  Ok(kv)
+  let kv = FsKvStore::<T>::open(path)?;
+  Ok(FsStore::from_kv(kv))
 }
 
-fn init<T>(path: &Path) -> Result<FsStore<T>, Error>
+fn init<T>(path: &Path) -> Result<FsStore<T, FsKvStore<T>>, Error>
 where
   T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
 {
-  let kv = FsStore::<T>::init(path)?;
-  Ok(kv)
+  let kv = FsKvStore::<T>::init(path)?;
+  Ok(FsStore::from_kv(kv))
 }

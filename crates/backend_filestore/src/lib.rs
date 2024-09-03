@@ -128,12 +128,12 @@ type QueryResult = ql::QueryResult<uuid::Uuid, HashId>;
 type NodeCtx = HashMap<uuid::Uuid, ql::VertexQueryContext<uuid::Uuid, HashId>>;
 type EdgeCtx = HashMap<HashId, ql::EdgeQueryContext<uuid::Uuid, HashId>>;
 
-pub struct FsStore<T: Property<HashId, Error>> {
+pub struct FsKvStore<T: Property<HashId, Error>> {
   p_marker: std::marker::PhantomData<T>,
   base_path: PathBuf,
 }
 
-impl<'a, T: Property<HashId, Error>> KVStore<Error> for FsStore<T>
+impl<'a, T: Property<HashId, Error>> KVStore<Error> for FsKvStore<T>
 {
   fn create_bucket(&self, key: &[u8]) -> Result<(), Error> {
     Ok(std::fs::create_dir_all(self.key_to_path(key))?)
@@ -206,7 +206,7 @@ impl<'a, T: Property<HashId, Error>> KVStore<Error> for FsStore<T>
   }
 }
 
-impl<T: Property<HashId, Error>> FsStore<T> {
+impl<T: Property<HashId, Error>> FsKvStore<T> {
   fn key_to_path(&self, key: &[u8]) -> PathBuf {
     let path = Path::new(OsStr::from_bytes(key));
     PathBuf::from(self.base_path.join(path))
@@ -772,7 +772,7 @@ impl<T: Property<HashId, Error>> FsStore<T> {
         return Err(Error::MalformedDB);
     }
 
-    Ok(FsStore {
+    Ok(FsKvStore {
       base_path: path.to_path_buf(),
       p_marker: std::marker::PhantomData,
     })
@@ -792,11 +792,583 @@ impl<T: Property<HashId, Error>> FsStore<T> {
     fs::create_dir_all(&path.join("props/"))?;
     fs::create_dir_all(&path.join("indexes/"))?;
 
-    Ok(FsStore {
+    Ok(FsKvStore {
       base_path: path.to_path_buf(),
       p_marker: std::marker::PhantomData,
     })
   }
+}
+
+pub struct FsStore<T, K>
+where
+  T: Property<HashId, Error>,
+  K: KVStore<Error>,
+{
+  p_marker: std::marker::PhantomData<T>,
+  kv: K,
+}
+
+impl<T, K> FsStore<T, K>
+where
+  T: Property<HashId, Error>,
+  K: KVStore<Error>,
+{
+  pub fn from_kv(kv: K) -> Self {
+    FsStore {
+      p_marker: std::marker::PhantomData,
+      kv,
+    }
+  }
+
+  pub fn create_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), Error> {
+    let props_hash = self.create_property(properties)?;
+    let node = NodeData {
+      id: id,
+      properties: props_hash.clone(),
+      incoming: BTreeSet::new(),
+      outgoing: BTreeSet::new(),
+    };
+    let id = node.get_key();
+    let node = SchemaElement::serialize(&node)?;
+
+    let path = "nodes/".to_string() + &id;
+
+    if self.kv.exists(path.as_bytes())? {
+      log::error!("node {:?} allready exists", path);
+      return Err(Error::NodeExists);
+    };
+
+    log::debug!("creating node file {:?} with content {}", path, String::from_utf8_lossy(&node));
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+
+    Ok(())
+  }
+
+  pub fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error> {
+    let path = "nodes/".to_string() + &uuid_to_key(id);
+
+    let data = self.kv.fetch_record(path.as_bytes())?;
+    let node: NodeData = SchemaElement::deserialize(&data)?;
+    Ok(node)
+  }
+
+  pub fn update_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), Error> {
+    let props_hash = self.create_property(properties)?;
+    let path = "nodes/".to_string() + &uuid_to_key(id);
+    let NodeData {
+      id,
+      properties: old_properties,
+      incoming,
+      outgoing,
+    } = self.read_node(id)?;
+    let node = NodeData {
+      id: id,
+      properties: props_hash.clone(),
+      incoming: incoming,
+      outgoing: outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    let id = uuid_to_key(id);
+    let last_reference = self.kv.delete_property_backlink(&old_properties, &id, BacklinkType::Node)?;
+    if last_reference {
+      self.delete_property(&old_properties)?;
+    }
+
+    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+
+    Ok(())
+  }
+
+  pub fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), Error> {
+    let NodeData {
+      id,
+      properties,
+      incoming: _,
+      outgoing: _,
+    } = self.read_node(id)?;
+
+    let id = uuid_to_key(id);
+    let path = "nodes/".to_string() + &id;
+
+    let last_reference = self.kv.delete_property_backlink(&properties, &id, BacklinkType::Node)?;
+    if last_reference {
+      self.delete_property(&properties)?;
+    }
+
+    self.kv.delete_record(path.as_bytes())?;
+    Ok(())
+  }
+
+  pub fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, Error> {
+    let props_hash = self.create_property(properties)?;
+    let edge = EdgeData {
+      n1: n1,
+      n2: n2,
+      properties: props_hash.clone(),
+    };
+
+    let hash = edge.get_key();
+    let path = "edges/".to_string() + &hash;
+
+    let edge = SchemaElement::serialize(&edge)?;
+    self.kv.store_record(&path.as_bytes(), &edge)?;
+
+    self.kv.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
+
+    let path = "nodes/".to_string() + &uuid_to_key(n1);
+    let NodeData {
+      id,
+      properties,
+      incoming,
+      mut outgoing,
+    } = self.read_node(n1)?;
+    outgoing.insert(hash.clone());
+    let node = NodeData {
+      id,
+      properties,
+      incoming,
+      outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    let path = "nodes/".to_string() + &uuid_to_key(n2);
+    let NodeData {
+      id,
+      properties,
+      mut incoming,
+      outgoing,
+    } = self.read_node(n2)?;
+    incoming.insert(hash.clone());
+    let node = NodeData {
+      id,
+      properties,
+      incoming,
+      outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    Ok(hash)
+  }
+
+  pub fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error> {
+    let path = "edges/".to_string() + id;
+
+    let data = self.kv.fetch_record(path.as_bytes())?;
+    let edge = SchemaElement::deserialize(&data)?;
+    Ok(edge)
+  }
+
+  pub fn delete_edge(&mut self, id: &HashId) -> Result<(), Error> {
+    let EdgeData {
+      properties: props_hash,
+      n1,
+      n2,
+    } = self.read_edge(id)?;
+
+    let path = "edges/".to_string() + id;
+
+    self.kv.delete_record(&path.as_bytes())?;
+
+    let path = "nodes/".to_string() + &uuid_to_key(n1);
+    let NodeData {
+      id: _id,
+      properties,
+      incoming,
+      mut outgoing,
+    } = self.read_node(n1)?;
+    outgoing.remove(id);
+    let node = NodeData {
+      id: n1,
+      properties,
+      incoming,
+      outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    let path = "nodes/".to_string() + &uuid_to_key(n2);
+    let NodeData {
+      id: _id,
+      properties,
+      mut incoming,
+      outgoing,
+    } = self.read_node(n2)?;
+    incoming.remove(id);
+    let node = NodeData {
+      id: n2,
+      properties,
+      incoming,
+      outgoing,
+    };
+    let node = SchemaElement::serialize(&node)?;
+    self.kv.store_record(&path.as_bytes(), &node)?;
+
+    let last_reference = self.kv.delete_property_backlink(&props_hash, &id, BacklinkType::Edge)?;
+    if last_reference {
+      self.delete_property(&props_hash)?;
+    }
+
+    Ok(())
+  }
+
+  pub fn create_property(&mut self, properties: &T) -> Result<HashId, Error> {
+    let hash = properties.get_key();
+    let path = "props/".to_string() + &hash;
+
+    let data = properties.serialize()?;
+    log::debug!("creating property file {:?} with content {}", path, String::from_utf8_lossy(&data));
+    self.kv.store_record(&path.as_bytes(), &data)?;
+
+    properties.nested().iter().try_for_each(|nested| {
+      match self.create_property(nested) {
+        Ok(nested_hash) => {
+          self.kv.create_idx_backlink(&nested_hash, &hash, BacklinkType::Property)?;
+          Ok(())
+        }
+        Err(e) => {
+          use Error::*;
+          match e {
+            ExistedBefore => Ok(()),
+            _ => Err(e),
+          }
+        }
+      }
+    })?;
+
+    Ok(hash)
+  }
+
+  pub fn read_property(&mut self, id: &HashId) -> Result<T, Error> {
+    let path = "props/".to_string() + id;
+
+    let data = self.kv.fetch_record(path.as_bytes())?;
+    let property = SchemaElement::deserialize(&data)?;
+    Ok(property)
+  }
+
+  pub fn delete_property(&mut self, id: &HashId) -> Result<(), Error> {
+    let path = "props/".to_string() + id;
+
+    let data = self.kv.fetch_record(&path.as_bytes())?;
+    let properties: T = SchemaElement::deserialize(&data)?;
+
+    for nested in properties.nested().iter() {
+      let nested_hash = nested.get_key();
+      let last_reference = self.kv.delete_property_backlink(&nested_hash, id, BacklinkType::Property)?;
+      if last_reference {
+        self.delete_property(&nested_hash)?;
+      }
+    }
+
+    self.kv.delete_record(path.as_bytes())?;
+    Ok(())
+  }
+
+  pub fn query(&self, q: BasicQuery) -> Result<QueryResult, Error> {
+    let context = match q {
+      BasicQuery::V(q) => {
+        self.query_nodes(q)?.into()
+      }
+      BasicQuery::E(q) => {
+        self.query_edges(q)?.into()
+      }
+      BasicQuery::P(q) => {
+        self.query_property_nodes(q)?.into()
+      }
+    };
+
+    Ok(context)
+  }
+
+  fn query_nodes(
+    &self,
+    q: ql::VertexQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>
+  ) -> Result<NodeCtx, Error> {
+    use ql::VertexQuery::*;
+
+    let result = match q {
+      All => {
+        let mut result = HashMap::default();
+
+        for entry in self.kv.list_records("nodes/".as_bytes())? {
+          let id = String::from_utf8(entry)
+            .or(Err(Error::MalformedDB))?;
+          let id = uuid::Uuid::parse_str(&id)?;
+          result.insert(id, ql::VertexQueryContext::new(id));
+        }
+
+        result
+      }
+      Specific(ids) => {
+        let mut result = HashMap::default();
+
+        for id in ids.into_iter() {
+          result.insert(id, ql::VertexQueryContext::new(id));
+        }
+
+        result
+      }
+      Property(q) => {
+        let mut result = HashMap::default();
+
+        for prop_id in self.query_properties(q)? {
+          let index_path = "indexes/".to_string() + &prop_id + "/";
+          for entry in self.kv.list_records(index_path.as_bytes())? {
+            let reference = String::from_utf8(entry)
+              .or(Err(Error::MalformedDB))?;
+            let (prefix, reference) = reference
+              .split_once("_")
+              .ok_or(Error::MalformedDB)?;
+            if prefix == "nodes" {
+              let id = uuid::Uuid::parse_str(reference)?;
+              result.insert(id, ql::VertexQueryContext::new(id));
+            }
+          }
+        }
+
+        result
+      }
+      Union(sub1, sub2) => {
+        node_union(
+          self.query_nodes(*sub1)?,
+          self.query_nodes(*sub2)?
+        )
+      }
+      Intersect(sub1, sub2) => {
+        node_intersection(
+          self.query_nodes(*sub1)?,
+          self.query_nodes(*sub2)?,
+        )
+      }
+      Substract(sub1, sub2) => {
+        let mut subcontext = self.query_nodes(*sub1)?;
+        let subcontext2 = self.query_nodes(*sub2)?;
+
+        subcontext
+          .retain(|k, _v| !subcontext2.contains_key(k));
+
+        subcontext
+      }
+      DisjunctiveUnion(sub1, sub2) => {
+        let mut subcontext = self.query_nodes(*sub1)?;
+        let mut subcontext2 = self.query_nodes(*sub2)?;
+
+        let mut result = HashMap::default();
+
+        result.extend(subcontext.clone().into_iter().filter(|(k, _)| subcontext2.contains_key(k)));
+        result.extend(subcontext2.into_iter().filter(|(k, _)| subcontext.contains_key(k)));
+
+        result
+      }
+      Store(_q) => unreachable!(),
+      Out(q) => {
+        let context = self.query_edges(q)?;
+
+        let mut result = HashMap::default();
+
+        for (edge_id, ctx) in context.into_iter() {
+          let edge = self.read_edge(&edge_id)?;
+          result.insert(edge.n2, ctx.into_vertex_ctx(edge.n2));
+        }
+
+        result
+      }
+      In(q) => {
+        let context = self.query_edges(q)?;
+
+        let mut result = HashMap::default();
+
+        for (edge_id, ctx) in context.into_iter() {
+          let edge = self.read_edge(&edge_id)?;
+          result.insert(edge.n1, ctx.into_vertex_ctx(edge.n1));
+        }
+
+        result
+      }
+      Filter(_q, _filter) => unreachable!(),
+    };
+
+    Ok(result)
+  }
+
+  fn query_edges(
+    &self,
+    q: ql::EdgeQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>,
+  ) -> Result<EdgeCtx, Error> {
+    use ql::EdgeQuery::*;
+
+    let result = match q {
+      All => {
+        let mut result = HashMap::default();
+
+        for entry in self.kv.list_records("edges/".as_bytes())? {
+          let id = String::from_utf8(entry)
+            .or(Err(Error::MalformedDB))?;
+          let key = id.clone();
+          result.insert(id, ql::EdgeQueryContext::new(key));
+        }
+
+        result
+      }
+      Specific(ids) => {
+        let mut result = HashMap::default();
+
+        for id in ids.into_iter() {
+          let key = id.clone();
+          result.insert(id, ql::EdgeQueryContext::new(key));
+        }
+
+        result
+      }
+      Property(q) => {
+        let mut result = HashMap::default();
+
+        for prop_id in self.query_properties(q)? {
+          let index_path = "indexes/".to_string() + &prop_id + "/";
+          for entry in self.kv.list_records(index_path.as_bytes())? {
+            let reference = String::from_utf8(entry)
+              .or(Err(Error::MalformedDB))?;
+            let (prefix, reference) = reference
+              .split_once("_")
+              .ok_or(Error::MalformedDB)?;
+            if prefix == "edges" {
+              let id = reference.to_string();
+              let key = id.clone();
+              result.insert(id, ql::EdgeQueryContext::new(key));
+            }
+          }
+        }
+
+        result
+      }
+      Union(sub1, sub2) => {
+        let mut result = self.query_edges(*sub1)?;
+
+        result.extend(self.query_edges(*sub2)?.into_iter());
+        result
+      }
+      Intersect(sub1, sub2) => {
+        let mut result = self.query_edges(*sub1)?;
+        let mut c2 = self.query_edges(*sub2)?;
+
+        c2.retain(|k, _v| result.contains_key(k));
+        result.retain(|k, _v| c2.contains_key(k));
+        result
+      }
+      Substract(sub1, sub2) => {
+        let mut subcontext = self.query_edges(*sub1)?;
+        let subcontext2 = self.query_edges(*sub2)?;
+
+        subcontext
+          .retain(|k, _v| !subcontext2.contains_key(k));
+
+        subcontext
+      }
+      DisjunctiveUnion(sub1, sub2) => {
+        let mut subcontext = self.query_edges(*sub1)?;
+        let mut subcontext2 = self.query_edges(*sub2)?;
+
+        let mut result = HashMap::default();
+
+        result.extend(subcontext.clone().into_iter().filter(|(k, _)| subcontext2.contains_key(k)));
+        result.extend(subcontext2.into_iter().filter(|(k, _)| subcontext.contains_key(k)));
+
+        result
+      }
+      Store(_q) => unreachable!(),
+      Out(q) => {
+        let context = self.query_nodes(*q)?;
+
+        let mut result = HashMap::default();
+
+        for (node_id, ctx) in context.into_iter() {
+          let node = self.read_node(node_id)?;
+          for edge_id in node.outgoing.into_iter() {
+            let key = edge_id.clone();
+            result.insert(edge_id, ctx.clone().into_edge_ctx(key));
+          }
+        }
+
+        result
+      }
+      In(q) => {
+        let context = self.query_nodes(*q)?;
+
+        let mut result = HashMap::default();
+
+        for (node_id, ctx) in context.into_iter() {
+          let node = self.read_node(node_id)?;
+          for edge_id in node.incoming.into_iter() {
+            let key = edge_id.clone();
+            result.insert(edge_id, ctx.clone().into_edge_ctx(key));
+          }
+        }
+
+        result
+      }
+      Filter(_q, _filter) => unreachable!(),
+    };
+
+    Ok(result)
+  }
+
+  fn query_property_nodes(
+    &self,
+    q: ql::PropertyQuery<HashId>
+  ) -> Result<NodeCtx, Error> {
+    let mut result = HashMap::default();
+
+    let properties = self.query_properties(q)?;
+    // TODO Wie bei ReferencedProperties properties aber Verweise auf Knoten herausfiltern
+
+    Ok(result)
+  }
+
+  fn query_properties(
+    &self,
+    q: ql::PropertyQuery<HashId>
+  ) -> Result<HashSet<HashId>, Error> {
+    use ql::PropertyQuery::*;
+
+    let mut result = HashSet::default();
+
+    match q {
+      Specific(id) => {
+        let path = "props/".to_string() + &id;
+        if self.kv.exists(path.as_bytes())?
+        {
+          result.insert(id);
+        }
+      }
+      ReferencingProperties(q) => {
+        for prop_id in self.query_properties(*q)? {
+          let index_path = "indexes/".to_string() + &prop_id + "/";
+          for entry in self.kv.list_records(index_path.as_bytes())? {
+            let reference = String::from_utf8(entry)
+              .or(Err(Error::MalformedDB))?;
+            let (prefix, reference) = reference
+              .split_once("_")
+              .ok_or(Error::MalformedDB)?;
+            if prefix == "props" {
+              result.insert(reference.to_string());
+            }
+          }
+        }
+      }
+      ReferencedProperties(q) => {
+        // TODO Hier benötigen wir das Schema
+      }
+    };
+
+    Ok(result)
+  }
+
 }
 
 #[derive(Error, Debug)]
@@ -815,10 +1387,11 @@ pub enum Error {
   Uuid { #[from] source: uuid::Error },
 }
 
-impl<N, P> GraphBuilder<N, P, Error> for FsStore<P>
+impl<N, P, K> GraphBuilder<N, P, Error> for FsStore<P, K>
 where
   N: Node<P>,
   P: Property<HashId, Error>,
+  K: KVStore<Error>,
 {
   fn add_node(&mut self, node: N) -> Result<(), Error> {
     let p = node.properties();
@@ -848,9 +1421,10 @@ where
   }
 }
 
-impl<P> mlua::UserData for FsStore<P>
+impl<P, K> mlua::UserData for FsStore<P, K>
 where
   P: Property<HashId, Error> + mlua::UserData + std::clone::Clone + 'static,
+  K: KVStore<Error>,
 {
   fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
     use mlua::prelude::LuaError;
