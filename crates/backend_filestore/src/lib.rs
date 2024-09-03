@@ -337,7 +337,7 @@ where
         )
       }
       Intersect(sub1, sub2) => {
-        node_intersection(
+        intersection(
           self.query_nodes(*sub1)?,
           self.query_nodes(*sub2)?,
         )
@@ -439,12 +439,10 @@ where
         )
       }
       Intersect(sub1, sub2) => {
-        let mut result = self.query_edges(*sub1)?;
-        let mut c2 = self.query_edges(*sub2)?;
-
-        c2.retain(|k, _v| result.contains_key(k));
-        result.retain(|k, _v| c2.contains_key(k));
-        result
+        intersection(
+          self.query_edges(*sub1)?,
+          self.query_edges(*sub2)?
+        )
       }
       Substract(sub1, sub2) => {
         let mut subcontext = self.query_edges(*sub1)?;
@@ -913,11 +911,13 @@ where
   result
 }
 
-fn node_intersection(
-  c1: NodeCtx,
-  c2: NodeCtx
+fn intersection<K, V>(
+  c1: HashMap<K, V>,
+  c2: HashMap<K, V>
 ) ->
-  NodeCtx
+  HashMap<K, V>
+where
+  K: Eq + Hash,
 {
   let mut result = c1;
   let mut c2 = c2;
