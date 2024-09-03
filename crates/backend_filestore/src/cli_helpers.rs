@@ -4,7 +4,7 @@ use anyhow::bail;
 use std::io::{self, Write};
 use gravity::ql;
 use crate::FsStore;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use std::io::Read;
 use anyhow::Result;
@@ -166,7 +166,7 @@ where
         }
       };
 
-      let mut db = FsStore::open(&opt.db_path)?;
+      let mut db = open(&opt.db_path)?;
       if !update {
         db.create_node(id, &properties)?;
       } else {
@@ -176,7 +176,7 @@ where
       println!("{}", id); // TODO opt.output, opt.output_fmt
     }
     DeleteNode {id} => {
-      let mut db = FsStore::<T>::open(&opt.db_path)?;
+      let mut db = open(&opt.db_path)?;
       db.delete_node(id)?;
       log::info!("deleted node {}", id);
     }
@@ -184,7 +184,7 @@ where
       let properties = read_input(opt.input)?;
       let properties: T = SchemaElement::deserialize(&properties)?;
 
-      let mut db = FsStore::open(&opt.db_path)?;
+      let mut db = open(&opt.db_path)?;
       let id = db.create_edge(n1, n2, &properties)?;
 
       println!("{}", id); // TODO opt.output, opt.output_fmt
@@ -206,7 +206,7 @@ where
       let query = read_input(opt.input)?;
       let query = crate::to_query(&query)?;
 
-      let db = FsStore::<T>::open(&opt.db_path)?;
+      let db = open(&opt.db_path)?;
       let result = db.query(query)?;
 
 
@@ -228,7 +228,7 @@ where
         use std::sync::Arc;
 
         let path = crate::Path::new(&path);
-        match FsStore::<T>::open(&path) {
+        match open(&path) {
           Ok(db) => Ok(db),
           Err(e) => Err(LuaError::ExternalError(Arc::new(e))),
         }
@@ -277,16 +277,32 @@ where
       let data = read_input(opt.input)?;
       //let mut data: crate::ql::QueryResult = serde_json::from_slice(&data)?;
 
-      let db = FsStore::<T>::open(&opt.db_path)?;
+      let db = open(&opt.db_path)?;
       //TODO Über die db die Variablen im mit den Properties füllen
 
       // TODO verschiedene output formate
       println!("{}", serde_json::to_string_pretty(&data)?); // TODO wenn kein Terminal sondern eine pipe verwendet wird kann man kompakteres json ausgeben.
     }
     Init => {
-      FsStore::<T>::init(&opt.db_path)?;
+      init(&opt.db_path)?;
     }
   }
 
   Ok(())
+}
+
+fn open<T>(path: &Path) -> Result<FsStore<T>, Error>
+where
+  T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
+{
+  let kv = FsStore::<T>::open(path)?;
+  Ok(kv)
+}
+
+fn init<T>(path: &Path) -> Result<FsStore<T>, Error>
+where
+  T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
+{
+  let kv = FsStore::<T>::init(path)?;
+  Ok(kv)
 }
