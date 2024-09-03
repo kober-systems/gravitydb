@@ -153,8 +153,7 @@ impl<'a, T: Property<HashId, Error>> KVStore for FsStore<T>
     std::fs::read(self.key_to_path(key))
   }
 
-  fn list_records(&self, key: Option<&[u8]>) -> Result<Vec<Vec<u8>>, Self::Error> {
-    let key = key.unwrap_or("".as_bytes());
+  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, Self::Error> {
     let iter: Vec<Vec<u8>> = fs::read_dir(self.key_to_path(key))?.into_iter().filter_map(|entry| {
       match entry {
         Ok(entry) => Some(entry.file_name().into_encoded_bytes()),
@@ -201,8 +200,7 @@ impl<T: Property<HashId, Error>> GraphStoreHelper<Error> for FsStore<T> {
     let backlink_path = index_path.clone() + prefix + "_" + id;
     self.delete_record(backlink_path.as_bytes())?;
 
-    let index_path = self.key_to_path(index_path.as_bytes());
-    if fs::read_dir(&index_path)?.next().is_none() {
+    if self.list_records(index_path.as_bytes())?.is_empty() {
       fs::remove_dir(&index_path)?;
 
       Ok(true)
@@ -494,11 +492,8 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       All => {
         let mut result = HashMap::default();
 
-        for entry in fs::read_dir(self.base_path.join("nodes/"))? {
-          let entry = entry?;
-          let id = entry
-            .file_name()
-            .into_string()
+        for entry in self.list_records("nodes/".as_bytes())? {
+          let id = String::from_utf8(entry)
             .or(Err(Error::MalformedDB))?;
           let id = uuid::Uuid::parse_str(&id)?;
           result.insert(id, ql::VertexQueryContext::new(id));
@@ -519,21 +514,16 @@ impl<T: Property<HashId, Error>> FsStore<T> {
         let mut result = HashMap::default();
 
         for prop_id in self.query_properties(q)? {
-          let index_path = self.base_path.join("indexes/");
-          let index_path = index_path.join(prop_id + "/");
-          for entry in fs::read_dir(&index_path)?.into_iter() {
-            if let Ok(entry) = entry {
-              let reference = entry
-                .file_name()
-                .into_string()
-                .or(Err(Error::MalformedDB))?;
-              let (prefix, reference) = reference
-                .split_once("_")
-                .ok_or(Error::MalformedDB)?;
-              if prefix == "nodes" {
-                let id = uuid::Uuid::parse_str(reference)?;
-                result.insert(id, ql::VertexQueryContext::new(id));
-              }
+          let index_path = "indexes/".to_string() + &prop_id + "/";
+          for entry in self.list_records(index_path.as_bytes())? {
+            let reference = String::from_utf8(entry)
+              .or(Err(Error::MalformedDB))?;
+            let (prefix, reference) = reference
+              .split_once("_")
+              .ok_or(Error::MalformedDB)?;
+            if prefix == "nodes" {
+              let id = uuid::Uuid::parse_str(reference)?;
+              result.insert(id, ql::VertexQueryContext::new(id));
             }
           }
         }
@@ -613,11 +603,8 @@ impl<T: Property<HashId, Error>> FsStore<T> {
       All => {
         let mut result = HashMap::default();
 
-        for entry in fs::read_dir(self.base_path.join("edges/"))? {
-          let entry = entry?;
-          let id = entry
-            .file_name()
-            .into_string()
+        for entry in self.list_records("edges/".as_bytes())? {
+          let id = String::from_utf8(entry)
             .or(Err(Error::MalformedDB))?;
           let key = id.clone();
           result.insert(id, ql::EdgeQueryContext::new(key));
@@ -639,22 +626,17 @@ impl<T: Property<HashId, Error>> FsStore<T> {
         let mut result = HashMap::default();
 
         for prop_id in self.query_properties(q)? {
-          let index_path = self.base_path.join("indexes/");
-          let index_path = index_path.join(prop_id + "/");
-          for entry in fs::read_dir(&index_path)?.into_iter() {
-            if let Ok(entry) = entry {
-              let reference = entry
-                .file_name()
-                .into_string()
-                .or(Err(Error::MalformedDB))?;
-              let (prefix, reference) = reference
-                .split_once("_")
-                .ok_or(Error::MalformedDB)?;
-              if prefix == "edges" {
-                let id = reference.to_string();
-                let key = id.clone();
-                result.insert(id, ql::EdgeQueryContext::new(key));
-              }
+          let index_path = "indexes/".to_string() + &prop_id + "/";
+          for entry in self.list_records(index_path.as_bytes())? {
+            let reference = String::from_utf8(entry)
+              .or(Err(Error::MalformedDB))?;
+            let (prefix, reference) = reference
+              .split_once("_")
+              .ok_or(Error::MalformedDB)?;
+            if prefix == "edges" {
+              let id = reference.to_string();
+              let key = id.clone();
+              result.insert(id, ql::EdgeQueryContext::new(key));
             }
           }
         }
@@ -754,31 +736,23 @@ impl<T: Property<HashId, Error>> FsStore<T> {
 
     match q {
       Specific(id) => {
-        if self
-          .base_path
-          .join("props/")
-          .join(&id)
-          .exists()
+        let path = "props/".to_string() + &id;
+        if self.exists(path.as_bytes())?
         {
           result.insert(id);
         }
       }
       ReferencingProperties(q) => {
         for prop_id in self.query_properties(*q)? {
-          let index_path = self.base_path.join("indexes/");
-          let index_path = index_path.join(prop_id + "/");
-          for entry in fs::read_dir(&index_path)?.into_iter() {
-            if let Ok(entry) = entry {
-              let reference = entry
-                .file_name()
-                .into_string()
-                .or(Err(Error::MalformedDB))?;
-              let (prefix, reference) = reference
-                .split_once("_")
-                .ok_or(Error::MalformedDB)?;
-              if prefix == "props" {
-                result.insert(reference.to_string());
-              }
+          let index_path = "indexes/".to_string() + &prop_id + "/";
+          for entry in self.list_records(index_path.as_bytes())? {
+            let reference = String::from_utf8(entry)
+              .or(Err(Error::MalformedDB))?;
+            let (prefix, reference) = reference
+              .split_once("_")
+              .ok_or(Error::MalformedDB)?;
+            if prefix == "props" {
+              result.insert(reference.to_string());
             }
           }
         }

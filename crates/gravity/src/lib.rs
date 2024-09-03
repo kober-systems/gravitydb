@@ -81,7 +81,7 @@ pub trait KVStore {
   /// delete a data record (could also be a bucket)
   fn delete_record(&self, key: &[u8]) -> Result<(), Self::Error>;
   /// list all records and buckets inside a bucket
-  fn list_records(&self, key: Option<&[u8]>) -> Result<Vec<Vec<u8>>, Self::Error>;
+  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, Self::Error>;
   /// store a data record
   fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error>;
   /// fetch a data record
