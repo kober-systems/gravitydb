@@ -86,6 +86,7 @@ pub trait KVStore {
   fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error>;
   /// fetch a data record
   fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error>;
+  /// check if an entry exists in the database
   fn exists(&self, key: &[u8]) -> Result<bool, Self::Error>;
 }
 
