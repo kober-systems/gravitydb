@@ -88,6 +88,13 @@ pub trait KVStore {
   fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error>;
   /// check if an entry exists in the database
   fn exists(&self, key: &[u8]) -> Result<bool, Self::Error>;
+
+  // helper functions used to implement the default api
+
+  /// create a backlink to an entry
+  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Self::Error>;
+  /// delete a backlink from an entry
+  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Self::Error>;
 }
 
 pub trait GraphStore<K, T, E> {
@@ -107,12 +114,6 @@ pub trait GraphStore<K, T, E> {
   // Query functions
   //       TODO these functions should have a default implementation
   //fn query(&self, q: BasicQuery) -> Result<QueryResult, E>;
-}
-
-pub trait GraphStoreHelper<E> {
-  /// helper functions used to implement the default api
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), E>;
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
 }
 
 //use crate::schema::SchemaElement;

@@ -17,7 +17,7 @@ pub trait Node<P: Property<HashId, Error>> {
   fn properties(&self) -> P;
 }
 
-use gravity::{KVStore, GraphStoreHelper, BacklinkType};
+use gravity::{KVStore, BacklinkType};
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
@@ -166,14 +166,12 @@ impl<'a, T: Property<HashId, Error>> KVStore for FsStore<T>
   fn exists(&self, key: &[u8]) -> Result<bool, Self::Error> {
     Ok(self.key_to_path(key).exists())
   }
-}
 
-impl<T: Property<HashId, Error>> GraphStoreHelper<Error> for FsStore<T> {
   /// props_hash: the hash_id of the property that holds the index
   /// id:         the id of the node, edge or property that references
   ///             the property and needs a backling
   /// ty:         the type of the element that needs a backlink
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Error> {
+  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Self::Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
     self.create_bucket(index_path.as_bytes())?;
 
@@ -189,7 +187,7 @@ impl<T: Property<HashId, Error>> GraphStoreHelper<Error> for FsStore<T> {
     Ok(())
   }
 
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Error> {
+  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Self::Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
 
     let prefix = match ty {
