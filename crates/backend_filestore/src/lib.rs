@@ -274,7 +274,7 @@ where
   pub fn create_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), Error> {
     let props_hash = self.create_property(properties)?;
     let node = NodeData {
-      id: id,
+      id,
       properties: props_hash.clone(),
       incoming: BTreeSet::new(),
       outgoing: BTreeSet::new(),
@@ -315,10 +315,10 @@ where
       outgoing,
     } = self.read_node(id)?;
     let node = NodeData {
-      id: id,
+      id,
       properties: props_hash.clone(),
-      incoming: incoming,
-      outgoing: outgoing,
+      incoming,
+      outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
     self.kv.store_record(&path.as_bytes(), &node)?;
@@ -357,8 +357,8 @@ where
   pub fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, Error> {
     let props_hash = self.create_property(properties)?;
     let edge = EdgeData {
-      n1: n1,
-      n2: n2,
+      n1,
+      n2,
       properties: props_hash.clone(),
     };
 
@@ -607,8 +607,8 @@ where
         subcontext
       }
       DisjunctiveUnion(sub1, sub2) => {
-        let mut subcontext = self.query_nodes(*sub1)?;
-        let mut subcontext2 = self.query_nodes(*sub2)?;
+        let subcontext = self.query_nodes(*sub1)?;
+        let subcontext2 = self.query_nodes(*sub2)?;
 
         let mut result = HashMap::default();
 
@@ -722,8 +722,8 @@ where
         subcontext
       }
       DisjunctiveUnion(sub1, sub2) => {
-        let mut subcontext = self.query_edges(*sub1)?;
-        let mut subcontext2 = self.query_edges(*sub2)?;
+        let subcontext = self.query_edges(*sub1)?;
+        let subcontext2 = self.query_edges(*sub2)?;
 
         let mut result = HashMap::default();
 
