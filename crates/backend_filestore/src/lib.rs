@@ -7,6 +7,7 @@ use gravity::{GraphBuilder, GraphStore};
 use gravity::schema::Property;
 use gravity::ql;
 pub use gravity::kv_graph_store::Error;
+use gravity::kv_graph_store::{NodeData, EdgeData};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -22,62 +23,6 @@ use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 
 type HashId = String;
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct NodeData {
-  pub id: uuid::Uuid,
-  // Schlüssel des Datensatzes, welcher die Eigenschaften
-  // des Knotens enthält
-  pub properties: HashId,
-  // Hashes der eingehenden Verbindungen (Edges)
-  pub incoming: BTreeSet<HashId>,
-  // Hashes der ausgehenden Verbindungen (Edges)
-  pub outgoing: BTreeSet<HashId>,
-}
-
-impl SchemaElement<String, Error> for NodeData
-{
-  fn get_key(&self) -> String {
-    uuid_to_key(self.id)
-  }
-
-  fn serialize(&self) -> Result<Vec<u8>, Error> {
-    Ok(serde_json::to_vec(self)?)
-  }
-
-  fn deserialize(data: &[u8]) -> Result<Self, Error>
-  where
-    Self: Sized,
-  {
-    Ok(serde_json::from_slice(data)?)
-  }
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct EdgeData {
-  pub properties: HashId,
-  pub n1: uuid::Uuid,
-  pub n2: uuid::Uuid,
-}
-
-impl SchemaElement<HashId, Error> for EdgeData
-{
-  fn get_key(&self) -> HashId {
-    let data = serde_json::to_vec(self).unwrap();
-    format!("{:X}", sha2::Sha256::digest(&data))
-  }
-
-  fn serialize(&self) -> Result<Vec<u8>, Error> {
-    Ok(serde_json::to_vec(self)?)
-  }
-
-  fn deserialize(data: &[u8]) -> Result<Self, Error>
-  where
-    Self: Sized,
-  {
-    Ok(serde_json::from_slice(data)?)
-  }
-}
 
 #[derive(Debug, Clone)]
 pub struct GenericProperty(Vec<u8>);
