@@ -343,13 +343,10 @@ where
         )
       }
       Substract(sub1, sub2) => {
-        let mut subcontext = self.query_nodes(*sub1)?;
-        let subcontext2 = self.query_nodes(*sub2)?;
-
-        subcontext
-          .retain(|k, _v| !subcontext2.contains_key(k));
-
-        subcontext
+        substraction(
+          self.query_nodes(*sub1)?,
+          self.query_nodes(*sub2)?
+        )
       }
       DisjunctiveUnion(sub1, sub2) => {
         let subcontext = self.query_nodes(*sub1)?;
@@ -445,13 +442,10 @@ where
         )
       }
       Substract(sub1, sub2) => {
-        let mut subcontext = self.query_edges(*sub1)?;
-        let subcontext2 = self.query_edges(*sub2)?;
-
-        subcontext
-          .retain(|k, _v| !subcontext2.contains_key(k));
-
-        subcontext
+        substraction(
+          self.query_edges(*sub1)?,
+          self.query_edges(*sub2)?
+        )
       }
       DisjunctiveUnion(sub1, sub2) => {
         let subcontext = self.query_edges(*sub1)?;
@@ -926,3 +920,20 @@ where
   result.retain(|k, _v| c2.contains_key(k));
   result
 }
+
+fn substraction<K, V>(
+  c1: HashMap<K, V>,
+  c2: HashMap<K, V>
+) ->
+  HashMap<K, V>
+where
+  K: Eq + Hash,
+{
+  let mut result = c1;
+
+  result
+    .retain(|k, _v| !c2.contains_key(k));
+
+  result
+}
+
