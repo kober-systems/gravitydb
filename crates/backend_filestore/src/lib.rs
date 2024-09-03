@@ -6,10 +6,10 @@ use std::fs;
 use gravity::{GraphBuilder, GraphStore};
 use gravity::schema::Property;
 use gravity::ql;
+pub use gravity::kv_graph_store::Error;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use thiserror::Error;
 pub mod cli_helpers;
 
 pub trait Node<P: Property<HashId, Error>> {
@@ -538,22 +538,6 @@ where
 
 }
 
-#[derive(Error, Debug)]
-pub enum Error {
-  #[error("wrongly formatted database at path TODO")]
-  MalformedDB,
-  #[error("io error")]
-  Io { #[from] source: std::io::Error },
-  #[error("node allready exists")]
-  NodeExists,
-  #[error("json error")]
-  Json { #[from] source: serde_json::Error },
-  #[error("the element existed before")]
-  ExistedBefore,
-  #[error("uuid parsing error (corrupted db)")]
-  Uuid { #[from] source: uuid::Error },
-}
-
 impl<N, P, K> GraphBuilder<N, P, Error> for FsStore<P, K>
 where
   N: Node<P>,
@@ -608,7 +592,7 @@ where
 
     if self.kv.exists(path.as_bytes())? {
       log::error!("node {:?} allready exists", path);
-      return Err(Error::NodeExists);
+      return Err(Error::NodeExists(path));
     };
 
     log::debug!("creating node file {:?} with content {}", path, String::from_utf8_lossy(&node));

@@ -3,7 +3,7 @@ use crate::{Error, FsKvStore, HashId};
 use anyhow::bail;
 use std::io::{self, Write};
 use gravity::{ql, GraphStore};
-use crate::FsStore;
+use gravity::kv_graph_store::KvGraphStore;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use std::io::Read;
@@ -291,18 +291,18 @@ where
   Ok(())
 }
 
-fn open<T>(path: &Path) -> Result<FsStore<T, FsKvStore<T>>, Error>
+fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore<T>>, Error>
 where
   T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
 {
   let kv = FsKvStore::<T>::open(path)?;
-  Ok(FsStore::from_kv(kv))
+  Ok(KvGraphStore::from_kv(kv))
 }
 
-fn init<T>(path: &Path) -> Result<FsStore<T, FsKvStore<T>>, Error>
+fn init<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore<T>>, Error>
 where
   T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
 {
   let kv = FsKvStore::<T>::init(path)?;
-  Ok(FsStore::from_kv(kv))
+  Ok(KvGraphStore::from_kv(kv))
 }
