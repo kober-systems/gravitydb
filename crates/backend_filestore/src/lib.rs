@@ -349,15 +349,10 @@ where
         )
       }
       DisjunctiveUnion(sub1, sub2) => {
-        let subcontext = self.query_nodes(*sub1)?;
-        let subcontext2 = self.query_nodes(*sub2)?;
-
-        let mut result = HashMap::default();
-
-        result.extend(subcontext.clone().into_iter().filter(|(k, _)| subcontext2.contains_key(k)));
-        result.extend(subcontext2.into_iter().filter(|(k, _)| subcontext.contains_key(k)));
-
-        result
+        disjunction(
+          self.query_nodes(*sub1)?,
+          self.query_nodes(*sub2)?
+        )
       }
       Store(_q) => unreachable!(),
       Out(q) => {
@@ -448,15 +443,10 @@ where
         )
       }
       DisjunctiveUnion(sub1, sub2) => {
-        let subcontext = self.query_edges(*sub1)?;
-        let subcontext2 = self.query_edges(*sub2)?;
-
-        let mut result = HashMap::default();
-
-        result.extend(subcontext.clone().into_iter().filter(|(k, _)| subcontext2.contains_key(k)));
-        result.extend(subcontext2.into_iter().filter(|(k, _)| subcontext.contains_key(k)));
-
-        result
+        disjunction(
+          self.query_edges(*sub1)?,
+          self.query_edges(*sub2)?
+        )
       }
       Store(_q) => unreachable!(),
       Out(q) => {
@@ -933,6 +923,23 @@ where
 
   result
     .retain(|k, _v| !c2.contains_key(k));
+
+  result
+}
+
+fn disjunction<K, V>(
+  c1: HashMap<K, V>,
+  c2: HashMap<K, V>
+) ->
+  HashMap<K, V>
+where
+  K: Eq + Hash + Clone,
+  V: Clone,
+{
+  let mut result = HashMap::default();
+
+  result.extend(c1.clone().into_iter().filter(|(k, _)| c2.contains_key(k)));
+  result.extend(c2.into_iter().filter(|(k, _)| c1.contains_key(k)));
 
   result
 }
