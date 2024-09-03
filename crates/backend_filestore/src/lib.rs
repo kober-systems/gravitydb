@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use gravity::schema::SchemaElement;
 use std::collections::BTreeSet;
 use std::fs;
-use gravity::GraphBuilder;
+use gravity::{GraphBuilder, GraphStore};
 use gravity::schema::Property;
 use gravity::ql;
 use std::collections::HashMap;
@@ -468,59 +468,6 @@ where
     Ok(())
   }
 
-  pub fn create_property(&mut self, properties: &T) -> Result<HashId, Error> {
-    let hash = properties.get_key();
-    let path = "props/".to_string() + &hash;
-
-    let data = properties.serialize()?;
-    log::debug!("creating property file {:?} with content {}", path, String::from_utf8_lossy(&data));
-    self.kv.store_record(&path.as_bytes(), &data)?;
-
-    properties.nested().iter().try_for_each(|nested| {
-      match self.create_property(nested) {
-        Ok(nested_hash) => {
-          self.kv.create_idx_backlink(&nested_hash, &hash, BacklinkType::Property)?;
-          Ok(())
-        }
-        Err(e) => {
-          use Error::*;
-          match e {
-            ExistedBefore => Ok(()),
-            _ => Err(e),
-          }
-        }
-      }
-    })?;
-
-    Ok(hash)
-  }
-
-  pub fn read_property(&mut self, id: &HashId) -> Result<T, Error> {
-    let path = "props/".to_string() + id;
-
-    let data = self.kv.fetch_record(path.as_bytes())?;
-    let property = SchemaElement::deserialize(&data)?;
-    Ok(property)
-  }
-
-  pub fn delete_property(&mut self, id: &HashId) -> Result<(), Error> {
-    let path = "props/".to_string() + id;
-
-    let data = self.kv.fetch_record(&path.as_bytes())?;
-    let properties: T = SchemaElement::deserialize(&data)?;
-
-    for nested in properties.nested().iter() {
-      let nested_hash = nested.get_key();
-      let last_reference = self.kv.delete_property_backlink(&nested_hash, id, BacklinkType::Property)?;
-      if last_reference {
-        self.delete_property(&nested_hash)?;
-      }
-    }
-
-    self.kv.delete_record(path.as_bytes())?;
-    Ok(())
-  }
-
   pub fn query(&self, q: BasicQuery) -> Result<QueryResult, Error> {
     let context = match q {
       BasicQuery::V(q) => {
@@ -868,6 +815,65 @@ where
     };
 
     self.delete_edge(&edge.get_key())?;
+    Ok(())
+  }
+}
+
+impl<P, K> GraphStore<HashId, P, Error> for FsStore<P, K>
+where
+  P: Property<HashId, Error>,
+  K: KVStore<Error>,
+{
+  fn create_property(&mut self, properties: &P) -> Result<HashId, Error> {
+    let hash = properties.get_key();
+    let path = "props/".to_string() + &hash;
+
+    let data = properties.serialize()?;
+    log::debug!("creating property file {:?} with content {}", path, String::from_utf8_lossy(&data));
+    self.kv.store_record(&path.as_bytes(), &data)?;
+
+    properties.nested().iter().try_for_each(|nested| {
+      match self.create_property(nested) {
+        Ok(nested_hash) => {
+          self.kv.create_idx_backlink(&nested_hash, &hash, BacklinkType::Property)?;
+          Ok(())
+        }
+        Err(e) => {
+          use Error::*;
+          match e {
+            ExistedBefore => Ok(()),
+            _ => Err(e),
+          }
+        }
+      }
+    })?;
+
+    Ok(hash)
+  }
+
+  fn read_property(&mut self, id: &HashId) -> Result<P, Error> {
+    let path = "props/".to_string() + id;
+
+    let data = self.kv.fetch_record(path.as_bytes())?;
+    let property = SchemaElement::deserialize(&data)?;
+    Ok(property)
+  }
+
+  fn delete_property(&mut self, id: &HashId) -> Result<(), Error> {
+    let path = "props/".to_string() + id;
+
+    let data = self.kv.fetch_record(&path.as_bytes())?;
+    let properties: P = SchemaElement::deserialize(&data)?;
+
+    for nested in properties.nested().iter() {
+      let nested_hash = nested.get_key();
+      let last_reference = self.kv.delete_property_backlink(&nested_hash, id, BacklinkType::Property)?;
+      if last_reference {
+        self.delete_property(&nested_hash)?;
+      }
+    }
+
+    self.kv.delete_record(path.as_bytes())?;
     Ok(())
   }
 }

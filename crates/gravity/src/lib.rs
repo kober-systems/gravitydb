@@ -105,9 +105,9 @@ pub trait GraphStore<K, T, E> {
   //fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, E>;
   //fn read_edge(&self, id: &HashId) -> Result<EdgeData, E>;
   //fn delete_edge(&mut self, id: &HashId) -> Result<(), E>;
-  //fn create_property(&mut self, properties: &T) -> Result<HashId, E>;
-  fn read_property(&mut self, id: K) -> Result<T, E>;
-  //fn delete_property(&mut self, id: &HashId) -> Result<(), E>;
+  fn create_property(&mut self, properties: &T) -> Result<K, E>;
+  fn read_property(&mut self, id: &K) -> Result<T, E>;
+  fn delete_property(&mut self, id: &K) -> Result<(), E>;
 
   // Query functions
   //       TODO these functions should have a default implementation
