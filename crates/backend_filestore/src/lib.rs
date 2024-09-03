@@ -302,7 +302,8 @@ where
               .or(Err(Error::MalformedDB))?;
             let id = uuid::Uuid::parse_str(&id)?;
             Ok((id, ql::VertexQueryContext::new(id)))
-        }).collect::<Result<HashMap<_,_>, Error>>()?
+        })
+        .collect::<Result<HashMap<_,_>, Error>>()?
       }
       Specific(ids) => {
         ids.into_iter()
@@ -363,28 +364,20 @@ where
       }
       Store(_q) => unreachable!(),
       Out(q) => {
-        let context = self.query_edges(q)?;
-
-        let mut result = HashMap::default();
-
-        for (edge_id, ctx) in context.into_iter() {
-          let edge = self.read_edge(&edge_id)?;
-          result.insert(edge.n2, ctx.into_vertex_ctx(edge.n2));
-        }
-
-        result
+        self.query_edges(q)?.into_iter()
+          .map(|(edge_id, ctx)| {
+            let edge = self.read_edge(&edge_id)?;
+            Ok((edge.n2, ctx.into_vertex_ctx(edge.n2)))
+          })
+          .collect::<Result<HashMap<_,_>, Error>>()?
       }
       In(q) => {
-        let context = self.query_edges(q)?;
-
-        let mut result = HashMap::default();
-
-        for (edge_id, ctx) in context.into_iter() {
-          let edge = self.read_edge(&edge_id)?;
-          result.insert(edge.n1, ctx.into_vertex_ctx(edge.n1));
-        }
-
-        result
+        self.query_edges(q)?.into_iter()
+            .map(|(edge_id, ctx)| {
+            let edge = self.read_edge(&edge_id)?;
+            Ok((edge.n1, ctx.into_vertex_ctx(edge.n1)))
+          })
+          .collect::<Result<HashMap<_,_>, Error>>()?
       }
       Filter(_q, _filter) => unreachable!(),
     };
