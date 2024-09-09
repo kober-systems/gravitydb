@@ -2,11 +2,10 @@ use sha2::Digest;
 use gravity::schema::SchemaElement;
 use std::collections::BTreeSet;
 use std::fs;
-use gravity::{GraphBuilder, GraphStore};
 use gravity::schema::Property;
 use gravity::ql;
 pub use gravity::kv_graph_store::Error;
-use gravity::kv_graph_store::{NodeData, EdgeData};
+use gravity::kv_graph_store::EdgeData;
 use std::path::{Path, PathBuf};
 pub mod cli_helpers;
 
@@ -68,15 +67,15 @@ pub struct FsKvStore<T: Property<HashId, Error>> {
 
 impl<'a, T: Property<HashId, Error>> KVStore<Error> for FsKvStore<T>
 {
-  fn create_bucket(&self, key: &[u8]) -> Result<(), Error> {
+  fn create_bucket(&mut self, key: &[u8]) -> Result<(), Error> {
     Ok(std::fs::create_dir_all(self.key_to_path(key))?)
   }
 
-  fn delete_record(&self, key: &[u8]) -> Result<(), Error> {
+  fn delete_record(&mut self, key: &[u8]) -> Result<(), Error> {
     Ok(std::fs::remove_file(self.key_to_path(key))?)
   }
 
-  fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Error> {
+  fn store_record(&mut self, key: &[u8], value: &[u8]) -> Result<(), Error> {
     Ok(std::fs::write(self.key_to_path(key), value)?)
   }
 
@@ -102,7 +101,7 @@ impl<'a, T: Property<HashId, Error>> KVStore<Error> for FsKvStore<T>
   /// id:         the id of the node, edge or property that references
   ///             the property and needs a backling
   /// ty:         the type of the element that needs a backlink
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Error> {
+  fn create_idx_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
     self.create_bucket(index_path.as_bytes())?;
 
@@ -118,7 +117,7 @@ impl<'a, T: Property<HashId, Error>> KVStore<Error> for FsKvStore<T>
     Ok(())
   }
 
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Error> {
+  fn delete_property_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Error> {
     let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
 
     let prefix = match ty {
