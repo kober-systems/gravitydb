@@ -1,6 +1,7 @@
 pub mod ql;
 pub mod schema;
 pub mod kv_graph_store;
+pub mod mem_kv_store;
 
 trait GraphFilter<GIN, GOUT>
 {
