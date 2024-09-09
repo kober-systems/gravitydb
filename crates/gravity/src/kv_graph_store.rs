@@ -4,6 +4,7 @@ use crate::ql;
 use serde::{Serialize, Deserialize};
 use sha2::Digest;
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::marker::PhantomData;
 use thiserror::Error;
 
 type HashId = String;
@@ -17,7 +18,7 @@ where
   T: Property<HashId, Error>,
   K: KVStore<Error>,
 {
-  p_marker: std::marker::PhantomData<T>,
+  p_marker: PhantomData<T>,
   kv: K,
 }
 
@@ -28,7 +29,7 @@ where
 {
   pub fn from_kv(kv: K) -> Self {
     KvGraphStore {
-      p_marker: std::marker::PhantomData,
+      p_marker: PhantomData,
       kv,
     }
   }
