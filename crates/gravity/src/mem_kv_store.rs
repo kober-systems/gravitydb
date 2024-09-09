@@ -89,9 +89,7 @@ impl KVStore<Error> for MemoryKvStore
 
 #[derive(Error, Debug)]
 pub enum Error {
-  #[error("wrongly formatted database at path TODO")]
-  MalformedDB,
-  #[error("the recored {0} could not be found")]
+  #[error("the record {0} could not be found")]
   Missing(String),
 }
 
