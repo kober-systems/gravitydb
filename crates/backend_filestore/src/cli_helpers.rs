@@ -1,9 +1,9 @@
 use gravity::schema::{SchemaElement, Property};
-use crate::{Error, FsKvStore, HashId};
+use crate::{FileStoreError, FsKvStore, HashId};
 use anyhow::bail;
 use std::io::{self, Write};
 use gravity::{ql, GraphStore};
-use gravity::kv_graph_store::KvGraphStore;
+use gravity::kv_graph_store::{KvGraphStore, SerialisationError};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use std::io::Read;
@@ -33,7 +33,7 @@ pub fn log_level(level: u64) -> log::Level {
 
 pub fn db_cmds<T>() -> Result<()>
 where
-  T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
+  T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
 {
   #[derive(StructOpt)]
   pub struct Opt {
@@ -291,17 +291,17 @@ where
   Ok(())
 }
 
-fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore<T>>, Error>
+fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore<T>, std::io::Error>, FileStoreError>
 where
-  T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
+  T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
 {
   let kv = FsKvStore::<T>::open(path)?;
   Ok(KvGraphStore::from_kv(kv))
 }
 
-fn init<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore<T>>, Error>
+fn init<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore<T>, std::io::Error>, FileStoreError>
 where
-  T: Property<HashId, Error> + 'static + std::clone::Clone + mlua::UserData,
+  T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
 {
   let kv = FsKvStore::<T>::init(path)?;
   Ok(KvGraphStore::from_kv(kv))

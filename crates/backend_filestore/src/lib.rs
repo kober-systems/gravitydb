@@ -4,9 +4,11 @@ use std::collections::BTreeSet;
 use std::fs;
 use gravity::schema::Property;
 use gravity::ql;
-pub use gravity::kv_graph_store::Error;
+pub use gravity::kv_graph_store::SerialisationError;
 use gravity::kv_graph_store::EdgeData;
 use std::path::{Path, PathBuf};
+use std::io::Error;
+use thiserror::Error;
 pub mod cli_helpers;
 
 use gravity::{KVStore, BacklinkType};
@@ -18,17 +20,17 @@ type HashId = String;
 #[derive(Debug, Clone)]
 pub struct GenericProperty(Vec<u8>);
 
-impl SchemaElement<HashId, Error> for GenericProperty
+impl SchemaElement<HashId, SerialisationError> for GenericProperty
 {
   fn get_key(&self) -> HashId {
     format!("{:X}", sha2::Sha256::digest(&self.0))
   }
 
-  fn serialize(&self) -> Result<Vec<u8>, Error> {
+  fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {
     Ok(self.0.clone())
   }
 
-  fn deserialize(data: &[u8]) -> Result<Self, Error>
+  fn deserialize(data: &[u8]) -> Result<Self, SerialisationError>
   where
     Self: Sized,
   {
@@ -36,7 +38,7 @@ impl SchemaElement<HashId, Error> for GenericProperty
   }
 }
 
-impl Property<String, Error> for GenericProperty {
+impl Property<String, SerialisationError> for GenericProperty {
   fn nested(&self) -> Vec<Self> { Vec::new() }
 }
 
@@ -60,12 +62,12 @@ pub struct ChangeSet {
 
 type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
 
-pub struct FsKvStore<T: Property<HashId, Error>> {
+pub struct FsKvStore<T: Property<HashId, SerialisationError>> {
   p_marker: std::marker::PhantomData<T>,
   base_path: PathBuf,
 }
 
-impl<'a, T: Property<HashId, Error>> KVStore<Error> for FsKvStore<T>
+impl<'a, T: Property<HashId, SerialisationError>> KVStore<Error> for FsKvStore<T>
 {
   fn create_bucket(&mut self, key: &[u8]) -> Result<(), Error> {
     Ok(std::fs::create_dir_all(self.key_to_path(key))?)
@@ -138,21 +140,21 @@ impl<'a, T: Property<HashId, Error>> KVStore<Error> for FsKvStore<T>
   }
 }
 
-impl<T: Property<HashId, Error>> FsKvStore<T> {
+impl<T: Property<HashId, SerialisationError>> FsKvStore<T> {
   fn key_to_path(&self, key: &[u8]) -> PathBuf {
     let path = Path::new(OsStr::from_bytes(key));
     PathBuf::from(self.base_path.join(path))
   }
 
-  pub fn open(path: &Path) -> Result<Self, Error> {
+  pub fn open(path: &Path) -> Result<Self, FileStoreError> {
     if !path.is_dir() {
-      return Err(Error::MalformedDB);
+      return Err(FileStoreError::MalformedDB);
     }
     if !&path.join("nodes/").is_dir() ||
       !&path.join("edges/").is_dir() ||
       !&path.join("props/").is_dir() ||
       !&path.join("indexes/").is_dir() {
-        return Err(Error::MalformedDB);
+        return Err(FileStoreError::MalformedDB);
     }
 
     Ok(FsKvStore {
@@ -161,10 +163,10 @@ impl<T: Property<HashId, Error>> FsKvStore<T> {
     })
   }
 
-  pub fn init(path: &Path) -> Result<Self, Error> {
+  pub fn init(path: &Path) -> Result<Self, FileStoreError> {
     if !path.is_dir() {
       if path.exists() {
-        return Err(Error::MalformedDB);
+        return Err(FileStoreError::MalformedDB);
       } else {
         fs::create_dir_all(&path)?;
       }
@@ -182,9 +184,17 @@ impl<T: Property<HashId, Error>> FsKvStore<T> {
   }
 }
 
+#[derive(Error, Debug)]
+pub enum FileStoreError {
+  #[error("wrongly formatted database at path TODO")]
+  MalformedDB,
+  #[error("io error")]
+  Io { #[from] source: Error },
+}
+
 impl mlua::UserData for GenericProperty {}
 
-pub fn to_query(data: &Vec<u8>) -> Result<BasicQuery, Error> {
+pub fn to_query(data: &Vec<u8>) -> Result<BasicQuery, SerialisationError> {
   // TODO Verschiedene Query Sprachen über zweiten Parameter
   // TODO Internes Schema verwenden um Abfragen zu verbessern
   let query = serde_json::from_slice(data)?;

@@ -13,28 +13,32 @@ type QueryResult = ql::QueryResult<uuid::Uuid, HashId>;
 type NodeCtx = HashMap<uuid::Uuid, ql::VertexQueryContext<uuid::Uuid, HashId>>;
 type EdgeCtx = HashMap<HashId, ql::EdgeQueryContext<uuid::Uuid, HashId>>;
 
-pub struct KvGraphStore<T, K>
+pub struct KvGraphStore<T, K, E>
 where
-  T: Property<HashId, Error>,
-  K: KVStore<Error>,
+  T: Property<HashId, SerialisationError>,
+  K: KVStore<E>,
+  E: Send,
 {
   p_marker: PhantomData<T>,
+  kv_err_marker: PhantomData<E>,
   kv: K,
 }
 
-impl<T, K> KvGraphStore<T, K>
+impl<T, K, E> KvGraphStore<T, K, E>
 where
-  T: Property<HashId, Error>,
-  K: KVStore<Error>,
+  T: Property<HashId, SerialisationError>,
+  K: KVStore<E>,
+  E: Send,
 {
   pub fn from_kv(kv: K) -> Self {
     KvGraphStore {
       p_marker: PhantomData,
+      kv_err_marker: PhantomData,
       kv,
     }
   }
 
-  pub fn query(&self, q: BasicQuery) -> Result<QueryResult, Error> {
+  pub fn query(&self, q: BasicQuery) -> Result<QueryResult, Error<E>> {
     let context = match q {
       BasicQuery::V(q) => {
         self.query_nodes(q)?.into()
@@ -53,12 +57,13 @@ where
   fn query_nodes(
     &self,
     q: ql::VertexQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>
-  ) -> Result<NodeCtx, Error> {
+  ) -> Result<NodeCtx, Error<E>> {
     use ql::VertexQuery::*;
 
     let result = match q {
       All => {
-        self.kv.list_records("nodes/".as_bytes())?
+        self.kv.list_records("nodes/".as_bytes())
+          .map_err(|e| Error::KV(e))?
           .into_iter()
           .map(|entry| {
             let id = String::from_utf8(entry)
@@ -66,7 +71,7 @@ where
             let id = uuid::Uuid::parse_str(&id)?;
             Ok((id, ql::VertexQueryContext::new(id)))
         })
-        .collect::<Result<HashMap<_,_>, Error>>()?
+        .collect::<Result<HashMap<_,_>, Error<E>>>()?
       }
       Specific(ids) => {
         ids.into_iter()
@@ -78,7 +83,7 @@ where
 
         for prop_id in self.query_properties(q)?.into_iter() {
           let index_path = "indexes/".to_string() + &prop_id + "/";
-          for entry in self.kv.list_records(index_path.as_bytes())? {
+          for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
             let reference = String::from_utf8(entry)
               .or(Err(Error::MalformedDB))?;
             let (prefix, reference) = reference
@@ -124,7 +129,7 @@ where
             let edge = self.read_edge(&edge_id)?;
             Ok((edge.n2, ctx.into_vertex_ctx(edge.n2)))
           })
-          .collect::<Result<HashMap<_,_>, Error>>()?
+          .collect::<Result<HashMap<_,_>, Error<E>>>()?
       }
       In(q) => {
         self.query_edges(q)?.into_iter()
@@ -132,7 +137,7 @@ where
             let edge = self.read_edge(&edge_id)?;
             Ok((edge.n1, ctx.into_vertex_ctx(edge.n1)))
           })
-          .collect::<Result<HashMap<_,_>, Error>>()?
+          .collect::<Result<HashMap<_,_>, Error<E>>>()?
       }
       Filter(_q, _filter) => unreachable!(),
     };
@@ -143,12 +148,13 @@ where
   fn query_edges(
     &self,
     q: ql::EdgeQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>,
-  ) -> Result<EdgeCtx, Error> {
+  ) -> Result<EdgeCtx, Error<E>> {
     use ql::EdgeQuery::*;
 
     let result = match q {
       All => {
-        self.kv.list_records("edges/".as_bytes())?
+        self.kv.list_records("edges/".as_bytes())
+          .map_err(|e| Error::KV(e))?
           .into_iter()
           .map(|entry| {
           let id = String::from_utf8(entry)
@@ -156,7 +162,7 @@ where
           let key = id.clone();
           Ok((id, ql::EdgeQueryContext::new(key)))
         })
-        .collect::<Result<HashMap<_,_>, Error>>()?
+        .collect::<Result<HashMap<_,_>, Error<E>>>()?
       }
       Specific(ids) => {
         ids.into_iter()
@@ -171,7 +177,7 @@ where
 
         for prop_id in self.query_properties(q)? {
           let index_path = "indexes/".to_string() + &prop_id + "/";
-          for entry in self.kv.list_records(index_path.as_bytes())? {
+          for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
             let reference = String::from_utf8(entry)
               .or(Err(Error::MalformedDB))?;
             let (prefix, reference) = reference
@@ -251,7 +257,7 @@ where
   fn query_property_nodes(
     &self,
     q: ql::PropertyQuery<HashId>
-  ) -> Result<NodeCtx, Error> {
+  ) -> Result<NodeCtx, Error<E>> {
     let mut result = HashMap::default();
 
     let properties = self.query_properties(q)?;
@@ -263,7 +269,7 @@ where
   fn query_properties(
     &self,
     q: ql::PropertyQuery<HashId>
-  ) -> Result<HashSet<HashId>, Error> {
+  ) -> Result<HashSet<HashId>, Error<E>> {
     use ql::PropertyQuery::*;
 
     let mut result = HashSet::default();
@@ -271,7 +277,8 @@ where
     match q {
       Specific(id) => {
         let path = "props/".to_string() + &id;
-        if self.kv.exists(path.as_bytes())?
+        if self.kv.exists(path.as_bytes())
+          .map_err(|e| Error::KV(e))?
         {
           result.insert(id);
         }
@@ -279,7 +286,7 @@ where
       ReferencingProperties(q) => {
         for prop_id in self.query_properties(*q)? {
           let index_path = "indexes/".to_string() + &prop_id + "/";
-          for entry in self.kv.list_records(index_path.as_bytes())? {
+          for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
             let reference = String::from_utf8(entry)
               .or(Err(Error::MalformedDB))?;
             let (prefix, reference) = reference
@@ -302,27 +309,40 @@ where
 }
 
 #[derive(Error, Debug)]
-pub enum Error {
+pub enum Error<E: Send> {
   #[error("wrongly formatted database at path TODO")]
   MalformedDB,
+  #[error("node {0} allready exists")]
+  NodeExists(String),
+  #[error("the element existed before")]
+  ExistedBefore,
+  #[error("uuid parsing error (corrupted db)")]
+  Uuid { #[from] source: uuid::Error },
+  #[error("problem with kv store")]
+  KV(E),
+  #[error(transparent)]
+  Prop(#[from] SerialisationError),
+}
+
+#[derive(Error, Debug)]
+pub enum SerialisationError {
   #[error("io error")]
   Io { #[from] source: std::io::Error },
   #[error("node {0} allready exists")]
   NodeExists(String),
   #[error("json error")]
   Json { #[from] source: serde_json::Error },
-  #[error("the element existed before")]
-  ExistedBefore,
   #[error("uuid parsing error (corrupted db)")]
   Uuid { #[from] source: uuid::Error },
 }
 
-impl<P, K> GraphStore<uuid::Uuid, NodeData, HashId, EdgeData, HashId, P, Error> for KvGraphStore<P, K>
+impl<P, K, E> GraphStore<uuid::Uuid, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
 where
-  P: Property<HashId, Error>,
-  K: KVStore<Error>,
+  P: Property<HashId, SerialisationError>,
+  K: KVStore<E>,
+  E: Send,
 {
-  fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<(), Error> {
+  fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<(), Error<E>> {
     let props_hash = self.create_property(properties)?;
     let node = NodeData {
       id,
@@ -335,26 +355,26 @@ where
 
     let path = "nodes/".to_string() + &id;
 
-    if self.kv.exists(path.as_bytes())? {
+    if self.kv.exists(path.as_bytes()).map_err(|e| Error::KV(e))? {
       return Err(Error::NodeExists(path));
     };
 
-    self.kv.store_record(&path.as_bytes(), &node)?;
+    self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node).map_err(|e| Error::KV(e))?;
 
     Ok(())
   }
 
-  fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error> {
+  fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error<E>> {
     let path = "nodes/".to_string() + &uuid_to_key(id);
 
-    let data = self.kv.fetch_record(path.as_bytes())?;
+    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
     let node: NodeData = SchemaElement::deserialize(&data)?;
     Ok(node)
   }
 
-  fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<(), Error> {
+  fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<(), Error<E>> {
     let props_hash = self.create_property(properties)?;
     let path = "nodes/".to_string() + &uuid_to_key(id);
     let NodeData {
@@ -370,20 +390,20 @@ where
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
+    self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     let id = uuid_to_key(id);
-    let last_reference = self.kv.delete_property_backlink(&old_properties, &id, BacklinkType::Node)?;
+    let last_reference = self.kv.delete_property_backlink(&old_properties, &id, BacklinkType::Node).map_err(|e| Error::KV(e))?;
     if last_reference {
       self.delete_property(&old_properties)?;
     }
 
-    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node).map_err(|e| Error::KV(e))?;
 
     Ok(())
   }
 
-  fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), Error> {
+  fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), Error<E>> {
     let NodeData {
       id,
       properties,
@@ -394,16 +414,16 @@ where
     let id = uuid_to_key(id);
     let path = "nodes/".to_string() + &id;
 
-    let last_reference = self.kv.delete_property_backlink(&properties, &id, BacklinkType::Node)?;
+    let last_reference = self.kv.delete_property_backlink(&properties, &id, BacklinkType::Node).map_err(|e| Error::KV(e))?;
     if last_reference {
       self.delete_property(&properties)?;
     }
 
-    self.kv.delete_record(path.as_bytes())?;
+    self.kv.delete_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
     Ok(())
   }
 
-  fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &P) -> Result<HashId, Error> {
+  fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &P) -> Result<HashId, Error<E>> {
     let props_hash = self.create_property(properties)?;
     let edge = EdgeData {
       n1,
@@ -415,9 +435,9 @@ where
     let path = "edges/".to_string() + &hash;
 
     let edge = SchemaElement::serialize(&edge)?;
-    self.kv.store_record(&path.as_bytes(), &edge)?;
+    self.kv.store_record(&path.as_bytes(), &edge).map_err(|e| Error::KV(e))?;
 
-    self.kv.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
+    self.kv.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge).map_err(|e| Error::KV(e))?;
 
     let path = "nodes/".to_string() + &uuid_to_key(n1);
     let NodeData {
@@ -434,7 +454,7 @@ where
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
+    self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     let path = "nodes/".to_string() + &uuid_to_key(n2);
     let NodeData {
@@ -451,20 +471,20 @@ where
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
+    self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     Ok(hash)
   }
 
-  fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error> {
+  fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error<E>> {
     let path = "edges/".to_string() + id;
 
-    let data = self.kv.fetch_record(path.as_bytes())?;
+    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
     let edge = SchemaElement::deserialize(&data)?;
     Ok(edge)
   }
 
-  fn delete_edge(&mut self, id: &HashId) -> Result<(), Error> {
+  fn delete_edge(&mut self, id: &HashId) -> Result<(), Error<E>> {
     let EdgeData {
       properties: props_hash,
       n1,
@@ -473,7 +493,7 @@ where
 
     let path = "edges/".to_string() + id;
 
-    self.kv.delete_record(&path.as_bytes())?;
+    self.kv.delete_record(&path.as_bytes()).map_err(|e| Error::KV(e))?;
 
     let path = "nodes/".to_string() + &uuid_to_key(n1);
     let NodeData {
@@ -490,7 +510,7 @@ where
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
+    self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     let path = "nodes/".to_string() + &uuid_to_key(n2);
     let NodeData {
@@ -507,9 +527,9 @@ where
       outgoing,
     };
     let node = SchemaElement::serialize(&node)?;
-    self.kv.store_record(&path.as_bytes(), &node)?;
+    self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    let last_reference = self.kv.delete_property_backlink(&props_hash, &id, BacklinkType::Edge)?;
+    let last_reference = self.kv.delete_property_backlink(&props_hash, &id, BacklinkType::Edge).map_err(|e| Error::KV(e))?;
     if last_reference {
       self.delete_property(&props_hash)?;
     }
@@ -517,17 +537,17 @@ where
     Ok(())
   }
 
-  fn create_property(&mut self, properties: &P) -> Result<HashId, Error> {
+  fn create_property(&mut self, properties: &P) -> Result<HashId, Error<E>> {
     let hash = properties.get_key();
     let path = "props/".to_string() + &hash;
 
     let data = properties.serialize()?;
-    self.kv.store_record(&path.as_bytes(), &data)?;
+    self.kv.store_record(&path.as_bytes(), &data).map_err(|e| Error::KV(e))?;
 
     properties.nested().iter().try_for_each(|nested| {
       match self.create_property(nested) {
         Ok(nested_hash) => {
-          self.kv.create_idx_backlink(&nested_hash, &hash, BacklinkType::Property)?;
+          self.kv.create_idx_backlink(&nested_hash, &hash, BacklinkType::Property).map_err(|e| Error::KV(e))?;
           Ok(())
         }
         Err(e) => {
@@ -543,29 +563,29 @@ where
     Ok(hash)
   }
 
-  fn read_property(&mut self, id: &HashId) -> Result<P, Error> {
+  fn read_property(&mut self, id: &HashId) -> Result<P, Error<E>> {
     let path = "props/".to_string() + id;
 
-    let data = self.kv.fetch_record(path.as_bytes())?;
+    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
     let property = SchemaElement::deserialize(&data)?;
     Ok(property)
   }
 
-  fn delete_property(&mut self, id: &HashId) -> Result<(), Error> {
+  fn delete_property(&mut self, id: &HashId) -> Result<(), Error<E>> {
     let path = "props/".to_string() + id;
 
-    let data = self.kv.fetch_record(&path.as_bytes())?;
+    let data = self.kv.fetch_record(&path.as_bytes()).map_err(|e| Error::KV(e))?;
     let properties: P = SchemaElement::deserialize(&data)?;
 
     for nested in properties.nested().iter() {
       let nested_hash = nested.get_key();
-      let last_reference = self.kv.delete_property_backlink(&nested_hash, id, BacklinkType::Property)?;
+      let last_reference = self.kv.delete_property_backlink(&nested_hash, id, BacklinkType::Property).map_err(|e| Error::KV(e))?;
       if last_reference {
         self.delete_property(&nested_hash)?;
       }
     }
 
-    self.kv.delete_record(path.as_bytes())?;
+    self.kv.delete_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
     Ok(())
   }
 }
@@ -582,17 +602,17 @@ pub struct NodeData {
   pub outgoing: BTreeSet<HashId>,
 }
 
-impl SchemaElement<String, Error> for NodeData
+impl SchemaElement<String, SerialisationError> for NodeData
 {
   fn get_key(&self) -> String {
     uuid_to_key(self.id)
   }
 
-  fn serialize(&self) -> Result<Vec<u8>, Error> {
+  fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {
     Ok(serde_json::to_vec(self)?)
   }
 
-  fn deserialize(data: &[u8]) -> Result<Self, Error>
+  fn deserialize(data: &[u8]) -> Result<Self, SerialisationError>
   where
     Self: Sized,
   {
@@ -607,18 +627,18 @@ pub struct EdgeData {
   pub n2: uuid::Uuid,
 }
 
-impl SchemaElement<HashId, Error> for EdgeData
+impl SchemaElement<HashId, SerialisationError> for EdgeData
 {
   fn get_key(&self) -> HashId {
     let data = serde_json::to_vec(self).unwrap();
     format!("{:X}", sha2::Sha256::digest(&data))
   }
 
-  fn serialize(&self) -> Result<Vec<u8>, Error> {
+  fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {
     Ok(serde_json::to_vec(self)?)
   }
 
-  fn deserialize(data: &[u8]) -> Result<Self, Error>
+  fn deserialize(data: &[u8]) -> Result<Self, SerialisationError>
   where
     Self: Sized,
   {
@@ -626,10 +646,11 @@ impl SchemaElement<HashId, Error> for EdgeData
   }
 }
 
-impl<P, K> mlua::UserData for KvGraphStore<P, K>
+impl<P, K, E> mlua::UserData for KvGraphStore<P, K, E>
 where
-  P: Property<HashId, Error> + mlua::UserData + std::clone::Clone + 'static,
-  K: KVStore<Error>,
+  P: Property<HashId, SerialisationError> + mlua::UserData + std::clone::Clone + 'static,
+  K: KVStore<E>,
+  E: Send + Sync + std::fmt::Debug + 'static,
 {
   fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
     use mlua::prelude::LuaError;
