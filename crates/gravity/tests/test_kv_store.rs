@@ -51,6 +51,52 @@ fn cannot_create_a_node_twice() -> Result<(), Error> {
 }
 
 #[test]
+fn nodes_can_be_connected_with_themselfes() -> Result<(), Error> {
+  let mut graph = create_empty_graph();
+
+  graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
+  graph.create_edge(uuid!(NODE1_UUID), uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
+
+  let mut store = get_kv_store(graph);
+  let node_path = format!("nodes/{}", NODE1_UUID);
+  check_string(
+    store.remove(&node_path),
+    &format!(
+      "{{\"id\":\"{}\",\"properties\":\"{}\",\"incoming\":[\"{}\"],\"outgoing\":[\"{}\"]}}",
+        NODE1_UUID,
+        PROPERTY_EMPTY_ID,
+        EDGE_N1_TO_SELF_ID,
+        EDGE_N1_TO_SELF_ID,
+    )
+  );
+  check_string(
+    store.remove(&format!("props/{}", PROPERTY_EMPTY_ID)),
+    ""
+  );
+  check_string(
+    store.remove(&format!("indexes/{}/nodes_{}", PROPERTY_EMPTY_ID, NODE1_UUID)),
+    &node_path
+  );
+
+  let edge1_path = format!("edges/{}", EDGE_N1_TO_SELF_ID);
+  check_string(
+    store.remove(&edge1_path),
+    &format!(
+      "{{\"properties\":\"{}\",\"n1\":\"{}\",\"n2\":\"{}\"}}",
+        PROPERTY_EMPTY_ID,
+        NODE1_UUID,
+        NODE1_UUID,
+    )
+  );
+  check_string(
+    store.remove(&format!("indexes/{}/edges_{}", PROPERTY_EMPTY_ID, EDGE_N1_TO_SELF_ID)),
+    &edge1_path
+  );
+
+  Ok(assert_eq!(store.len(), 0))
+}
+
+#[test]
 fn create_two_nodes_with_connection() -> Result<(), Error> {
   let mut graph = create_empty_graph();
 
@@ -129,6 +175,7 @@ const PROPERTY_EMPTY_ID: &str = "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934
 const PROPERTY_SIMPLE : &[u8] = "simple text property".as_bytes();
 const PROPERTY_SIMPLE_ID: &str = "4637D294486C315FC8D6C2F11742CBA4958CCB3F083656808C2B257D954DE631";
 const EDGE1_ID : &str = "0B49457674D1B570400E6EC9E4B78F9C2C9B0721BA7C315BD0811E3059C3BBBA";
+const EDGE_N1_TO_SELF_ID : &str = "7622305FED0A357AF8AAE5ACC4110B8CAD7BDF2D67CAEA195BCDA0889A20FB8A";
 
 fn create_empty_graph() -> GStore {
   let kv = mem_kv_store::MemoryKvStore::default();
