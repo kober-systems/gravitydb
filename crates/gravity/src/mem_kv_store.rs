@@ -70,8 +70,7 @@ impl KVStore<Error> for MemoryKvStore
     };
     let backlink_path = index_path + prefix + "_" + id;
     let path = prefix.to_string() + "/" + id;
-    let content = self.fetch_record(&path.as_bytes())?;
-    self.store_record(&backlink_path.as_bytes(), &content)?;
+    self.store_record(&backlink_path.as_bytes(), &path.as_bytes())?;
 
     Ok(())
   }
