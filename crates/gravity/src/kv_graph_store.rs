@@ -667,7 +667,7 @@ where
 
 fn uuid_to_key(id: uuid::Uuid) -> String {
   id
-    .to_hyphenated()
+    .hyphenated()
     .encode_lower(&mut uuid::Uuid::encode_buffer())
     .to_string()
 }
