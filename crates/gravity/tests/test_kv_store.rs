@@ -5,16 +5,16 @@ use uuid::uuid;
 fn create_a_node_in_empty_store() -> Result<(), Error> {
   let mut graph = create_empty_graph();
 
-  graph.create_node(uuid!(EXAMPLE_UUID), &PROPERTY_EMPTY.to_vec())?;
+  graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
 
   let node_content = format!(
     "{{\"id\":\"{}\",\"properties\":\"{}\",\"incoming\":[],\"outgoing\":[]}}",
-      EXAMPLE_UUID,
+      NODE1_UUID,
       PROPERTY_EMPTY_ID
   );
   let mut store = get_kv_store(graph);
   check_string(
-    store.remove(&format!("nodes/{}", EXAMPLE_UUID)),
+    store.remove(&format!("nodes/{}", NODE1_UUID)),
     &node_content
   );
   check_string(
@@ -22,7 +22,7 @@ fn create_a_node_in_empty_store() -> Result<(), Error> {
     ""
   );
   check_string(
-    store.remove(&format!("indexes/{}/nodes_{}", PROPERTY_EMPTY_ID, EXAMPLE_UUID)),
+    store.remove(&format!("indexes/{}/nodes_{}", PROPERTY_EMPTY_ID, NODE1_UUID)),
     &node_content
   );
 
@@ -36,7 +36,7 @@ fn check_string(left: Option<Vec<u8>>, right: &str) {
   assert_eq!(formatted, right.to_string())
 }
 
-const EXAMPLE_UUID : &str = "a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d8";
+const NODE1_UUID : &str = "a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d8";
 const PROPERTY_EMPTY : &[u8] = "".as_bytes();
 const PROPERTY_EMPTY_ID: &str = "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855";
 
