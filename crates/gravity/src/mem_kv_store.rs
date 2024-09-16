@@ -5,8 +5,15 @@ use thiserror::Error;
 
 type HashId = String;
 
+#[derive(Debug, Default)]
 pub struct MemoryKvStore {
   data: BTreeMap<HashId, Vec<u8>>,
+}
+
+impl MemoryKvStore {
+  pub fn get_inner(self) -> BTreeMap<HashId, Vec<u8>> {
+    self.data
+  }
 }
 
 impl KVStore<Error> for MemoryKvStore
