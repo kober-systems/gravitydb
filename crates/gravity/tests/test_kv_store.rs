@@ -20,6 +20,14 @@ fn create_a_node_in_empty_store() -> Result<(), Error> {
     store.remove(&format!("props/{}", PROPERTY_EMPTY_ID)),
     ""
   );
+  check_string(
+    store.remove(&format!("indexes/{}/nodes_{}", PROPERTY_EMPTY_ID, EXAMPLE_UUID)),
+    &format!(
+      "{{\"id\":\"{}\",\"properties\":\"{}\",\"incoming\":[],\"outgoing\":[]}}",
+        EXAMPLE_UUID,
+        PROPERTY_EMPTY_ID
+    )
+  );
 
   Ok(assert_eq!(store.len(), 0))
 }
