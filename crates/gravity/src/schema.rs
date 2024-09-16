@@ -59,3 +59,6 @@ impl<E> SchemaElement<String, E> for Vec<u8>
   }
 }
 
+impl<E> Property<String, E> for Vec<u8> {
+  fn nested(&self) -> Vec<Self> { Vec::new() }
+}
