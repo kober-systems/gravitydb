@@ -41,6 +41,12 @@ fn cannot_create_a_node_twice() -> Result<(), Error> {
     _ => panic!("should fail because node exists"),
   };
 
+  // can not create a node with the same id but changed content
+  match graph.create_node(uuid!(NODE1_UUID), &PROPERTY_SIMPLE.to_vec()) {
+    Err(Error::NodeExists(msg)) => assert_eq!(msg, "nodes/a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d8"),
+    _ => panic!("should fail because node exists"),
+  };
+
   Ok(())
 }
 
@@ -54,6 +60,7 @@ fn check_string(left: Option<Vec<u8>>, right: &str) {
 const NODE1_UUID : &str = "a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d8";
 const PROPERTY_EMPTY : &[u8] = "".as_bytes();
 const PROPERTY_EMPTY_ID: &str = "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855";
+const PROPERTY_SIMPLE : &[u8] = "simple text property".as_bytes();
 
 fn create_empty_graph() -> GStore {
   let kv = mem_kv_store::MemoryKvStore::default();
