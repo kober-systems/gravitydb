@@ -7,15 +7,15 @@ fn create_a_node_in_empty_store() -> Result<(), Error> {
 
   graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
 
-  let node_content = format!(
-    "{{\"id\":\"{}\",\"properties\":\"{}\",\"incoming\":[],\"outgoing\":[]}}",
-      NODE1_UUID,
-      PROPERTY_EMPTY_ID
-  );
   let mut store = get_kv_store(graph);
+  let node_path = format!("nodes/{}", NODE1_UUID);
   check_string(
-    store.remove(&format!("nodes/{}", NODE1_UUID)),
-    &node_content
+    store.remove(&node_path),
+    &format!(
+      "{{\"id\":\"{}\",\"properties\":\"{}\",\"incoming\":[],\"outgoing\":[]}}",
+        NODE1_UUID,
+        PROPERTY_EMPTY_ID
+    )
   );
   check_string(
     store.remove(&format!("props/{}", PROPERTY_EMPTY_ID)),
@@ -23,7 +23,7 @@ fn create_a_node_in_empty_store() -> Result<(), Error> {
   );
   check_string(
     store.remove(&format!("indexes/{}/nodes_{}", PROPERTY_EMPTY_ID, NODE1_UUID)),
-    &node_content
+    &node_path
   );
 
   Ok(assert_eq!(store.len(), 0))
