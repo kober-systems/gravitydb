@@ -68,9 +68,10 @@ impl KVStore<Error> for MemoryKvStore
       BacklinkType::Edge => "edges",
       BacklinkType::Property => "props",
     };
-    let backlink_path = index_path + "/" + prefix + "_" + id;
+    let backlink_path = index_path + prefix + "_" + id;
     let path = prefix.to_string() + "/" + id;
-    //fs::hard_link(path, backlink_path)?;
+    let content = self.fetch_record(&path.as_bytes())?;
+    self.store_record(&backlink_path.as_bytes(), &content)?;
 
     Ok(())
   }
