@@ -98,46 +98,6 @@ impl<'a, T: Property<HashId, SerialisationError>> KVStore<Error> for FsKvStore<T
   fn exists(&self, key: &[u8]) -> Result<bool, Error> {
     Ok(self.key_to_path(key).exists())
   }
-
-  /// props_hash: the hash_id of the property that holds the index
-  /// id:         the id of the node, edge or property that references
-  ///             the property and needs a backling
-  /// ty:         the type of the element that needs a backlink
-  fn create_idx_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Error> {
-    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
-    self.create_bucket(index_path.as_bytes())?;
-
-    let prefix = match ty {
-      BacklinkType::Node => "nodes",
-      BacklinkType::Edge => "edges",
-      BacklinkType::Property => "props",
-    };
-    let backlink_path = self.key_to_path(index_path.as_bytes()).join(prefix.to_owned() + "_" + id);
-    let path = self.base_path.join(prefix).join(id);
-    fs::hard_link(path, backlink_path)?;
-
-    Ok(())
-  }
-
-  fn delete_property_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Error> {
-    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
-
-    let prefix = match ty {
-      BacklinkType::Node => "nodes",
-      BacklinkType::Edge => "edges",
-      BacklinkType::Property => "props",
-    };
-    let backlink_path = index_path.clone() + prefix + "_" + id;
-    self.delete_record(backlink_path.as_bytes())?;
-
-    if self.list_records(index_path.as_bytes())?.is_empty() {
-      fs::remove_dir(&index_path)?;
-
-      Ok(true)
-    } else {
-      Ok(false)
-    }
-  }
 }
 
 impl<T: Property<HashId, SerialisationError>> FsKvStore<T> {

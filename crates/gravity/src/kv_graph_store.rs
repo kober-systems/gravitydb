@@ -310,6 +310,43 @@ where
     Ok(result)
   }
 
+  /// props_hash: the hash_id of the property that holds the index
+  /// id:         the id of the node, edge or property that references
+  ///             the property and needs a backling
+  /// ty:         the type of the element that needs a backlink
+  fn create_idx_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Error<E>> {
+    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
+    self.kv.create_bucket(index_path.as_bytes()).map_err(|e| Error::KV(e))?;
+
+    let prefix = match ty {
+      BacklinkType::Node => "nodes",
+      BacklinkType::Edge => "edges",
+      BacklinkType::Property => "props",
+    };
+    let backlink_path = index_path + prefix + "_" + id;
+    let path = prefix.to_string() + "/" + id;
+    self.kv.store_record(&backlink_path.as_bytes(), &path.as_bytes()).map_err(|e| Error::KV(e))?;
+
+    Ok(())
+  }
+
+  fn delete_property_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Error<E>> {
+    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
+
+    let prefix = match ty {
+      BacklinkType::Node => "nodes",
+      BacklinkType::Edge => "edges",
+      BacklinkType::Property => "props",
+    };
+    let backlink_path = index_path.clone() + prefix + "_" + id;
+    self.kv.delete_record(backlink_path.as_bytes()).map_err(|e| Error::KV(e))?;
+
+    if self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))?.is_empty() {
+      Ok(true)
+    } else {
+      Ok(false)
+    }
+  }
 }
 
 #[derive(Error, Debug)]
@@ -365,7 +402,7 @@ where
 
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node).map_err(|e| Error::KV(e))?;
+    self.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
 
     Ok(())
   }
@@ -397,12 +434,12 @@ where
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     let id = uuid_to_key(id);
-    let last_reference = self.kv.delete_property_backlink(&old_properties, &id, BacklinkType::Node).map_err(|e| Error::KV(e))?;
+    let last_reference = self.delete_property_backlink(&old_properties, &id, BacklinkType::Node)?;
     if last_reference {
       self.delete_property(&old_properties)?;
     }
 
-    self.kv.create_idx_backlink(&props_hash, &id, BacklinkType::Node).map_err(|e| Error::KV(e))?;
+    self.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
 
     Ok(())
   }
@@ -418,7 +455,7 @@ where
     let id = uuid_to_key(id);
     let path = "nodes/".to_string() + &id;
 
-    let last_reference = self.kv.delete_property_backlink(&properties, &id, BacklinkType::Node).map_err(|e| Error::KV(e))?;
+    let last_reference = self.delete_property_backlink(&properties, &id, BacklinkType::Node)?;
     if last_reference {
       self.delete_property(&properties)?;
     }
@@ -441,7 +478,7 @@ where
     let edge = SchemaElement::serialize(&edge)?;
     self.kv.store_record(&path.as_bytes(), &edge).map_err(|e| Error::KV(e))?;
 
-    self.kv.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge).map_err(|e| Error::KV(e))?;
+    self.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
 
     let path = "nodes/".to_string() + &uuid_to_key(n1);
     let NodeData {
@@ -533,7 +570,7 @@ where
     let node = SchemaElement::serialize(&node)?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    let last_reference = self.kv.delete_property_backlink(&props_hash, &id, BacklinkType::Edge).map_err(|e| Error::KV(e))?;
+    let last_reference = self.delete_property_backlink(&props_hash, &id, BacklinkType::Edge)?;
     if last_reference {
       self.delete_property(&props_hash)?;
     }
@@ -551,7 +588,7 @@ where
     properties.nested().iter().try_for_each(|nested| {
       match self.create_property(nested) {
         Ok(nested_hash) => {
-          self.kv.create_idx_backlink(&nested_hash, &hash, BacklinkType::Property).map_err(|e| Error::KV(e))?;
+          self.create_idx_backlink(&nested_hash, &hash, BacklinkType::Property)?;
           Ok(())
         }
         Err(e) => {
@@ -583,7 +620,7 @@ where
 
     for nested in properties.nested().iter() {
       let nested_hash = nested.get_key();
-      let last_reference = self.kv.delete_property_backlink(&nested_hash, id, BacklinkType::Property).map_err(|e| Error::KV(e))?;
+      let last_reference = self.delete_property_backlink(&nested_hash, id, BacklinkType::Property)?;
       if last_reference {
         self.delete_property(&nested_hash)?;
       }

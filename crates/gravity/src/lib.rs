@@ -88,13 +88,6 @@ pub trait KVStore<E> {
   fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, E>;
   /// check if an entry exists in the database
   fn exists(&self, key: &[u8]) -> Result<bool, E>;
-
-  // helper functions used to implement the default api
-
-  /// create a backlink to an entry
-  fn create_idx_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), E>;
-  /// delete a backlink from an entry
-  fn delete_property_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
 }
 
 pub trait GraphStore<NodeK, Node, EdgeKey, Edge, PropKey, T, E> {

@@ -1,4 +1,4 @@
-use crate::{BacklinkType, KVStore};
+use crate::KVStore;
 use crate::schema::Property;
 use std::collections::BTreeMap;
 use thiserror::Error;
@@ -53,44 +53,6 @@ impl KVStore<Error> for MemoryKvStore
 
   fn exists(&self, key: &[u8]) -> Result<bool, Error> {
     Ok(self.data.contains_key(&key_to_string(key)))
-  }
-
-  /// props_hash: the hash_id of the property that holds the index
-  /// id:         the id of the node, edge or property that references
-  ///             the property and needs a backling
-  /// ty:         the type of the element that needs a backlink
-  fn create_idx_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Error> {
-    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
-    self.create_bucket(index_path.as_bytes())?;
-
-    let prefix = match ty {
-      BacklinkType::Node => "nodes",
-      BacklinkType::Edge => "edges",
-      BacklinkType::Property => "props",
-    };
-    let backlink_path = index_path + prefix + "_" + id;
-    let path = prefix.to_string() + "/" + id;
-    self.store_record(&backlink_path.as_bytes(), &path.as_bytes())?;
-
-    Ok(())
-  }
-
-  fn delete_property_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Error> {
-    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
-
-    let prefix = match ty {
-      BacklinkType::Node => "nodes",
-      BacklinkType::Edge => "edges",
-      BacklinkType::Property => "props",
-    };
-    let backlink_path = index_path.clone() + prefix + "_" + id;
-    self.delete_record(backlink_path.as_bytes())?;
-
-    if self.list_records(index_path.as_bytes())?.is_empty() {
-      Ok(true)
-    } else {
-      Ok(false)
-    }
   }
 }
 
