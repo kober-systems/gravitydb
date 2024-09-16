@@ -29,6 +29,21 @@ fn create_a_node_in_empty_store() -> Result<(), Error> {
   Ok(assert_eq!(store.len(), 0))
 }
 
+#[test]
+fn cannot_create_a_node_twice() -> Result<(), Error> {
+  let mut graph = create_empty_graph();
+
+  graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
+
+  // can not create an identical node
+  match graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec()) {
+    Err(Error::NodeExists(msg)) => assert_eq!(msg, "nodes/a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d8"),
+    _ => panic!("should fail because node exists"),
+  };
+
+  Ok(())
+}
+
 fn check_string(left: Option<Vec<u8>>, right: &str) {
   let left = left.unwrap();
   let formatted = String::from_utf8(left).expect("should be an utf8 string");
