@@ -38,6 +38,10 @@ where
     }
   }
 
+  pub fn into_kv(self) -> K {
+    self.kv
+  }
+
   pub fn query(&self, q: BasicQuery) -> Result<QueryResult, Error<E>> {
     let context = match q {
       BasicQuery::V(q) => {
