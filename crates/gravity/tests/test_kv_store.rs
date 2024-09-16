@@ -3,8 +3,7 @@ use uuid::uuid;
 
 #[test]
 fn create_a_node_in_empty_store() -> Result<(), Error> {
-  let kv = mem_kv_store::MemoryKvStore::default();
-  let mut graph = kv_graph_store::KvGraphStore::<Vec<u8>, mem_kv_store::MemoryKvStore, mem_kv_store::Error>::from_kv(kv);
+  let mut graph = create_empty_graph();
 
   graph.create_node(uuid!(EXAMPLE_UUID), &PROPERTY_EMPTY.to_vec())?;
 
@@ -35,6 +34,11 @@ fn check_string(left: Option<Vec<u8>>, right: &str) {
 const EXAMPLE_UUID : &str = "a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d8";
 const PROPERTY_EMPTY : &[u8] = "".as_bytes();
 const PROPERTY_EMPTY_ID: &str = "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855";
+
+fn create_empty_graph() -> kv_graph_store::KvGraphStore::<Vec<u8>, mem_kv_store::MemoryKvStore, mem_kv_store::Error> {
+  let kv = mem_kv_store::MemoryKvStore::default();
+  kv_graph_store::KvGraphStore::from_kv(kv)
+}
 
 type Error = kv_graph_store::Error<mem_kv_store::Error>;
 
