@@ -11,7 +11,7 @@ use std::io::Error;
 use thiserror::Error;
 pub mod cli_helpers;
 
-use gravity::{KVStore, BacklinkType};
+use gravity::KVStore;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 

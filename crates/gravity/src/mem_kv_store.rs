@@ -1,5 +1,4 @@
 use crate::KVStore;
-use crate::schema::Property;
 use std::collections::BTreeMap;
 use thiserror::Error;
 
