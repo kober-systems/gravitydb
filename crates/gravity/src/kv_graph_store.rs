@@ -383,7 +383,7 @@ where
   K: KVStore<E>,
   E: Send,
 {
-  fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<(), Error<E>> {
+  fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, Error<E>> {
     let props_hash = self.create_property(properties)?;
     let node = NodeData {
       id,
@@ -391,10 +391,10 @@ where
       incoming: BTreeSet::new(),
       outgoing: BTreeSet::new(),
     };
-    let id = node.get_key();
+    let key = node.get_key();
     let node = SchemaElement::serialize(&node)?;
 
-    let path = "nodes/".to_string() + &id;
+    let path = "nodes/".to_string() + &key;
 
     if self.kv.exists(path.as_bytes()).map_err(|e| Error::KV(e))? {
       return Err(Error::NodeExists(path));
@@ -402,9 +402,9 @@ where
 
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    self.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+    self.create_idx_backlink(&props_hash, &key, BacklinkType::Node)?;
 
-    Ok(())
+    Ok(id)
   }
 
   fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error<E>> {
@@ -415,7 +415,7 @@ where
     Ok(node)
   }
 
-  fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<(), Error<E>> {
+  fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, Error<E>> {
     let props_hash = self.create_property(properties)?;
     let path = "nodes/".to_string() + &uuid_to_key(id);
     let NodeData {
@@ -433,18 +433,18 @@ where
     let node = SchemaElement::serialize(&node)?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    let id = uuid_to_key(id);
-    let last_reference = self.delete_property_backlink(&old_properties, &id, BacklinkType::Node)?;
+    let key = uuid_to_key(id);
+    let last_reference = self.delete_property_backlink(&old_properties, &key, BacklinkType::Node)?;
     if last_reference {
       self.delete_property(&old_properties)?;
     }
 
-    self.create_idx_backlink(&props_hash, &id, BacklinkType::Node)?;
+    self.create_idx_backlink(&props_hash, &key, BacklinkType::Node)?;
 
-    Ok(())
+    Ok(id)
   }
 
-  fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), Error<E>> {
+  fn delete_node(&mut self, id: uuid::Uuid) -> Result<uuid::Uuid, Error<E>> {
     let NodeData {
       id,
       properties,
@@ -452,16 +452,16 @@ where
       outgoing: _,
     } = self.read_node(id)?;
 
-    let id = uuid_to_key(id);
-    let path = "nodes/".to_string() + &id;
+    let key = uuid_to_key(id);
+    let path = "nodes/".to_string() + &key;
 
-    let last_reference = self.delete_property_backlink(&properties, &id, BacklinkType::Node)?;
+    let last_reference = self.delete_property_backlink(&properties, &key, BacklinkType::Node)?;
     if last_reference {
       self.delete_property(&properties)?;
     }
 
     self.kv.delete_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
-    Ok(())
+    Ok(id)
   }
 
   fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &P) -> Result<HashId, Error<E>> {
