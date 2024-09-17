@@ -1,5 +1,5 @@
 use crate::KVStore;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::Utf8Error};
 use thiserror::Error;
 
 type HashId = String;
@@ -22,26 +22,27 @@ impl KVStore<Error> for MemoryKvStore
   }
 
   fn delete_record(&mut self, key: &[u8]) -> Result<(), Error> {
-    self.data.remove(std::str::from_utf8(key).unwrap());
+    self.data.remove(std::str::from_utf8(key)?);
     Ok(())
   }
 
   fn store_record(&mut self, key: &[u8], value: &[u8]) -> Result<(), Error> {
-    self.data.insert(key_to_string(key), value.to_vec());
+    self.data.insert(key_to_string(key)?, value.to_vec());
     Ok(())
   }
 
   fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Error> {
-    let key = key_to_string(key);
+    let key = key_to_string(key)?;
     let out = self.data.get(&key).ok_or(Error::Missing(key))?;
     Ok(out.to_vec())
   }
 
   fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, Error> {
+    let key = key_to_string(key)?;
     let iter: Vec<Vec<u8>> = self.data.iter()
       .into_iter()
       .filter_map(|(k, v)| {
-        if k.starts_with(&key_to_string(key)) {
+        if k.starts_with(&key) {
           Some(v.to_vec())
         } else {
           None
@@ -51,7 +52,7 @@ impl KVStore<Error> for MemoryKvStore
   }
 
   fn exists(&self, key: &[u8]) -> Result<bool, Error> {
-    Ok(self.data.contains_key(&key_to_string(key)))
+    Ok(self.data.contains_key(&key_to_string(key)?))
   }
 }
 
@@ -59,9 +60,11 @@ impl KVStore<Error> for MemoryKvStore
 pub enum Error {
   #[error("the record {0} could not be found")]
   Missing(String),
+  #[error(transparent)]
+  Utf8(#[from] Utf8Error),
 }
 
-fn key_to_string(key: &[u8]) -> String {
-  std::str::from_utf8(key).unwrap().to_string()
+fn key_to_string(key: &[u8]) -> Result<String, Error> {
+  Ok(std::str::from_utf8(key)?.to_string())
 }
 
