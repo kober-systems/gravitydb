@@ -43,6 +43,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(alexander, cream, &Includes)?;
   g.create_edge(alexander, cocktail_glass, &ServedIn)?;
 
+  let alexander_original = g.create_node(Uuid::new_v4(), &Cocktail("Alexander".to_string()))?;
+  g.create_edge(alexander, gin, &Includes)?;
+  g.create_edge(alexander, creme_de_cacao, &Includes)?;
+  g.create_edge(alexander, cream, &Includes)?;
+  g.create_edge(alexander, cocktail_glass, &ServedIn)?;
+
 
   Ok(g)
 }
