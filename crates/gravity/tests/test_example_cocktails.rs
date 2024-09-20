@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 #[ignore]
 #[test]
-fn whick_cocktails_include_gin() -> Result<(), Error> {
+fn which_cocktails_include_gin() -> Result<(), Error> {
   let graph = create_cocktail_graph()?;
 
   // list all cocktails, that have gin as an ingredient
