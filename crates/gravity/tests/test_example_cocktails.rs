@@ -28,9 +28,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let cream = g.create_node(Uuid::new_v4(), &Ingredient("cream".to_string()))?;
   let creme_de_cacao = g.create_node(Uuid::new_v4(), &Ingredient("crème de cacao".to_string()))?;
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("gin".to_string()))?;
+  let lemon_juice = g.create_node(Uuid::new_v4(), &Ingredient("lemon juice".to_string()))?;
   let sweet_vermouth = g.create_node(Uuid::new_v4(), &Ingredient("sweet vermouth".to_string()))?;
+  let triple_sec = g.create_node(Uuid::new_v4(), &Ingredient("triple sec".to_string()))?;
   let vermouth = g.create_node(Uuid::new_v4(), &Ingredient("vermouth".to_string()))?;
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
+  let white_rum = g.create_node(Uuid::new_v4(), &Ingredient("white rum".to_string()))?;
   
   //garnishes
   let olive = g.create_node(Uuid::new_v4(), &Garnish("olive".to_string()))?;
@@ -91,6 +94,14 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(aviation, creme_de_violette, &Includes)?;
   g.create_edge(aviation, maraschino_cherry, &Includes)?;
   g.create_edge(aviation, cocktail_glass, &ServedIn)?;
+
+  let between_the_sheets = g.create_node(Uuid::new_v4(), &Cocktail("Between the sheets".to_string()))?;
+  g.create_edge(between_the_sheets, white_rum, &Includes)?;
+  g.create_edge(between_the_sheets, cognac, &Includes)?;
+  g.create_edge(between_the_sheets, lemon_juice, &Includes)?;
+  g.create_edge(between_the_sheets, triple_sec, &Includes)?;
+  g.create_edge(aviation, cocktail_glass, &ServedIn)?;
+
 
   Ok(g)
 }
