@@ -22,12 +22,15 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   // ingredients
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("gin".to_string()))?;
   let vermouth = g.create_node(Uuid::new_v4(), &Ingredient("vermouth".to_string()))?;
-  let olive = g.create_node(Uuid::new_v4(), &Ingredient("olive".to_string()))?;
-  let lemmon = g.create_node(Uuid::new_v4(), &Ingredient("lemmon".to_string()))?;
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
   let cream = g.create_node(Uuid::new_v4(), &Ingredient("cream".to_string()))?;
   let cognac = g.create_node(Uuid::new_v4(), &Ingredient("cognac".to_string()))?;
   let creme_de_cacao = g.create_node(Uuid::new_v4(), &Ingredient("crème de cacao".to_string()))?;
+  
+  //garnishes
+  let olive = g.create_node(Uuid::new_v4(), &Garnish("olive".to_string()))?;
+  let lemmon = g.create_node(Uuid::new_v4(), &Garnish("lemmon".to_string()))?;
+  let nutmeg = g.create_node(Uuid::new_v4(), &Garnish("nutmeg".to_string()))?;
 
   // glasses
   let cocktail_glass = g.create_node(Uuid::new_v4(), &Glass("Cocktail glass".to_string()))?;
@@ -57,6 +60,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
 pub enum CocktailSchema {
   Cocktail(String),
   Ingredient(String),
+  Garnish(String),
   Glass(String),
   // edge types
   Includes, // TODO how much in l,%,grammes,etc
