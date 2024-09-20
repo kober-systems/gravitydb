@@ -33,6 +33,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let triple_sec = g.create_node(Uuid::new_v4(), &Ingredient("triple sec".to_string()))?;
   let vermouth = g.create_node(Uuid::new_v4(), &Ingredient("vermouth".to_string()))?;
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
+  let whiskey = g.create_node(Uuid::new_v4(), &Ingredient("whiskey".to_string()))?;
   let white_rum = g.create_node(Uuid::new_v4(), &Ingredient("white rum".to_string()))?;
   
   //garnishes
