@@ -20,9 +20,11 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   use CocktailSchema::*;
 
   // ingredients
+  let apricot_brandy = g.create_node(Uuid::new_v4(), &Ingredient("apricot brandy".to_string()))?;
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("gin".to_string()))?;
   let vermouth = g.create_node(Uuid::new_v4(), &Ingredient("vermouth".to_string()))?;
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
+  let calvados = g.create_node(Uuid::new_v4(), &Ingredient("calvados".to_string()))?;
   let cream = g.create_node(Uuid::new_v4(), &Ingredient("cream".to_string()))?;
   let cognac = g.create_node(Uuid::new_v4(), &Ingredient("cognac".to_string()))?;
   let creme_de_cacao = g.create_node(Uuid::new_v4(), &Ingredient("crème de cacao".to_string()))?;
@@ -51,6 +53,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(alexander, creme_de_cacao, &Includes)?;
   g.create_edge(alexander, cream, &Includes)?;
   g.create_edge(alexander, cocktail_glass, &ServedIn)?;
+
+  let angel_face = g.create_node(Uuid::new_v4(), &Cocktail("Angel face".to_string()))?;
+  g.create_edge(angel_face, gin, &Includes)?;
+  g.create_edge(angel_face, calvados, &Includes)?;
+  g.create_edge(angel_face, apricot_brandy, &Includes)?;
+  g.create_edge(angel_face, cocktail_glass, &ServedIn)?;
 
 
   Ok(g)
