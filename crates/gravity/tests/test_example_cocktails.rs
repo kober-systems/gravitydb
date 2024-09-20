@@ -27,6 +27,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let cognac = g.create_node(Uuid::new_v4(), &Ingredient("cognac".to_string()))?;
   let cream = g.create_node(Uuid::new_v4(), &Ingredient("cream".to_string()))?;
   let creme_de_cacao = g.create_node(Uuid::new_v4(), &Ingredient("crème de cacao".to_string()))?;
+  let creme_de_violette = g.create_node(Uuid::new_v4(), &Ingredient("crème de violette".to_string()))?;
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("gin".to_string()))?;
   let lemon_juice = g.create_node(Uuid::new_v4(), &Ingredient("lemon juice".to_string()))?;
   let sweet_vermouth = g.create_node(Uuid::new_v4(), &Ingredient("sweet vermouth".to_string()))?;
@@ -35,8 +36,8 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
   let whiskey = g.create_node(Uuid::new_v4(), &Ingredient("whiskey".to_string()))?;
   let white_rum = g.create_node(Uuid::new_v4(), &Ingredient("white rum".to_string()))?;
-  
-  //garnishes
+
+  // garnishes
   let olive = g.create_node(Uuid::new_v4(), &Garnish("olive".to_string()))?;
   let lemon_twist = g.create_node(Uuid::new_v4(), &Garnish("lemon twist".to_string()))?;
   let lemon_slice = g.create_node(Uuid::new_v4(), &Garnish("lemon slice".to_string()))?;
@@ -48,6 +49,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let cocktail_glass = g.create_node(Uuid::new_v4(), &Glass("Cocktail glass".to_string()))?;
   let old_fashioned_glass = g.create_node(Uuid::new_v4(), &Glass("Old fashioned glass".to_string()))?;
 
+  // coctails
   let martini = g.create_node(Uuid::new_v4(), &Cocktail("Martini".to_string()))?;
   g.create_edge(martini, gin, &Includes)?;
   g.create_edge(martini, vermouth, &Includes)?;
@@ -90,7 +92,7 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
 
   let aviation = g.create_node(Uuid::new_v4(), &Cocktail("Aviation".to_string()))?;
   g.create_edge(aviation, gin, &Includes)?;
-  g.create_edge(aviation, maraschino, &Includes)?;
+  g.create_edge(aviation, maraschino_cherry, &Includes)?;
   g.create_edge(aviation, lemon_juice, &Includes)?;
   g.create_edge(aviation, creme_de_violette, &Includes)?;
   g.create_edge(aviation, maraschino_cherry, &Includes)?;
