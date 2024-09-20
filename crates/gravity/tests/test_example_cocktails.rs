@@ -21,7 +21,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
 
   // ingredients
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("Gin".to_string()))?;
-  let wermuth = g.create_node(Uuid::new_v4(), &Ingredient("Wermuth".to_string()))?;
+  let vermouth = g.create_node(Uuid::new_v4(), &Ingredient("Vermouth".to_string()))?;
   let olive = g.create_node(Uuid::new_v4(), &Ingredient("Olive".to_string()))?;
   let lemmon = g.create_node(Uuid::new_v4(), &Ingredient("Lemmon".to_string()))?;
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("Vodka".to_string()))?;
@@ -31,7 +31,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
 
   let martini = g.create_node(Uuid::new_v4(), &Cocktail("Martini".to_string()))?;
   g.create_edge(martini, gin, &Includes)?;
-  g.create_edge(martini, wermuth, &Includes)?;
+  g.create_edge(martini, vermouth, &Includes)?;
   g.create_edge(martini, cocktail_glass, &ServedIn)?;
 
   Ok(g)
