@@ -21,16 +21,16 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
 
   // ingredients
   let apricot_brandy = g.create_node(Uuid::new_v4(), &Ingredient("apricot brandy".to_string()))?;
+  let calvados = g.create_node(Uuid::new_v4(), &Ingredient("calvados".to_string()))?;
+  let campari = g.create_node(Uuid::new_v4(), &Ingredient("campari".to_string()))?;
+  let club_soda = g.create_node(Uuid::new_v4(), &Ingredient("club sod".to_string()))?;
+  let cognac = g.create_node(Uuid::new_v4(), &Ingredient("cognac".to_string()))?;
+  let cream = g.create_node(Uuid::new_v4(), &Ingredient("cream".to_string()))?;
+  let creme_de_cacao = g.create_node(Uuid::new_v4(), &Ingredient("crème de cacao".to_string()))?;
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("gin".to_string()))?;
+  let sweet_vermouth = g.create_node(Uuid::new_v4(), &Ingredient("sweet vermouth".to_string()))?;
   let vermouth = g.create_node(Uuid::new_v4(), &Ingredient("vermouth".to_string()))?;
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
-  let calvados = g.create_node(Uuid::new_v4(), &Ingredient("calvados".to_string()))?;
-  let cream = g.create_node(Uuid::new_v4(), &Ingredient("cream".to_string()))?;
-  let cognac = g.create_node(Uuid::new_v4(), &Ingredient("cognac".to_string()))?;
-  let creme_de_cacao = g.create_node(Uuid::new_v4(), &Ingredient("crème de cacao".to_string()))?;
-  let campari = g.create_node(Uuid::new_v4(), &Ingredient("campari".to_string()))?;
-  let sweet_vermouth = g.create_node(Uuid::new_v4(), &Ingredient("sweet vermouth".to_string()))?;
-  let club_soda = g.create_node(Uuid::new_v4(), &Ingredient("club sod".to_string()))?;
   
   //garnishes
   let olive = g.create_node(Uuid::new_v4(), &Garnish("olive".to_string()))?;
@@ -38,6 +38,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let lemon_slice = g.create_node(Uuid::new_v4(), &Garnish("lemon slice".to_string()))?;
   let orange_slice = g.create_node(Uuid::new_v4(), &Garnish("orange slice".to_string()))?;
   let nutmeg = g.create_node(Uuid::new_v4(), &Garnish("nutmeg".to_string()))?;
+  let maraschino_cherry = g.create_node(Uuid::new_v4(), &Garnish("maraschino cherry".to_string()))?;
 
   // glasses
   let cocktail_glass = g.create_node(Uuid::new_v4(), &Glass("Cocktail glass".to_string()))?;
@@ -83,6 +84,13 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(angel_face, apricot_brandy, &Includes)?;
   g.create_edge(angel_face, cocktail_glass, &ServedIn)?;
 
+  let aviation = g.create_node(Uuid::new_v4(), &Cocktail("Aviation".to_string()))?;
+  g.create_edge(aviation, gin, &Includes)?;
+  g.create_edge(aviation, maraschino, &Includes)?;
+  g.create_edge(aviation, lemon_juice, &Includes)?;
+  g.create_edge(aviation, creme_de_violette, &Includes)?;
+  g.create_edge(aviation, maraschino_cherry, &Includes)?;
+  g.create_edge(aviation, cocktail_glass, &ServedIn)?;
 
   Ok(g)
 }
