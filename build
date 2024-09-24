@@ -2,6 +2,10 @@
 set -e
 
 echo "==========================="
+echo "check for modifications"
+./scripts/check_file_changes.ts || exit 1
+
+echo "==========================="
 echo "generate sources"
 cd crates/gravity/
 lisi -o /dev/null ../../docs/gravity.adoc

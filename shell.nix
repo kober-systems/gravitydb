@@ -6,6 +6,7 @@ in
 pkgs.mkShell {
   buildInputs = [
     rust
+    pkgs.deno
 
     # keep this line if you use bash
     pkgs.bashInteractive
