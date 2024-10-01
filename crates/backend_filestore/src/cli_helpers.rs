@@ -1,5 +1,5 @@
 use gravity::schema::{SchemaElement, Property};
-use crate::{FileStoreError, FsKvStore, HashId};
+use crate::{FileStoreError, FsKvStore};
 use anyhow::bail;
 use std::io::{self, Write};
 use gravity::{ql, GraphStore};
@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use std::io::Read;
 use anyhow::Result;
+
+type HashId = String;
 
 pub fn read_input(input: Option<PathBuf>) -> Result<Vec<u8>> {
   let data = match input {
@@ -204,7 +206,7 @@ where
     }
     QueryDb => {
       let query = read_input(opt.input)?;
-      let query = crate::to_query(&query)?;
+      let query = to_query(&query)?;
 
       let db = open::<T>(&opt.db_path)?;
       let result = db.query(query)?;
@@ -291,18 +293,28 @@ where
   Ok(())
 }
 
-fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore<T>, std::io::Error>, FileStoreError>
+fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore, FileStoreError>, FileStoreError>
 where
   T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
 {
-  let kv = FsKvStore::<T>::open(path)?;
+  let kv = FsKvStore::open(path)?;
   Ok(KvGraphStore::from_kv(kv))
 }
 
-fn init<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore<T>, std::io::Error>, FileStoreError>
+fn init<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore, FileStoreError>, FileStoreError>
 where
   T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
 {
-  let kv = FsKvStore::<T>::init(path)?;
+  let kv = FsKvStore::init(path)?;
   Ok(KvGraphStore::from_kv(kv))
+}
+
+type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+
+fn to_query(data: &Vec<u8>) -> Result<BasicQuery, SerialisationError> {
+  // TODO Verschiedene Query Sprachen über zweiten Parameter
+  // TODO Internes Schema verwenden um Abfragen zu verbessern
+  let query = serde_json::from_slice(data)?;
+
+  Ok(query)
 }
