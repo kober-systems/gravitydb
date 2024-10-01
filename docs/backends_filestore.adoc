@@ -370,7 +370,7 @@ where
 <<tool_imports>>
 
 fn main() -> Result<()> {
-  cli_helpers::db_cmds::<gravity::kv_graph_store::GenericProperty>()
+  cli_helpers::db_cmds::<gravity::schema::GenericProperty>()
 }
 ----
 

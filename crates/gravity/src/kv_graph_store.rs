@@ -693,8 +693,6 @@ where
   }
 }
 
-impl mlua::UserData for GenericProperty {}
-
 #[derive(Deserialize, Serialize, Debug)]
 pub struct NodeData {
   pub id: uuid::Uuid,
@@ -749,31 +747,6 @@ impl SchemaElement<HashId, SerialisationError> for EdgeData
   {
     Ok(serde_json::from_slice(data)?)
   }
-}
-
-#[derive(Debug, Clone)]
-pub struct GenericProperty(Vec<u8>);
-
-impl SchemaElement<HashId, SerialisationError> for GenericProperty
-{
-  fn get_key(&self) -> HashId {
-    format!("{:X}", sha2::Sha256::digest(&self.0))
-  }
-
-  fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {
-    Ok(self.0.clone())
-  }
-
-  fn deserialize(data: &[u8]) -> Result<Self, SerialisationError>
-  where
-    Self: Sized,
-  {
-    Ok(GenericProperty(data.to_vec()))
-  }
-}
-
-impl Property<String, SerialisationError> for GenericProperty {
-  fn nested(&self) -> Vec<Self> { Vec::new() }
 }
 
 pub struct Change {

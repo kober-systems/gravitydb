@@ -313,46 +313,6 @@ Dementsprechend ist es sinnvoll für jede Anwendung ein eigenes Schema
 (TODO link) für die Properties zu entwerfen und benutzen (ähnlich wie
 man es bei einer SQL Datenbank auch tun würde).
 
-Allerdings möchten wir, dass unsere Datenbank auch verwendbar ist, ohne
-das jeder zuerst ein Schema erdenken und anschließend die Datenbank
-mit diesem Schema gemeinsam kompilieren muss. Aus diesem Grund
-definieren wir ein sehr allgemeines Schema, welches beliebige Daten (wie
-bespielsweise Dateien auf dem Computer) aufnehmen kann. Seine sehr laxe
-Validierung erlaubt direkt mit der Datenbank zu arbeiten.
-
-[[schema_structs]]
-[source, rust]
-.Allgemeines Schema für beliebige Properties
-----
-#[derive(Debug, Clone)]
-pub struct GenericProperty(Vec<u8>);
-
-impl SchemaElement<HashId, SerialisationError> for GenericProperty
-{
-  fn get_key(&self) -> HashId {
-    format!("{:X}", sha2::Sha256::digest(&self.0))
-  }
-
-  fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {
-    Ok(self.0.clone())
-  }
-
-  fn deserialize(data: &[u8]) -> Result<Self, SerialisationError>
-  where
-    Self: Sized,
-  {
-    Ok(GenericProperty(data.to_vec()))
-  }
-}
-
-impl Property<String, SerialisationError> for GenericProperty {
-  fn nested(&self) -> Vec<Self> { Vec::new() } // <1>
-}
-----
-<1> Wir bilden keine Verweise der Dateien untereinander ab, da wir ja
-    bei dieser allgemeinen Fassung des Schemas die Dateien selbst gar
-    nicht auswerten.
-
 Daten die man hier verwendet können beliebige Inhalte haben. Es
 wäre aber klug (wenn auch nicht erforderlich) zu versuchen nicht
 deterministische Daten wie Änderungszeitstempel (oder Zeitstempel

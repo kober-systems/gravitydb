@@ -237,6 +237,8 @@ TODO Funktion, welche am Ende einer Transaktion aufgerufen werden kann um die G�
 use crate::ql;
 
 <<schema_elements|join="\n\n">>
+
+<<default_implementations|join="\n\n">>
 ----
 
 == Schema Migrationen
@@ -257,4 +259,74 @@ alle Bedingungen erfüllt bleiben.
 TODO Beschreiben, dass man für jedes Schema eine Version braucht. Dann benötigt man jeweils eine Funktion, welche die Daten von einem Schema der unteren Version in das Schema der nächst höheren Version konvertiert. Bei einer Konvertierungen werden dann alle Funktionen für die dazwischenliegenden Versionen nacheinander ausgeführt.
 
 TODO Mögliche Optimierungen beschreiben. Möglicherweise lassen sich die Konvertierungsfunktionen zusammenfassen, so dass man jeden Knoten und jede Verbindung nur einmal anfassen muss (ob das sicher möglich ist muss allerdings erst noch überprüft werden). Möglicherweise kann man auf die Validierungen zwischen den Konvertierungen verzichten und erst die letzte Validierung durchführen.
+
+== Standard Implementierung
+Manchmal ist es nützlich einfach ohne ein spezielles Schema beginnen zu
+können. Dadurch wird unsere Datenbank auch verwendbar, ohne das jeder
+zuerst ein Schema erdenken und anschließend die Datenbank mit diesem
+Schema gemeinsam kompilieren muss. Aus diesem Grund definieren wir ein
+sehr allgemeines Schema, welches beliebige Daten (wie bespielsweise
+Dateien auf dem Computer) aufnehmen kann. Seine sehr laxe Validierung
+erlaubt direkt mit der Datenbank zu arbeiten.
+
+[[default_implementations]]
+[source, rust]
+.Allgemeines Schema für beliebige Properties
+----
+use sha2::Digest;
+
+#[derive(Debug, Clone)]
+pub struct GenericProperty(Vec<u8>);
+
+impl<E> SchemaElement<String, E> for GenericProperty
+{
+  fn get_key(&self) -> String {
+    format!("{:X}", sha2::Sha256::digest(&self.0))
+  }
+
+  fn serialize(&self) -> Result<Vec<u8>, E> {
+    Ok(self.0.clone())
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, E>
+  where
+    Self: Sized,
+  {
+    Ok(GenericProperty(data.to_vec()))
+  }
+}
+
+impl<E> Property<String, E> for GenericProperty {
+  fn nested(&self) -> Vec<Self> { Vec::new() } // <1>
+}
+
+impl mlua::UserData for GenericProperty {}
+----
+<1> Wir bilden keine Verweise der Dateien untereinander ab, da wir ja
+    bei dieser allgemeinen Fassung des Schemas die Dateien selbst gar
+    nicht auswerten.
+
+[[default_implementations]]
+[source, rust]
+----
+
+impl<E> SchemaElement<String, E> for Vec<u8>
+{
+  fn get_key(&self) -> String {
+    format!("{:X}", sha2::Sha256::digest(&self))
+  }
+
+  fn serialize(&self) -> Result<Self, E> {
+    Ok(self.clone())
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, E> {
+    Ok(data.to_vec())
+  }
+}
+
+impl<E> Property<String, E> for Vec<u8> {
+  fn nested(&self) -> Vec<Self> { Vec::new() }
+}
+----
 

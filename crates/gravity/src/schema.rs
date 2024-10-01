@@ -44,6 +44,34 @@ where
 
 use sha2::Digest;
 
+#[derive(Debug, Clone)]
+pub struct GenericProperty(Vec<u8>);
+
+impl<E> SchemaElement<String, E> for GenericProperty
+{
+  fn get_key(&self) -> String {
+    format!("{:X}", sha2::Sha256::digest(&self.0))
+  }
+
+  fn serialize(&self) -> Result<Vec<u8>, E> {
+    Ok(self.0.clone())
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, E>
+  where
+    Self: Sized,
+  {
+    Ok(GenericProperty(data.to_vec()))
+  }
+}
+
+impl<E> Property<String, E> for GenericProperty {
+  fn nested(&self) -> Vec<Self> { Vec::new() }
+}
+
+impl mlua::UserData for GenericProperty {}
+
+
 impl<E> SchemaElement<String, E> for Vec<u8>
 {
   fn get_key(&self) -> String {
