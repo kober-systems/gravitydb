@@ -4,6 +4,7 @@ const LITERATE_SOURCES = {
   "docs/gravity.adoc": "",
   "docs/query_language.adoc": "",
   "docs/schema.adoc": "",
+  "docs/key_value_store.adoc": "",
   "docs/backends_filestore.adoc": "",
 };
 
@@ -32,7 +33,8 @@ const files_modified_by_lisi = {
   ...await json_sh("lisi --dry-run ../../docs/gravity.adoc", "crates/gravity"),
   ...await json_sh("lisi --dry-run ../../docs/query_language.adoc", "crates/gravity"),
   ...await json_sh("lisi --dry-run ../../docs/schema.adoc", "crates/gravity"),
-  ...await json_sh("lisi --dry-run ../../docs/backends_filestore.adoc", "crates/gravity"),
+  ...await json_sh("lisi --dry-run ../../docs/key_value_store.adoc", "crates/gravity"),
+  ...await json_sh("lisi --dry-run ../../docs/backends_filestore.adoc", "crates/backend_filestore"),
 };
 
 var literate_sources_unchanged = true;

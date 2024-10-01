@@ -317,8 +317,8 @@ pub trait GraphBuilder<N, P, E> {
   /// Edges are expected to have properties. If an Implementation
   /// does not have them it should use ().
   fn add_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
-  fn delete_node(&mut self, node: &N) -> Result<(), E>;
-  fn delete_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
+  fn remove_node(&mut self, node: &N) -> Result<(), E>;
+  fn remove_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
 }
 ----
 
@@ -334,40 +334,33 @@ pub enum BacklinkType {
   Property,
 }
 
-pub trait KVStore {
-  type Error;
-  //type KeyIterator: Iterator<Item = AsRef<[u8]>>;
-
+pub trait KVStore<E> {
   /// creates a new bucket
-  fn create_bucket(&self, key: &[u8]) -> Result<(), Self::Error>;
+  fn create_bucket(&mut self, key: &[u8]) -> Result<(), E>;
   /// delete a data record (could also be a bucket)
-  fn delete_record(&self, key: &[u8]) -> Result<(), Self::Error>;
+  fn delete_record(&mut self, key: &[u8]) -> Result<(), E>;
   /// list all records and buckets inside a bucket
-  //fn list_records(&self, key: Option<&[u8]>) -> Result<Self::KeyIterator, Self::Error>;
+  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, E>;
   /// store a data record
-  fn store_record(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error>;
+  fn store_record(&mut self, key: &[u8], value: &[u8]) -> Result<(), E>;
   /// fetch a data record
-  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, Self::Error>;
-  fn exists(&self, key: &[u8]) -> Result<bool, Self::Error>;
+  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, E>;
+  /// check if an entry exists in the database
+  fn exists(&self, key: &[u8]) -> Result<bool, E>;
 }
 
-pub trait GraphStore<E> {
-  /// helper functions used to implement the default api
-  fn create_idx_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), E>;
-  fn delete_property_backlink(&self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, E>;
-
+pub trait GraphStore<NodeK, Node, EdgeKey, Edge, PropKey, T, E> {
   // CRUD functions
-  //      TODO these functions should have a default implementation
-  //fn create_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), E>;
-  //fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, E>;
-  //fn update_node(&mut self, id: uuid::Uuid, properties: &T) -> Result<(), E>;
-  //fn delete_node(&mut self, id: uuid::Uuid) -> Result<(), E>;
-  //fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &T) -> Result<HashId, E>;
-  //fn read_edge(&self, id: &HashId) -> Result<EdgeData, E>;
-  //fn delete_edge(&mut self, id: &HashId) -> Result<(), E>;
-  //fn create_property(&mut self, properties: &T) -> Result<HashId, E>;
-  //fn read_property(&mut self, id: &HashId) -> Result<T, E>;
-  //fn delete_property(&mut self, id: &HashId) -> Result<(), E>;
+  fn create_node(&mut self, id: NodeK, properties: &T) -> Result<NodeK, E>;
+  fn read_node(&self, id: NodeK) -> Result<Node, E>;
+  fn update_node(&mut self, id: NodeK, properties: &T) -> Result<NodeK, E>;
+  fn delete_node(&mut self, id: NodeK) -> Result<NodeK, E>;
+  fn create_edge(&mut self, n1: NodeK, n2: NodeK, properties: &T) -> Result<EdgeKey, E>;
+  fn read_edge(&self, id: &EdgeKey) -> Result<Edge, E>;
+  fn delete_edge(&mut self, id: &EdgeKey) -> Result<(), E>;
+  fn create_property(&mut self, properties: &T) -> Result<PropKey, E>;
+  fn read_property(&mut self, id: &PropKey) -> Result<T, E>;
+  fn delete_property(&mut self, id: &PropKey) -> Result<(), E>;
 
   // Query functions
   //       TODO these functions should have a default implementation
@@ -383,6 +376,8 @@ pub trait GraphStore<E> {
 ----
 pub mod ql;
 pub mod schema;
+pub mod kv_graph_store;
+pub mod mem_kv_store;
 
 <<traits|join="\n\n">>
 ----
