@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 pub mod cli_helpers;
 
-
 pub struct FsKvStore {
   base_path: PathBuf,
 }

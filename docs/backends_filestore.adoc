@@ -114,91 +114,6 @@ MalformedDB,
 
 Innerhalb dieser Ordner (oder der meisten dieser Ordner denn z.B. config enthält ja nur Beschreibungsdaten) werden die Datensätze als Dateien abgelegt. Der Dateiname ist dabei der Schlüssel mit dem man auf die Daten zugreift und der Dateiinhalt ist der Wert. Als Schlüssel wird entweder ein `Hash` oder eine `Uuid` verwendet.
 
-Hash:: Ein https://en.wikipedia.org/wiki/Cryptographic_hash_function[Hash] ist die eindeutige Zusammenfassung des Inhalts als eine Zahl. Alles was einen `hash` als Schlüssel hat ist somit ein https://en.wikipedia.org/wiki/Content-addressable_storage[content addressable store] da mit dem Schlüssel der Inhalt fest verbunden ist. Der verwendete Hash Algorithmus kann über die Konfiguration festgelegt werden. Das hat ein paar Vorteile:
-** Die Daten können nur entweder erstellt oder gelöscht werden aber nicht verändert. Daraus ergeben sich eine Menge Möglichkeiten für die Synchronisierung und Prüfung der Datenintegrität.
-Uuid:: Eine https://en.wikipedia.org/wiki/Universally_unique_identifier[Uuid] ist eine eindeutige Id bei der nicht die Gefahr besteht, das zwei unterschiedliche Prozesse die gleiche id erstellen (nicht mal wenn die Prozesse auf unabhängigen und nicht miteinander kommunizierenden Computern ablaufen). Datensätze welche eine `uuid` als Schlüssel verwenden können modifiziert werden.
-
-Wie wir später noch sehen werden hat diese Strukturierung Vorteile um die Daten gut <<sync, synchronisieren>> und effektiv durchsuchen zu können.
-
-Um diese Keys umzusetzen verwenden wir die https://docs.rs/uuid[uuid] und https://docs.rs/sha2[sha2] crates. Für sie definieren wir eine Hilfsschnittstelle, um die Umwandlung in einen Datenbankschlüssel zu erlauben.
-
-Als Schlüssel betrachten wir hier den zusammengefassten Dateinamen aus allen Ordnernamen unterhalb der hier aufgeführten Struktur und dem Dateinamen (ohne die Trennzeichen wie z.B `/`). Wie viele Ordner verwendet werden sollen und ob die Tiefe dynamisch angepasst werden soll hängt von der Konfiguration ab. Dadurch ist es möglich die Abfragegeschwindigkeiten zu optimieren je nachdem wie voll die Datenbank ist.
-
-Dateinamen sind im Grunde Strings, weshalb wir unsere Hashes in diesem Fall als String definieren können.
-
-[[structs]]
-[source, rust]
-----
-type HashId = String;
-----
-
-Als Hash Funktion nutzen wir (vorerst) sha256. Dafür importieren wir die Digest traits.
-
-[[imports]]
-[source, rust]
-----
-use sha2::Digest;
-----
-
-=== Die einzelnen Datentypen
-Nun wollen wir die Einzelheiten und Schemata der einzelnen Datentypen besprechen.
-
-Die Dateiinhalte sind Key-Value Stores welche die Werte das Datensatzes enthalten. Man kann dafür z.B. Json, messagepack oder etwas anderes verwenden (theoretisch könnte man sogar wieder das Datesystem verwenden, da ein Ordner ja auch nichts anderes als ein Key-Value-Store ist). Das verwendete Dateiformat kann über die Konfiguration festgelegt werden (das Schema dagegen besprechen wir in den folgenden Abschnitten). Zu Beginn mag es nützlich sein Json zu verwenden, da es leicht zum Debuggen geeignet ist.
-
-Um uns die Flexibilität zu erhalten verwenden wir zunächst https://serde.rs/[serde] zur Serialisierung. Dadurch lässt sich das Datenformat für unsere Datentypen leicht austauschen. Natürlich kann man als Properties (TODO link) beliebige Dateien und Formate abspeichern.
-
-Zu Beginn nutzen wir json als Serialisierungsformat footnote:[Das gilt nur für unsere internen Datenstrukturen innerhalb der Datenbank. Jedes Schema kann völlig frei seine eigene Serialisierung wählen]. Dazu nutzen wir `serde_json`.
-
-Wir verwenden die Schema Traits (TODO link) von gravity um die Datentypen zu definieren. Dadurch haben wir später die Möglichkeit zum validieren (TODO link) und optimieren (TODO link), was gerade bei Transaktionen (TODO link) von großem Nutzen ist.
-
-[[imports]]
-[source, rust]
-----
-use gravity::schema::SchemaElement;
-----
-
-=== Eigenschaften (properties)
-Im Ordner `properties` können beliebige Daten gespeichert werden. Diese Dateien enthalten das, was man im Allgemeinen als die eigentlichen Nutzdaten betrachten würde.
-
-In einem herkömmlichen Arbeitsprozess (also ohne Graphendatenbank) sind alle Dateien die man erzeugt und bearbeitet mit Properties gleichzusetzen. Und in einer SQL Datenbank entspräche der Inhalt aller Zeilen, die keine Primary- oder Foreign-Keys enthalten, den Properties.
-
-Dementsprechend ist es sinnvoll für jede Anwendung ein eigenes Schema (TODO link) für die Properties zu entwerfen und benutzen (ähnlich wie man es bei einer SQL Datenbank auch tun würde).
-
-Allerdings möchten wir, dass unsere Datenbank auch verwendbar ist, ohne das jeder zuerst ein Schema erdenken und anschließend die Datenbank mit diesem Schema gemeinsam kompilieren muss. Aus diesem Grund definieren wir ein sehr allgemeines Schema, welches beliebige Daten (wie bespielsweise Dateien auf dem Computer) aufnehmen kann. Seine sehr laxe Validierung erlaubt direkt mit der Datenbank zu arbeiten.
-
-[[structs]]
-[source, rust]
-.Allgemeines Schema für beliebige Properties
-----
-#[derive(Debug, Clone)]
-pub struct GenericProperty(Vec<u8>);
-
-impl SchemaElement<HashId, SerialisationError> for GenericProperty
-{
-  fn get_key(&self) -> HashId {
-    format!("{:X}", sha2::Sha256::digest(&self.0))
-  }
-
-  fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {
-    Ok(self.0.clone())
-  }
-
-  fn deserialize(data: &[u8]) -> Result<Self, SerialisationError>
-  where
-    Self: Sized,
-  {
-    Ok(GenericProperty(data.to_vec()))
-  }
-}
-
-impl Property<String, SerialisationError> for GenericProperty {
-  fn nested(&self) -> Vec<Self> { Vec::new() } // <1>
-}
-----
-<1> Wir bilden keine Verweise der Dateien untereinander ab, da wir ja bei dieser allgemeinen Fassung des Schemas die Dateien selbst gar nicht auswerten.
-
-Daten die man hier verwendet können beliebige Inhalte haben. Es wäre aber klug (wenn auch nicht erforderlich) zu versuchen nicht deterministische Daten wie Änderungszeitstempel (oder Zeitstempel allgemein) vor dem Abspeichern aus den Dateien zu entfernen. Tut man das nicht, kann der nicht-Determinismus die Synchronisiation stark belasten. Es wäre also gut zu überdenken ob man einen direkten Anwendungsfall für die Auswertung solcher veränderlichen Daten hat oder die Daten sich sehr selten verändern, bevor man sich entschließt nicht deterministische Daten abzuspeichern.
-
 == Implementierung
 
 Da wir alles aus dem Dateisystem auslesen müssen wir auch die
@@ -282,47 +197,6 @@ use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 ----
 
-=== Schema Schnittstellen für Knoten, Verbindungen und Eigenschaften
-Unsere Datenbank erlaubt es ein Schema zu definieren. Damit das möglich ist müssen die einzelnen Elemente Schnittstellen bereitstellen.
-
-[[imports]]
-[source, rust]
-----
-use gravity::schema::Property;
-----
-
-=== Abfrage Sprache einlesen
-Abfragen können in der verschiedensten Form formuliert werden. Wir verwenden die Zoe (TODO link) Sprache um unsere Abfragen zu definieren. Allerdings haben wir die Möglichkeit andere Sprachen zu nutzen und diese in eine gleichwertige Zoe Abfrage umzuwandeln. Dafür müssen wir zunächst die Sprache importieren.
-
-[[imports]]
-[source, rust]
-----
-use gravity::ql;
-pub use gravity::kv_graph_store::SerialisationError;
-----
-
-Anschliessend definieren wir unseren eigenen Dialekt indem wir die grundlegenden Datentypen festlegen footnote:[Dieser Dialekt wird durch die Anwendung noch weiter verfeinert, sobald das Schema festgelegt wird].
-
-[[structs]]
-[source, rust]
-----
-type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
-----
-
-Wir gehen davon aus, dass die Abfragen als Json codiert übermittelt werden.
-
-[[helper_functions]]
-[source, rust]
-----
-pub fn to_query(data: &Vec<u8>) -> Result<BasicQuery, SerialisationError> {
-  // TODO Verschiedene Query Sprachen über zweiten Parameter
-  // TODO Internes Schema verwenden um Abfragen zu verbessern
-  let query = serde_json::from_slice(data)?;
-
-  Ok(query)
-}
-----
-
 === Dateiorganisation des Crates
 Wie überall benötigt man einiges an Boilerplate-Code.
 
@@ -331,14 +205,9 @@ Wie überall benötigt man einiges an Boilerplate-Code.
 ----
 <<imports>>
 
-<<traits|join="\n\n">>
-
 <<structs|join="\n\n">>
 
 <<interface_implementations|join="\n\n">>
-
-<<helper_functions|join="\n\n">>
-
 ----
 
 Die wichtigste Struktur ist natürlich der Store selbst.
@@ -450,9 +319,13 @@ use gravitydb_filestore::cli_helpers;
 ----
 <<util_imports>>
 
+type HashId = String;
+
 <<tool_helper_functions|join="\n\n">>
 
 <<cli_template_functions|join="\n\n">>
+
+<<helper_structs|join="\n\n">>
 ----
 
 Wir stellen dabei ein Programm-Template bereit, welches alle wichtigen db Funktionen über Sub-Kommandos bereitstellt footnote:[Diesen Style von Kommandozeilen Parametern kennt man vielleicht von Tools wie git].
@@ -497,7 +370,7 @@ where
 <<tool_imports>>
 
 fn main() -> Result<()> {
-  cli_helpers::db_cmds::<gravitydb_filestore::GenericProperty>()
+  cli_helpers::db_cmds::<gravity::kv_graph_store::GenericProperty>()
 }
 ----
 
@@ -574,7 +447,7 @@ get_or_create: bool,
 [source, rust]
 ----
 use gravity::schema::{SchemaElement, Property};
-use crate::{FileStoreError, FsKvStore, HashId};
+use crate::{FileStoreError, FsKvStore};
 use anyhow::bail;
 ----
 
@@ -812,7 +685,7 @@ Zunächst lesen wir die Abfrage ein und dann interpretieren wir sie.
 ----
 QueryDb => {
   let query = read_input(opt.input)?;
-  let query = crate::to_query(&query)?;
+  let query = to_query(&query)?;
 
   let db = open::<T>(&opt.db_path)?;
   let result = db.query(query)?;
@@ -823,6 +696,37 @@ QueryDb => {
   println!("{}", serde_json::to_string_pretty(&result)?); // TODO wenn kein Terminal sondern eine pipe verwendet wird kann man kompakteres json ausgeben.
 
   // TODO Umschliessende Huelle? Alle miteinander verbundenen Edges und Vertices?
+}
+----
+
+Abfragen können in der verschiedensten Form formuliert werden. Wir
+verwenden die Zoe (TODO link) Sprache um unsere Abfragen zu definieren.
+Allerdings haben wir die Möglichkeit andere Sprachen zu nutzen und diese
+in eine gleichwertige Zoe Abfrage umzuwandeln. Dafür müssen wir zunächst
+die Sprache importieren.
+
+Anschliessend definieren wir unseren eigenen Dialekt indem wir die
+grundlegenden Datentypen festlegen footnote:[Dieser Dialekt wird durch
+die Anwendung noch weiter verfeinert, sobald das Schema festgelegt
+wird].
+
+[[helper_structs]]
+[source, rust]
+----
+type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+----
+
+Wir gehen davon aus, dass die Abfragen als Json codiert übermittelt werden.
+
+[[helper_structs]]
+[source, rust]
+----
+fn to_query(data: &Vec<u8>) -> Result<BasicQuery, SerialisationError> {
+  // TODO Verschiedene Query Sprachen über zweiten Parameter
+  // TODO Internes Schema verwenden um Abfragen zu verbessern
+  let query = serde_json::from_slice(data)?;
+
+  Ok(query)
 }
 ----
 
@@ -895,37 +799,6 @@ Repl => {
     }
   }
 }
-----
-
-Damit man mit der Repl auch etwas anfangen kann, muss sie auch
-Funktionen bieten um die Datenbank zu manipulieren. Dazu binden wir den
-`FsStore` Typ in unsere Lua Umgebung ein:
-
-[[todo_interface_implementations]]
-[source, rust]
-----
-impl<P> mlua::UserData for FsStore<P>
-where
-  P: Property<HashId, Error> + mlua::UserData + std::clone::Clone + 'static,
-{
-  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
-    use mlua::prelude::LuaError;
-
-    methods.add_method_mut("create_node", |_, db, props: P| {
-      let id = uuid::Uuid::new_v4();
-      match db.create_node(id, &props) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(LuaError::external(e))
-      }
-    });
-  }
-}
-----
-
-[[interface_implementations]]
-[source, rust]
-----
-impl mlua::UserData for GenericProperty {}
 ----
 
 Und wir benötigen einige Constructor Funktionen um die Datenbank
