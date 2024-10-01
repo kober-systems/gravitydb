@@ -107,26 +107,3 @@ pub trait GraphStore<NodeK, Node, EdgeKey, Edge, PropKey, T, E> {
   //       TODO these functions should have a default implementation
   //fn query(&self, q: BasicQuery) -> Result<QueryResult, E>;
 }
-
-//use crate::schema::SchemaElement;
-//
-// TODO Soll die generische Implementierung wie hier geschehen, oder
-// sollen lieber Supertraits verwendet werden?
-// für supertraits siehe https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#using-supertraits-to-require-one-traits-functionality-within-another-trait
-// Vorteine von Supertraits wären, dass man ein Grundtrait implementieren könnte und anschließend das Supertrait
-// automatisch implementiert werden kann. Man kann aber auch einzelne Methoden des Supertraits
-// überschreiben.
-//impl<Store, E> GraphStore<&str, Vec<u8>, E> for Store
-//where
-//  Store: KVStore + GraphStoreHelper<E>,
-//  E: std::convert::From<<Store as KVStore>::Error>,
-//  //T: SchemaElement<String, E>,
-//{
-//  fn read_property(&mut self, id: &str) -> Result<Vec<u8>, E> {
-//    let path = "props/".to_string() + id;
-//
-//    let data = self.fetch_record(path.as_bytes())?;
-//    let property = SchemaElement::deserialize(&data)?;
-//    Ok(property)
-//  }
-//}
