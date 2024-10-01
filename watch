@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+watchexec --clear=reset \
+  --ignore "docs/screenshots/*.png" \
+  './build && \
+   echo "changes in source code:" && \
+   git --no-pager diff && \
+   echo "" && echo "new files:"  && \
+   git status --porcelain \
+'
+
