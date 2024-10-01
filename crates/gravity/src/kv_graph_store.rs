@@ -1,15 +1,32 @@
-use crate::{BacklinkType, GraphStore, KVStore};
-use crate::schema::{Property, SchemaElement};
-use crate::ql;
-use serde::{Serialize, Deserialize};
 use sha2::Digest;
+use crate::schema::SchemaElement;
+use serde::{Serialize, Deserialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
+use crate::GraphStore;
+use crate::GraphBuilder;
+use crate::schema::Property;
+use crate::ql;
+use core::hash::Hash;
+use crate::KVStore;
 use std::marker::PhantomData;
 use thiserror::Error;
 
+pub trait Node<P: Property<HashId, SerialisationError>> {
+  fn id(&self) -> uuid::Uuid;
+  fn properties(&self) -> P;
+}
+
 type HashId = String;
+
+enum BacklinkType {
+  Node,
+  Edge,
+  Property,
+}
+
 type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
 type QueryResult = ql::QueryResult<uuid::Uuid, HashId>;
+
 type NodeCtx = HashMap<uuid::Uuid, ql::VertexQueryContext<uuid::Uuid, HashId>>;
 type EdgeCtx = HashMap<HashId, ql::EdgeQueryContext<uuid::Uuid, HashId>>;
 
@@ -19,9 +36,9 @@ where
   K: KVStore<E>,
   E: Send,
 {
+  kv: K,
   p_marker: PhantomData<T>,
   kv_err_marker: PhantomData<E>,
-  kv: K,
 }
 
 impl<T, K, E> KvGraphStore<T, K, E>
@@ -30,18 +47,6 @@ where
   K: KVStore<E>,
   E: Send,
 {
-  pub fn from_kv(kv: K) -> Self {
-    KvGraphStore {
-      p_marker: PhantomData,
-      kv_err_marker: PhantomData,
-      kv,
-    }
-  }
-
-  pub fn into_kv(self) -> K {
-    self.kv
-  }
-
   pub fn query(&self, q: BasicQuery) -> Result<QueryResult, Error<E>> {
     let context = match q {
       BasicQuery::V(q) => {
@@ -85,7 +90,7 @@ where
       Property(q) => {
         let mut result = HashMap::default();
 
-        for prop_id in self.query_properties(q)?.into_iter() {
+        for prop_id in self.query_properties(q)? {
           let index_path = "indexes/".to_string() + &prop_id + "/";
           for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
             let reference = String::from_utf8(entry)
@@ -137,7 +142,7 @@ where
       }
       In(q) => {
         self.query_edges(q)?.into_iter()
-            .map(|(edge_id, ctx)| {
+          .map(|(edge_id, ctx)| {
             let edge = self.read_edge(&edge_id)?;
             Ok((edge.n1, ctx.into_vertex_ctx(edge.n1)))
           })
@@ -161,19 +166,16 @@ where
           .map_err(|e| Error::KV(e))?
           .into_iter()
           .map(|entry| {
-          let id = String::from_utf8(entry)
-            .or(Err(Error::MalformedDB))?;
-          let key = id.clone();
-          Ok((id, ql::EdgeQueryContext::new(key)))
+            let id = String::from_utf8(entry)
+              .or(Err(Error::MalformedDB))?;
+            let key = id.clone();
+            Ok((id, ql::EdgeQueryContext::new(key)))
         })
         .collect::<Result<HashMap<_,_>, Error<E>>>()?
       }
       Specific(ids) => {
         ids.into_iter()
-          .map(|id| {
-            let key = id.clone();
-            (id, ql::EdgeQueryContext::new(key))
-          })
+          .map(|id| (id.clone(), ql::EdgeQueryContext::new(id)))
           .collect()
       }
       Property(q) => {
@@ -206,7 +208,7 @@ where
       Intersect(sub1, sub2) => {
         intersection(
           self.query_edges(*sub1)?,
-          self.query_edges(*sub2)?
+          self.query_edges(*sub2)?,
         )
       }
       Substract(sub1, sub2) => {
@@ -310,6 +312,17 @@ where
     Ok(result)
   }
 
+  pub fn from_kv(kv: K) -> Self {
+    KvGraphStore {
+      p_marker: PhantomData,
+      kv_err_marker: PhantomData,
+      kv,
+    }
+  }
+
+  pub fn into_kv(self) -> K {
+    self.kv
+  }
   /// props_hash: the hash_id of the property that holds the index
   /// id:         the id of the node, edge or property that references
   ///             the property and needs a backling
@@ -367,14 +380,8 @@ pub enum Error<E: Send> {
 
 #[derive(Error, Debug)]
 pub enum SerialisationError {
-  #[error("io error")]
-  Io { #[from] source: std::io::Error },
-  #[error("node {0} allready exists")]
-  NodeExists(String),
   #[error("json error")]
   Json { #[from] source: serde_json::Error },
-  #[error("uuid parsing error (corrupted db)")]
-  Uuid { #[from] source: uuid::Error },
 }
 
 impl<P, K, E> GraphStore<uuid::Uuid, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
@@ -631,6 +638,63 @@ where
   }
 }
 
+impl<N, P, K, E> GraphBuilder<N, P, Error<E>> for KvGraphStore<P, K, E>
+where
+  N: Node<P>,
+  P: Property<HashId, SerialisationError>,
+  K: KVStore<E>,
+  E: Send,
+{
+  fn add_node(&mut self, node: N) -> Result<(), Error<E>> {
+    let p = node.properties();
+    self.create_node(node.id(), &p)?;
+    Ok(())
+  }
+
+  fn add_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), Error<E>> {
+    self.create_edge(n1.id(), n2.id(), p)?;
+    Ok(())
+  }
+
+  fn remove_node(&mut self, node: &N) -> Result<(), Error<E>> {
+    self.delete_node(node.id())?;
+    Ok(())
+  }
+
+  fn remove_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), Error<E>> {
+    let props_hash = p.get_key();
+    let edge = EdgeData {
+      n1: n1.id(),
+      n2: n2.id(),
+      properties: props_hash,
+    };
+
+    self.delete_edge(&edge.get_key())?;
+    Ok(())
+  }
+}
+
+impl<P, K, E> mlua::UserData for KvGraphStore<P, K, E>
+where
+  P: Property<HashId, SerialisationError> + mlua::UserData + std::clone::Clone + 'static,
+  K: KVStore<E>,
+  E: Send + Sync + std::fmt::Debug + 'static,
+{
+  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    use mlua::prelude::LuaError;
+
+    methods.add_method_mut("create_node", |_, db, props: P| {
+      let id = uuid::Uuid::new_v4();
+      match db.create_node(id, &props) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(LuaError::external(e))
+      }
+    });
+  }
+}
+
+impl mlua::UserData for GenericProperty {}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct NodeData {
   pub id: uuid::Uuid,
@@ -687,23 +751,47 @@ impl SchemaElement<HashId, SerialisationError> for EdgeData
   }
 }
 
-impl<P, K, E> mlua::UserData for KvGraphStore<P, K, E>
-where
-  P: Property<HashId, SerialisationError> + mlua::UserData + std::clone::Clone + 'static,
-  K: KVStore<E>,
-  E: Send + Sync + std::fmt::Debug + 'static,
-{
-  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
-    use mlua::prelude::LuaError;
+#[derive(Debug, Clone)]
+pub struct GenericProperty(Vec<u8>);
 
-    methods.add_method_mut("create_node", |_, db, props: P| {
-      let id = uuid::Uuid::new_v4();
-      match db.create_node(id, &props) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(LuaError::external(e))
-      }
-    });
+impl SchemaElement<HashId, SerialisationError> for GenericProperty
+{
+  fn get_key(&self) -> HashId {
+    format!("{:X}", sha2::Sha256::digest(&self.0))
   }
+
+  fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {
+    Ok(self.0.clone())
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, SerialisationError>
+  where
+    Self: Sized,
+  {
+    Ok(GenericProperty(data.to_vec()))
+  }
+}
+
+impl Property<String, SerialisationError> for GenericProperty {
+  fn nested(&self) -> Vec<Self> { Vec::new() }
+}
+
+pub struct Change {
+  pub created: ChangeSet,
+  pub modified: BTreeSet<NodeChange>,
+  pub deleted: ChangeSet,
+  pub depends_on: BTreeSet<HashId>,
+}
+
+pub struct NodeChange {
+  pub id: uuid::Uuid,
+  pub properties: HashId,
+}
+
+pub struct ChangeSet {
+  pub nodes: BTreeSet<NodeChange>,
+  pub edges: BTreeSet<EdgeData>,
+  //pub properties: BTreeSet<Property>,
 }
 
 fn uuid_to_key(id: uuid::Uuid) -> String {
@@ -713,7 +801,13 @@ fn uuid_to_key(id: uuid::Uuid) -> String {
     .to_string()
 }
 
-use core::hash::Hash;
+pub fn to_query(data: &Vec<u8>) -> Result<BasicQuery, SerialisationError> {
+  // TODO Verschiedene Query Sprachen über zweiten Parameter
+  // TODO Internes Schema verwenden um Abfragen zu verbessern
+  let query = serde_json::from_slice(data)?;
+
+  Ok(query)
+}
 
 fn union<K, V>(
   c1: HashMap<K, V>,
@@ -777,4 +871,3 @@ where
 
   result
 }
-
