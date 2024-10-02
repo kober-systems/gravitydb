@@ -38,18 +38,18 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let white_rum = g.create_node(Uuid::new_v4(), &Ingredient("white rum".to_string()))?;
 
   // garnishes
-  let olive = g.create_node(Uuid::new_v4(), &Garnish("olive".to_string()))?;
-  let lemon_twist = g.create_node(Uuid::new_v4(), &Garnish("lemon twist".to_string()))?;
   let lemon_slice = g.create_node(Uuid::new_v4(), &Garnish("lemon slice".to_string()))?;
-  let orange_slice = g.create_node(Uuid::new_v4(), &Garnish("orange slice".to_string()))?;
-  let nutmeg = g.create_node(Uuid::new_v4(), &Garnish("nutmeg".to_string()))?;
+  let lemon_twist = g.create_node(Uuid::new_v4(), &Garnish("lemon twist".to_string()))?;
   let maraschino_cherry = g.create_node(Uuid::new_v4(), &Garnish("maraschino cherry".to_string()))?;
-
+  let nutmeg = g.create_node(Uuid::new_v4(), &Garnish("nutmeg".to_string()))?;
+  let olive = g.create_node(Uuid::new_v4(), &Garnish("olive".to_string()))?;
+  let orange_slice = g.create_node(Uuid::new_v4(), &Garnish("orange slice".to_string()))?;
+  
   // glasses
   let cocktail_glass = g.create_node(Uuid::new_v4(), &Glass("Cocktail glass".to_string()))?;
   let old_fashioned_glass = g.create_node(Uuid::new_v4(), &Glass("Old fashioned glass".to_string()))?;
 
-  // coctails
+  // cocktails
   let martini = g.create_node(Uuid::new_v4(), &Cocktail("Martini".to_string()))?;
   g.create_edge(martini, gin, &Includes)?;
   g.create_edge(martini, vermouth, &Includes)?;
