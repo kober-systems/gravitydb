@@ -33,7 +33,8 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let curacao = g.create_node(Uuid::new_v4(), &Ingredient("curacao".to_string()))?;
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("gin".to_string()))?;
   let lemon_juice = g.create_node(Uuid::new_v4(), &Ingredient("lemon juice".to_string()))?;
-  let maraschino_luxardo = g.create_node(Uuid::new_v4(), &Ingredient("maraschino luxardo".to_string()))?;
+  let maraschino = g.create_node(Uuid::new_v4(), &Ingredient("maraschino".to_string()))?;
+  let orange_bitters = g.create_node(Uuid::new_v4(), &Ingredient("orange bitters".to_string()))?;
   let sugar_syrup = g.create_node(Uuid::new_v4(), &Ingredient("sugar syrup".to_string()))?;
   let sweet_vermouth = g.create_node(Uuid::new_v4(), &Ingredient("sweet vermouth".to_string()))?;
   let triple_sec = g.create_node(Uuid::new_v4(), &Ingredient("triple sec".to_string()))?;
@@ -115,13 +116,23 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
 
   let brandy_crusta = g.create_node(Uuid::new_v4(), &Cocktail("Brandy crusta".to_string()))?;
   g.create_edge(brandy_crusta, brandy, &Includes)?;
-  g.create_edge(brandy_crusta, maraschino_luxardo, &Includes)?;
+  g.create_edge(brandy_crusta, maraschino, &Includes)?;
   g.create_edge(brandy_crusta, curacao, &Includes)?;
   g.create_edge(brandy_crusta, lemon_juice, &Includes)?;
   g.create_edge(brandy_crusta, sugar_syrup, &Includes)?;
   g.create_edge(brandy_crusta, aromatic_bitters, &Includes)?;
   g.create_edge(brandy_crusta, orange_twist, &Includes)?;
   g.create_edge(brandy_crusta, cocktail_glass, &ServedIn)?;
+
+  let casino = g.create_node(Uuid::new_v4(), &Cocktail("Casino".to_string()))?;
+  g.create_edge(casino, gin, &Includes)?;
+  g.create_edge(casino, maraschino, &Includes)?;
+  g.create_edge(casino, lemon_juice, &Includes)?;
+  g.create_edge(casino, orange_bitters, &Includes)?;
+  g.create_edge(casino, lemon_twist, &Includes)?;
+  g.create_edge(casino, maraschino_cherry, &Includes)?;
+  g.create_edge(casino, cocktail_glass, &ServedIn)?;
+
 
   let martini = g.create_node(Uuid::new_v4(), &Cocktail("Martini".to_string()))?;
   g.create_edge(martini, gin, &Includes)?;
