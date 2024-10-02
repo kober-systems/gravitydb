@@ -44,18 +44,13 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let nutmeg = g.create_node(Uuid::new_v4(), &Garnish("nutmeg".to_string()))?;
   let olive = g.create_node(Uuid::new_v4(), &Garnish("olive".to_string()))?;
   let orange_slice = g.create_node(Uuid::new_v4(), &Garnish("orange slice".to_string()))?;
+  let orange_zest = g.create_node(Uuid::new_v4(), &Garnish("orange zest".to_string()))?;
   
   // glasses
   let cocktail_glass = g.create_node(Uuid::new_v4(), &Glass("Cocktail glass".to_string()))?;
   let old_fashioned_glass = g.create_node(Uuid::new_v4(), &Glass("Old fashioned glass".to_string()))?;
 
   // cocktails
-  let martini = g.create_node(Uuid::new_v4(), &Cocktail("Martini".to_string()))?;
-  g.create_edge(martini, gin, &Includes)?;
-  g.create_edge(martini, vermouth, &Includes)?;
-  g.create_edge(martini, olive, &Includes)?;
-  g.create_edge(martini, cocktail_glass, &ServedIn)?;
-
   let alexander = g.create_node(Uuid::new_v4(), &Cocktail("Alexander".to_string()))?;
   g.create_edge(alexander, cognac, &Includes)?;
   g.create_edge(alexander, creme_de_cacao, &Includes)?;
@@ -103,7 +98,22 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(between_the_sheets, cognac, &Includes)?;
   g.create_edge(between_the_sheets, lemon_juice, &Includes)?;
   g.create_edge(between_the_sheets, triple_sec, &Includes)?;
-  g.create_edge(aviation, cocktail_glass, &ServedIn)?;
+  g.create_edge(between_the_sheets, cocktail_glass, &ServedIn)?;
+
+  let boulevardier = g.create_node(Uuid::new_v4(), &Cocktail("Boulevardier".to_string()))?;
+  g.create_edge(boulevardier, whiskey, &Includes)?;
+  g.create_edge(boulevardier, campari, &Includes)?;
+  g.create_edge(boulevardier, vermouth, &Includes)?;
+  g.create_edge(boulevardier, orange_zest, &Includes)?;
+  g.create_edge(boulevardier, cocktail_glass, &ServedIn)?;
+
+  let martini = g.create_node(Uuid::new_v4(), &Cocktail("Martini".to_string()))?;
+  g.create_edge(martini, gin, &Includes)?;
+  g.create_edge(martini, vermouth, &Includes)?;
+  g.create_edge(martini, olive, &Includes)?;
+  g.create_edge(martini, cocktail_glass, &ServedIn)?;
+
+  
 
 
   Ok(g)
