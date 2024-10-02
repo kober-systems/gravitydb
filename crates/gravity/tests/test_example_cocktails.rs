@@ -32,6 +32,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let creme_de_violette = g.create_node(Uuid::new_v4(), &Ingredient("crème de violette".to_string()))?;
   let curacao = g.create_node(Uuid::new_v4(), &Ingredient("curacao".to_string()))?;
   let egg_white = g.create_node(Uuid::new_v4(), &Ingredient("egg white".to_string()))?;
+  let egg_yolk = g.create_node(Uuid::new_v4(), &Ingredient("egg yolk".to_string()))?;
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("gin".to_string()))?;
   let lemon_juice = g.create_node(Uuid::new_v4(), &Ingredient("lemon juice".to_string()))?;
   let lime_juice = g.create_node(Uuid::new_v4(), &Ingredient("lime juice".to_string()))?;
@@ -46,7 +47,8 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
   let whiskey = g.create_node(Uuid::new_v4(), &Ingredient("whiskey".to_string()))?;
   let white_rum = g.create_node(Uuid::new_v4(), &Ingredient("white rum".to_string()))?;
-
+  let whole_egg = g.create_node(Uuid::new_v4(), &Ingredient("whole egg".to_string()))?;
+  
   // garnishes
   let lemon_slice = g.create_node(Uuid::new_v4(), &Garnish("lemon slice".to_string()))?;
   let lemon_twist = g.create_node(Uuid::new_v4(), &Garnish("lemon twist".to_string()))?;
@@ -150,20 +152,56 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(daiquiri, superfine_sugar, &Includes)?;
   g.create_edge(daiquiri, cocktail_glass, &ServedIn)?;
 
+  let gin_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Gin fizz".to_string()))?;
+  g.create_edge(gin_fizz, gin, &Includes)?;
+  g.create_edge(gin_fizz, lemon_juice, &Includes)?;
+  g.create_edge(gin_fizz, sugar_syrup, &Includes)?;
+  g.create_edge(gin_fizz, soda, &Includes)?;
+  g.create_edge(gin_fizz, lemon_slice, &Includes)?;
+  g.create_edge(gin_fizz, old_fashioned_glass, &ServedIn)?;
+  
+  let golden_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Golden fizz".to_string()))?;
+  g.create_edge(golden_fizz, gin, &Includes)?;
+  g.create_edge(golden_fizz, lemon_juice, &Includes)?;
+  g.create_edge(golden_fizz, sugar_syrup, &Includes)?;
+  g.create_edge(golden_fizz, soda, &Includes)?;
+  g.create_edge(golden_fizz, gin, &Includes)?;
+  g.create_edge(golden_fizz, egg_yolk, &Includes)?;
+  g.create_edge(silver_fizz, lemon_slice, &Includes)?;
+  g.create_edge(golden_fizz, old_fashioned_glass, &ServedIn)?;
+  
   let maidens_prayer = g.create_node(Uuid::new_v4(), &Cocktail("maiden's prayer".to_string()))?;
   g.create_edge(maidens_prayer, gin, &Includes)?;
   g.create_edge(maidens_prayer, lemon_juice, &Includes)?;
   g.create_edge(maidens_prayer, triple_sec, &Includes)?;
   g.create_edge(maidens_prayer, cocktail_glass, &ServedIn)?;
 
-let martini = g.create_node(Uuid::new_v4(), &Cocktail("Martini".to_string()))?;
+  let martini = g.create_node(Uuid::new_v4(), &Cocktail("Martini".to_string()))?;
   g.create_edge(martini, gin, &Includes)?;
   g.create_edge(martini, vermouth, &Includes)?;
   g.create_edge(martini, olive, &Includes)?;
   g.create_edge(martini, cocktail_glass, &ServedIn)?;
-
   
-
+  let royal_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Royal fizz".to_string()))?;
+  g.create_edge(golden_fizz, gin, &Includes)?;
+  g.create_edge(golden_fizz, lemon_juice, &Includes)?;
+  g.create_edge(golden_fizz, sugar_syrup, &Includes)?;
+  g.create_edge(golden_fizz, soda, &Includes)?;
+  g.create_edge(golden_fizz, gin, &Includes)?;
+  g.create_edge(golden_fizz, whole_egg, &Includes)?;
+  g.create_edge(silver_fizz, lemon_slice, &Includes)?;
+  g.create_edge(golden_fizz, old_fashioned_glass, &ServedIn)?;
+  
+  let silver_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Silver fizz".to_string()))?;
+  g.create_edge(silver_fizz, gin, &Includes)?;
+  g.create_edge(silver_fizz, lemon_juice, &Includes)?;
+  g.create_edge(silver_fizz, sugar_syrup, &Includes)?;
+  g.create_edge(silver_fizz, soda, &Includes)?;
+  g.create_edge(silver_fizz, gin, &Includes)?;
+  g.create_edge(silver_fizz, egg_white, &Includes)?;
+  g.create_edge(silver_fizz, lemon_slice, &Includes)?;
+  g.create_edge(silver_fizz, old_fashioned_glass, &ServedIn)?;
+  
 
   Ok(g)
 }
