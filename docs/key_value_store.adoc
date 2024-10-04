@@ -1764,3 +1764,126 @@ pub enum SerialisationError {
 }
 ----
 
+=== Lua Bindings
+Manchmal ist es praktisch eine interaktive Sprache zur Verfügung zu
+haben um schneller experimentieren zu können. Dazu implementieren wir
+eine Anbindung an lua. Das erlaubt die interaktive Manipulation der
+Datenbank mit einer lua repl.
+
+Der Ablauf ist wie bei jeder anderen repl auch:
+
+* Wir lesen das Script soweit ein, wie möglich
+* Dann für wir das eingelesene Statement des Scripts aus
+** Kommt es zu Fehlern untersuchen wir ob das Script noch nicht
+   vollständig ist, oder ob wir die Verarbeitung abbrechen müssen.
+* Wir formatieren die Ausgabe und geben sie für den Benutzer aus.
+* Und dann kehren wir zum Anfang zurück (lesen das nächste Statement des
+  Scripts ein).
+
+[[run_cli_cmds]]
+[source, rust]
+----
+use mlua::{Error, Lua, MultiValue};
+use rustyline::Editor;
+
+let lua = Lua::new();
+let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
+
+<<init_lua_environment>>
+
+loop {
+  let mut prompt = "> ";
+  let mut line = String::new();
+
+  loop {
+    let input = editor.readline(prompt)?;
+    line.push_str(&input);
+
+    match lua.load(&line).eval::<MultiValue>() {
+      Ok(values) => {
+        editor.add_history_entry(line);
+        println!(
+          "{}",
+          values
+            .iter()
+            .map(|value| format!("{:?}", value))
+            .collect::<Vec<_>>()
+            .join("\t")
+        );
+        break;
+      }
+      Err(Error::SyntaxError {
+        incomplete_input: true,
+        ..
+      }) => {
+        // continue reading input and append it to `line`
+        line.push_str("\n"); // separate input lines
+        prompt = ">> ";
+      }
+      Err(e) => {
+        eprintln!("error: {}", e);
+        break;
+      }
+    }
+  }
+}
+----
+
+Damit man mit der Repl auch etwas anfangen kann, muss sie auch
+Funktionen bieten um die Datenbank zu manipulieren. Dazu binden wir den
+`FsStore` Typ in unsere Lua Umgebung ein:
+
+[[interface_implementations]]
+[source, rust]
+----
+impl<P, K, E> mlua::UserData for KvGraphStore<P, K, E>
+where
+  P: Property<HashId, SerialisationError> + mlua::UserData + std::clone::Clone + 'static,
+  K: KVStore<E>,
+  E: Send + Sync + std::fmt::Debug + 'static,
+{
+  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    use mlua::prelude::LuaError;
+
+    methods.add_method_mut("create_node", |_, db, props: P| {
+      let id = uuid::Uuid::new_v4();
+      match db.create_node(id, &props) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(LuaError::external(e))
+      }
+    });
+  }
+}
+----
+
+Und wir benötigen einige Constructor Funktionen um die Datenbank
+verfügbar zu machen.
+
+[[init_lua_environment]]
+[source, rust]
+----
+let globals = lua.globals();
+let db_open = lua.create_function(|_, path: String| {
+  use mlua::prelude::LuaError;
+  use std::sync::Arc;
+
+  let path = crate::Path::new(&path);
+  match open::<T>(&path) {
+    Ok(db) => Ok(db),
+    Err(e) => Err(LuaError::ExternalError(Arc::new(e))),
+  }
+})?;
+globals.set("db_open", db_open)?;
+----
+
+Zudem laden wir die Funktionen der Abfragesprache Zoe (TODO link) in
+unsere Lua Umgebung.
+
+[[init_lua_environment]]
+[source, rust]
+----
+ql::init_lua::<String, HashId, HashId, String, String>(&lua)?; // <1>
+----
+<1> Die generischen Parameter besetzen wir mit den in der Db
+    hardverdrahteten Id Typen
+
