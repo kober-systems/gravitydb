@@ -217,6 +217,12 @@ pub enum CocktailSchema {
   ServedIn,
 }
 
+impl CocktailSchema {
+  pub fn id(&self) -> String {
+    SchemaElement::<String, serde_json::Error>::get_key(self)
+  }
+}
+
 type Error = kv_graph_store::Error<mem_kv_store::Error>;
 type GStore = kv_graph_store::KvGraphStore::<CocktailSchema, mem_kv_store::MemoryKvStore, mem_kv_store::Error>;
 
