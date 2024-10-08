@@ -208,6 +208,7 @@ Vorgensweise mit Methoden Memory Probleme entstehen können.
 [[implement_lua_types]]
 [source, rust]
 ----
+#[cfg(feature="lua")]
 impl<<generic_types>> mlua::UserData for VertexQuery<<generic_types>>
 where
   VertexId:   Clone + 'static,
@@ -229,6 +230,7 @@ where
 [[implement_lua_types]]
 [source, rust]
 ----
+#[cfg(feature="lua")]
 impl<<generic_types>> mlua::UserData for EdgeQuery<<generic_types>>
 where
   VertexId:   Clone + 'static,
@@ -254,12 +256,14 @@ die zusätzlichen generischen Parameter übergeben.
 [[implement_lua_types]]
 [source, rust]
 ----
+#[cfg(feature="lua")]
 #[derive(Clone)]
 struct LuaPropertyQuery<<generic_types>> {
   q: PropertyQuery<PropertyId>,
   marker: std::marker::PhantomData<VertexQuery<<generic_types>>>,
 }
 
+#[cfg(feature="lua")]
 impl<<generic_types>> LuaPropertyQuery<<generic_types>> {
   fn from_property_query(q: PropertyQuery<PropertyId>) -> Self {
     LuaPropertyQuery {
@@ -269,6 +273,7 @@ impl<<generic_types>> LuaPropertyQuery<<generic_types>> {
   }
 }
 
+#[cfg(feature="lua")]
 impl<<generic_types>> mlua::UserData for LuaPropertyQuery<<generic_types>>
 where
   VertexId:   Clone + 'static,
@@ -874,6 +879,7 @@ stellen.
 [[structs]]
 [source, rust]
 ----
+#[cfg(feature="lua")]
 pub fn init_lua<<generic_types>>(lua: &mlua::Lua) -> mlua::Result<()>
 where
   for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,

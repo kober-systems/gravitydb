@@ -300,6 +300,7 @@ impl<E> Property<String, E> for GenericProperty {
   fn nested(&self) -> Vec<Self> { Vec::new() } // <1>
 }
 
+#[cfg(feature="lua")]
 impl mlua::UserData for GenericProperty {}
 ----
 <1> Wir bilden keine Verweise der Dateien untereinander ab, da wir ja

@@ -1,5 +1,4 @@
 use gravity::schema::{SchemaElement, Property};
-use rustyline::error::ReadlineError;
 use crate::{FileStoreError, FsKvStore};
 use anyhow::bail;
 use std::io::{self, Write};
@@ -36,6 +35,7 @@ pub fn log_level(level: u64) -> log::Level {
 
 pub trait Prop: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData {}
 impl <T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData> Prop for T {}
+
 pub fn db_cmds<T>() -> Result<()>
 where
   T: Prop,
@@ -241,12 +241,12 @@ where
   Ok(())
 }
 
-pub fn lua_repl<T>() -> Result<()>
+fn lua_repl<T>() -> Result<()>
 where
   T: Prop,
 {
   use mlua::{Error, Lua, MultiValue};
-  use rustyline::Editor;
+  use rustyline::{Editor, error::ReadlineError};
 
   let lua = Lua::new();
   let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");

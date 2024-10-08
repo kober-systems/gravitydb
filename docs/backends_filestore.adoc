@@ -323,6 +323,9 @@ type HashId = String;
 
 <<tool_helper_functions|join="\n\n">>
 
+pub trait Prop: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData {}
+impl <T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData> Prop for T {}
+
 <<cli_template_functions|join="\n\n">>
 
 <<helper_structs|join="\n\n">>
@@ -335,7 +338,7 @@ Wir stellen dabei ein Programm-Template bereit, welches alle wichtigen db Funkti
 ----
 pub fn db_cmds<T>() -> Result<()>
 where
-  T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
+  T: Prop,
 {
   <<cli_parse_cmd_options>>
 
@@ -347,9 +350,16 @@ where
   Ok(())
 }
 
+fn lua_repl<T>() -> Result<()>
+where
+  T: Prop,
+{
+  <<run_lua_repl>>
+}
+
 fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore, FileStoreError>, FileStoreError>
 where
-  T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
+  T: Prop,
 {
   let kv = FsKvStore::open(path)?;
   Ok(KvGraphStore::from_kv(kv))
@@ -357,7 +367,7 @@ where
 
 fn init<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore, FileStoreError>, FileStoreError>
 where
-  T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
+  T: Prop,
 {
   let kv = FsKvStore::init(path)?;
   Ok(KvGraphStore::from_kv(kv))
@@ -750,54 +760,64 @@ Der Ablauf ist wie bei jeder anderen repl auch:
 * Und dann kehren wir zum Anfang zurück (lesen das nächste Statement des
   Scripts ein).
 
+[[run_lua_repl]]
+[source, rust]
+----
+use mlua::{Error, Lua, MultiValue};
+use rustyline::{Editor, error::ReadlineError};
+
+let lua = Lua::new();
+let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
+
+<<init_lua_environment>>
+
+loop {
+  let mut prompt = "> ";
+  let mut line = String::new();
+
+  loop {
+    let input = match editor.readline(prompt) {
+      Ok(out) => Ok(out),
+      Err(ReadlineError::Eof) => return Ok(()),
+      Err(e) => Err(e),
+    }?;
+    line.push_str(&input);
+
+    match lua.load(&line).eval::<MultiValue>() {
+      Ok(values) => {
+        editor.add_history_entry(line);
+        println!(
+          "{}",
+          values
+            .iter()
+            .map(|value| format!("{:?}", value))
+            .collect::<Vec<_>>()
+            .join("\t")
+        );
+        break;
+      }
+      Err(Error::SyntaxError {
+        incomplete_input: true,
+        ..
+      }) => {
+        // continue reading input and append it to `line`
+        line.push_str("\n"); // separate input lines
+        prompt = ">> ";
+      }
+      Err(e) => {
+        eprintln!("error: {}", e);
+        break;
+      }
+    }
+  }
+}
+----
+
 [[run_cli_cmds]]
 [source, rust]
 ----
 Repl => {
-  use mlua::{Error, Lua, MultiValue};
-  use rustyline::Editor;
-
-  let lua = Lua::new();
-  let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
-
-  <<init_lua_environment>>
-
-  loop {
-    let mut prompt = "> ";
-    let mut line = String::new();
-
-    loop {
-      let input = editor.readline(prompt)?;
-      line.push_str(&input);
-
-      match lua.load(&line).eval::<MultiValue>() {
-        Ok(values) => {
-          editor.add_history_entry(line);
-          println!(
-            "{}",
-            values
-              .iter()
-              .map(|value| format!("{:?}", value))
-              .collect::<Vec<_>>()
-              .join("\t")
-          );
-          break;
-        }
-        Err(Error::SyntaxError {
-          incomplete_input: true,
-          ..
-        }) => {
-          // continue reading input and append it to `line`
-          line.push_str("\n"); // separate input lines
-          prompt = ">> ";
-        }
-        Err(e) => {
-          eprintln!("error: {}", e);
-          break;
-        }
-      }
-    }
-  }
+  lua_repl::<T>()?;
 }
 ----
 
@@ -812,7 +832,7 @@ let db_open = lua.create_function(|_, path: String| {
   use mlua::prelude::LuaError;
   use std::sync::Arc;
 
-  let path = crate::Path::new(&path);
+  let path = Path::new(&path);
   match open::<T>(&path) {
     Ok(db) => Ok(db),
     Err(e) => Err(LuaError::ExternalError(Arc::new(e))),
