@@ -220,62 +220,7 @@ where
       // TODO Umschliessende Huelle? Alle miteinander verbundenen Edges und Vertices?
     }
     Repl => {
-      use mlua::{Error, Lua, MultiValue};
-      use rustyline::Editor;
-
-      let lua = Lua::new();
-      let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
-
-      let globals = lua.globals();
-      let db_open = lua.create_function(|_, path: String| {
-        use mlua::prelude::LuaError;
-        use std::sync::Arc;
-
-        let path = crate::Path::new(&path);
-        match open::<T>(&path) {
-          Ok(db) => Ok(db),
-          Err(e) => Err(LuaError::ExternalError(Arc::new(e))),
-        }
-      })?;
-      globals.set("db_open", db_open)?;
-      ql::init_lua::<String, HashId, HashId, String, String>(&lua)?;
-
-      loop {
-        let mut prompt = "> ";
-        let mut line = String::new();
-
-        loop {
-          let input = editor.readline(prompt)?;
-          line.push_str(&input);
-
-          match lua.load(&line).eval::<MultiValue>() {
-            Ok(values) => {
-              editor.add_history_entry(line);
-              println!(
-                "{}",
-                values
-                  .iter()
-                  .map(|value| format!("{:?}", value))
-                  .collect::<Vec<_>>()
-                  .join("\t")
-              );
-              break;
-            }
-            Err(Error::SyntaxError {
-              incomplete_input: true,
-              ..
-            }) => {
-              // continue reading input and append it to `line`
-              line.push_str("\n"); // separate input lines
-              prompt = ">> ";
-            }
-            Err(e) => {
-              eprintln!("error: {}", e);
-              break;
-            }
-          }
-        }
-      }
+      lua_repl::<T>()?;
     }
     ResultData => {
       let data = read_input(opt.input)?;
@@ -293,6 +238,68 @@ where
   }
 
   Ok(())
+}
+
+pub fn lua_repl<T>() -> Result<()>
+where
+  T: Prop,
+{
+  use mlua::{Error, Lua, MultiValue};
+  use rustyline::Editor;
+
+  let lua = Lua::new();
+  let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
+
+  let globals = lua.globals();
+  let db_open = lua.create_function(|_, path: String| {
+    use mlua::prelude::LuaError;
+    use std::sync::Arc;
+
+    let path = Path::new(&path);
+    match open::<T>(&path) {
+      Ok(db) => Ok(db),
+      Err(e) => Err(LuaError::ExternalError(Arc::new(e))),
+    }
+  })?;
+  globals.set("db_open", db_open)?;
+  ql::init_lua::<String, HashId, HashId, String, String>(&lua)?;
+
+  loop {
+    let mut prompt = "> ";
+    let mut line = String::new();
+
+    loop {
+      let input = editor.readline(prompt)?;
+      line.push_str(&input);
+
+      match lua.load(&line).eval::<MultiValue>() {
+        Ok(values) => {
+          editor.add_history_entry(line);
+          println!(
+            "{}",
+            values
+              .iter()
+              .map(|value| format!("{:?}", value))
+              .collect::<Vec<_>>()
+              .join("\t")
+          );
+          break;
+        }
+        Err(Error::SyntaxError {
+          incomplete_input: true,
+          ..
+        }) => {
+          // continue reading input and append it to `line`
+          line.push_str("\n"); // separate input lines
+          prompt = ">> ";
+        }
+        Err(e) => {
+          eprintln!("error: {}", e);
+          break;
+        }
+      }
+    }
+  }
 }
 
 fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore, FileStoreError>, FileStoreError>
