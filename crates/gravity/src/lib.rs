@@ -100,7 +100,7 @@ pub trait GraphStore<NodeK, Node, EdgeKey, Edge, PropKey, T, E> {
   fn read_edge(&self, id: &EdgeKey) -> Result<Edge, E>;
   fn delete_edge(&mut self, id: &EdgeKey) -> Result<(), E>;
   fn create_property(&mut self, properties: &T) -> Result<PropKey, E>;
-  fn read_property(&mut self, id: &PropKey) -> Result<T, E>;
+  fn read_property(&self, id: &PropKey) -> Result<T, E>;
   fn delete_property(&mut self, id: &PropKey) -> Result<(), E>;
 
   // Query functions

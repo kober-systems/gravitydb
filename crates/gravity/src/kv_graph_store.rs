@@ -611,7 +611,7 @@ where
     Ok(hash)
   }
 
-  fn read_property(&mut self, id: &HashId) -> Result<P, Error<E>> {
+  fn read_property(&self, id: &HashId) -> Result<P, Error<E>> {
     let path = "props/".to_string() + id;
 
     let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
