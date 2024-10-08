@@ -2,13 +2,49 @@ use gravity::*;
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
-#[ignore]
 #[test]
 fn which_cocktails_include_gin() -> Result<(), Error> {
+  use CocktailSchema::*;
+
   let graph = create_cocktail_graph()?;
 
   // list all cocktails, that have gin as an ingredient
-  todo!();
+  let gin = Ingredient("gin".to_string());
+  let cocktail = SchemaType("Cocktail".to_string());
+  let includes = Includes;
+
+  let q = ql::PropertyQuery::from_id(gin.id())
+    .referencing_vertices()
+    .ingoing()
+    .intersect(ql::PropertyQuery::from_id(includes.id()).referencing_edges())
+    .ingoing()
+    .intersect(ql::PropertyQuery::from_id(cocktail.id()).referencing_properties().referencing_vertices());
+  let result = graph.query(ql::BasicQuery::V(q))?;
+
+  let expected = vec![
+    Cocktail("Alexander".to_string()),
+    Cocktail("Alexander".to_string()), // original
+    Cocktail("Angel face".to_string()),
+    Cocktail("Aviation".to_string()),
+    Cocktail("Casino".to_string()),
+    Cocktail("Clover Club".to_string()),
+    Cocktail("Gin fizz".to_string()),
+    Cocktail("Golden fizz".to_string()),
+    Cocktail("maiden's prayer".to_string()),
+    Cocktail("Martini".to_string()),
+    Cocktail("Royal fizz".to_string()),
+    Cocktail("Silver fizz".to_string()),
+  ];
+
+  let mut actual = result.vertices.into_iter().map(|n_id| {
+    let n = graph.read_node(n_id)?;
+    graph.read_property(&n.properties)
+  }).collect::<Result<Vec<CocktailSchema>,_>>()?;
+  actual.sort_by_key(|v| match v {
+    Cocktail(value) => value.clone(),
+    _ => "zzz not a cocktail!!".to_string(),
+  });
+  assert_eq!(actual, expected);
 
   Ok(())
 }
@@ -206,7 +242,7 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   Ok(g)
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum CocktailSchema {
   Cocktail(String),
   Ingredient(String),
@@ -215,6 +251,8 @@ pub enum CocktailSchema {
   // edge types
   Includes, // TODO how much in l,%,grammes,etc
   ServedIn,
+  // Meta type to describe the lables of the schema itself
+  SchemaType(String),
 }
 
 impl CocktailSchema {
