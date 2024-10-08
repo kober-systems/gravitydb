@@ -153,6 +153,14 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> EdgeQuery<VertexId, EdgeId,
   pub fn substract(self, q: EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {
     EdgeQuery::Substract(Box::new(self), Box::new(q))
   }
+
+  pub fn outgoing(self) -> VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
+    VertexQuery::Out(self)
+  }
+
+  pub fn ingoing(self) -> VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
+    VertexQuery::In(self)
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

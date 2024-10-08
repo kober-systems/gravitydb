@@ -466,6 +466,18 @@ pub fn ingoing(self) -> EdgeQuery<<generic_types>> {
 }
 ----
 
+[[edge_query_functions]]
+[source, rust]
+----
+pub fn outgoing(self) -> VertexQuery<<generic_types>> {
+  VertexQuery::Out(self)
+}
+
+pub fn ingoing(self) -> VertexQuery<<generic_types>> {
+  VertexQuery::In(self)
+}
+----
+
 === Filter
 Neben den <<traversals, Sprüngen von einem Knoten zum nächsten>> wollen
 wir auch unsere Ergebnisse filtern. Dadurch können wir die Menge unserer
