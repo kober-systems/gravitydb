@@ -69,6 +69,7 @@ impl<E> Property<String, E> for GenericProperty {
   fn nested(&self) -> Vec<Self> { Vec::new() }
 }
 
+#[cfg(feature="lua")]
 impl mlua::UserData for GenericProperty {}
 
 

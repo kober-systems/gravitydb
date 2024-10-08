@@ -12,5 +12,7 @@ typetag = "0.1"
 sha2 = "0.9.5" # TODO nur bei Standardimplementierung
 uuid = { version = "1.10", features = ["serde", "v4"] }
 thiserror = "1.0"
-mlua = { version = "0.8", features = ["luau", "serialize"] }
+mlua = { version = "0.8", features = ["luau", "serialize"], optional = true }
 
+[features]
+lua = ["mlua"]

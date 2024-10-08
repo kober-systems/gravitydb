@@ -297,6 +297,7 @@ pub struct ShellFilter {
   pub script: String,
 }
 
+#[cfg(feature="lua")]
 pub fn init_lua<VertexId, EdgeId, PropertyId, VFilter, EFilter>(lua: &mlua::Lua) -> mlua::Result<()>
 where
   for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
@@ -335,6 +336,7 @@ where
   Ok(())
 }
 
+#[cfg(feature="lua")]
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> mlua::UserData for VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
   VertexId:   Clone + 'static,
@@ -363,6 +365,7 @@ where
   }
 }
 
+#[cfg(feature="lua")]
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> mlua::UserData for EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
   VertexId:   Clone + 'static,
@@ -387,12 +390,14 @@ where
   }
 }
 
+#[cfg(feature="lua")]
 #[derive(Clone)]
 struct LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
   q: PropertyQuery<PropertyId>,
   marker: std::marker::PhantomData<VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>,
 }
 
+#[cfg(feature="lua")]
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
   fn from_property_query(q: PropertyQuery<PropertyId>) -> Self {
     LuaPropertyQuery {
@@ -402,6 +407,7 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> LuaPropertyQuery<VertexId, 
   }
 }
 
+#[cfg(feature="lua")]
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> mlua::UserData for LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
   VertexId:   Clone + 'static,

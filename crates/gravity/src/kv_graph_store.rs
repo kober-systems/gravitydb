@@ -674,6 +674,7 @@ where
   }
 }
 
+#[cfg(feature="lua")]
 impl<P, K, E> mlua::UserData for KvGraphStore<P, K, E>
 where
   P: Property<HashId, SerialisationError> + mlua::UserData + std::clone::Clone + 'static,
