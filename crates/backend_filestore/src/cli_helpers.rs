@@ -33,9 +33,11 @@ pub fn log_level(level: u64) -> log::Level {
   }
 }
 
+pub trait Prop: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData {}
+impl <T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData> Prop for T {}
 pub fn db_cmds<T>() -> Result<()>
 where
-  T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
+  T: Prop,
 {
   #[derive(StructOpt)]
   pub struct Opt {
@@ -295,7 +297,7 @@ where
 
 fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore, FileStoreError>, FileStoreError>
 where
-  T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
+  T: Prop,
 {
   let kv = FsKvStore::open(path)?;
   Ok(KvGraphStore::from_kv(kv))
@@ -303,7 +305,7 @@ where
 
 fn init<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore, FileStoreError>, FileStoreError>
 where
-  T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData,
+  T: Prop,
 {
   let kv = FsKvStore::init(path)?;
   Ok(KvGraphStore::from_kv(kv))
