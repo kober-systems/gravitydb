@@ -1,4 +1,5 @@
 use gravity::schema::{SchemaElement, Property};
+use rustyline::error::ReadlineError;
 use crate::{FileStoreError, FsKvStore};
 use anyhow::bail;
 use std::io::{self, Write};
@@ -269,7 +270,11 @@ where
     let mut line = String::new();
 
     loop {
-      let input = editor.readline(prompt)?;
+      let input = match editor.readline(prompt) {
+        Ok(out) => Ok(out),
+        Err(ReadlineError::Eof) => return Ok(()),
+        Err(e) => Err(e),
+      }?;
       line.push_str(&input);
 
       match lua.load(&line).eval::<MultiValue>() {
