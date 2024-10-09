@@ -188,6 +188,12 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(daiquiri, superfine_sugar, &Includes)?;
   g.create_edge(daiquiri, cocktail_glass, &ServedIn)?;
 
+  let dry_martini = g.create_node(Uuid::new_v4(), &Cocktail("Dry Martini".to_string()))?;
+  g.create_edge(martini, gin, &Includes)?;
+  g.create_edge(martini, olive, &Includes)?;
+  g.create_edge(martini, cocktail_glass, &ServedIn)?;
+
+
   let gin_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Gin fizz".to_string()))?;
   g.create_edge(gin_fizz, gin, &Includes)?;
   g.create_edge(gin_fizz, lemon_juice, &Includes)?;
@@ -217,7 +223,7 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(martini, vermouth, &Includes)?;
   g.create_edge(martini, olive, &Includes)?;
   g.create_edge(martini, cocktail_glass, &ServedIn)?;
-
+  
   let royal_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Royal fizz".to_string()))?;
   g.create_edge(royal_fizz, gin, &Includes)?;
   g.create_edge(royal_fizz, lemon_juice, &Includes)?;
@@ -237,6 +243,12 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(silver_fizz, egg_white, &Includes)?;
   g.create_edge(silver_fizz, lemon_slice, &Includes)?;
   g.create_edge(silver_fizz, old_fashioned_glass, &ServedIn)?;
+
+  let vodka_martini = g.create_node(Uuid::new_v4(), &Cocktail("Vodka Martini".to_string()))?;
+  g.create_edge(martini, vodka, &Includes)?;
+  g.create_edge(martini, vermouth, &Includes)?;
+  g.create_edge(martini, olive, &Includes)?;
+  g.create_edge(martini, cocktail_glass, &ServedIn)?;
 
 
   Ok(g)
