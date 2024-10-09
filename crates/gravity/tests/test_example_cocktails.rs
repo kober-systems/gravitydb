@@ -69,6 +69,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let curacao = g.create_node(Uuid::new_v4(), &Ingredient("curacao".to_string()))?;
   let egg_white = g.create_node(Uuid::new_v4(), &Ingredient("egg white".to_string()))?;
   let egg_yolk = g.create_node(Uuid::new_v4(), &Ingredient("egg yolk".to_string()))?;
+  let fernet_branca = g.create_node(Uuid::new_v4(), &Ingredient("fernet branca".to_string()))?;
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("gin".to_string()))?;
   let lemon_juice = g.create_node(Uuid::new_v4(), &Ingredient("lemon juice".to_string()))?;
   let lime_juice = g.create_node(Uuid::new_v4(), &Ingredient("lime juice".to_string()))?;
@@ -78,6 +79,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let sugar_syrup = g.create_node(Uuid::new_v4(), &Ingredient("sugar syrup".to_string()))?;
   let superfine_sugar = g.create_node(Uuid::new_v4(), &Ingredient("superfine sugar".to_string()))?;
   let sweet_vermouth = g.create_node(Uuid::new_v4(), &Ingredient("sweet vermouth".to_string()))?;
+  let sweet_red_vermouth = g.create_node(Uuid::new_v4(), &Ingredient("sweet red vermouth".to_string()))?;
   let triple_sec = g.create_node(Uuid::new_v4(), &Ingredient("triple sec".to_string()))?;
   let vermouth = g.create_node(Uuid::new_v4(), &Ingredient("vermouth".to_string()))?;
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
@@ -189,10 +191,9 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(daiquiri, cocktail_glass, &ServedIn)?;
 
   let dry_martini = g.create_node(Uuid::new_v4(), &Cocktail("Dry Martini".to_string()))?;
-  g.create_edge(martini, gin, &Includes)?;
-  g.create_edge(martini, olive, &Includes)?;
-  g.create_edge(martini, cocktail_glass, &ServedIn)?;
-
+  g.create_edge(dry_martini, gin, &Includes)?;
+  g.create_edge(dry_martini, olive, &Includes)?;
+  g.create_edge(dry_martini, cocktail_glass, &ServedIn)?;
 
   let gin_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Gin fizz".to_string()))?;
   g.create_edge(gin_fizz, gin, &Includes)?;
@@ -211,6 +212,13 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(golden_fizz, egg_yolk, &Includes)?;
   g.create_edge(golden_fizz, lemon_slice, &Includes)?;
   g.create_edge(golden_fizz, old_fashioned_glass, &ServedIn)?;
+
+  let hanky_panky = g.create_node(Uuid::new_v4(), &Cocktail("Hanky panky".to_string()))?;
+  g.create_edge(hanky_panky, gin, &Includes)?;
+  g.create_edge(hanky_panky, sweet_red_vermouth, &Includes)?;
+  g.create_edge(hanky_panky, fernet_branca, &Includes)?;
+  g.create_edge(hanky_panky, orange_zest, &Includes)?;
+  g.create_edge(hanky_panky, cocktail_glass, &ServedIn)?;
 
   let maidens_prayer = g.create_node(Uuid::new_v4(), &Cocktail("maiden's prayer".to_string()))?;
   g.create_edge(maidens_prayer, gin, &Includes)?;
@@ -245,10 +253,10 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(silver_fizz, old_fashioned_glass, &ServedIn)?;
 
   let vodka_martini = g.create_node(Uuid::new_v4(), &Cocktail("Vodka Martini".to_string()))?;
-  g.create_edge(martini, vodka, &Includes)?;
-  g.create_edge(martini, vermouth, &Includes)?;
-  g.create_edge(martini, olive, &Includes)?;
-  g.create_edge(martini, cocktail_glass, &ServedIn)?;
+  g.create_edge(vodka_martini, vodka, &Includes)?;
+  g.create_edge(vodka_martini, vermouth, &Includes)?;
+  g.create_edge(vodka_martini, olive, &Includes)?;
+  g.create_edge(vodka_martini, cocktail_glass, &ServedIn)?;
 
 
   Ok(g)
