@@ -425,10 +425,16 @@ impl<Error: From<serde_json::Error>> SchemaElement<String, Error> for CocktailSc
 
 impl<Error: From<serde_json::Error>> Property<String, Error> for CocktailSchema {
   fn nested(&self) -> Vec<Self> {
+    use CocktailSchema::*;
 
     match self {
-      //<<get_nested_properties>>
-      _ => Vec::new(),
+      SchemaType(_) => vec![],
+      Cocktail(_) => vec![SchemaType("Cocktail".to_string())],
+      Ingredient(_) => vec![SchemaType("Ingredient".to_string())],
+      Garnish(_) => vec![SchemaType("Garnish".to_string())],
+      Glass(_) => vec![SchemaType("Glass".to_string())],
+      Includes => vec![SchemaType("Includes".to_string())],
+      ServedIn => vec![SchemaType("ServedIn".to_string())],
     }
   }
 }
