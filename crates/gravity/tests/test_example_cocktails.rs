@@ -75,12 +75,7 @@ fn alexander_ingredients() -> Result<(), Error> {
     let n = graph.read_node(n_id)?;
     graph.read_property(&n.properties)
   }).collect::<Result<Vec<CocktailSchema>,_>>()?;
-  actual.sort_by_key(|v| match v {
-    Cocktail(value) => format!("cocktail_{}", value),
-    Ingredient(value) => format!("ingredient_{}", value),
-    Garnish(value) => format!("garnish_{}", value),
-    _ => "zzz not a cocktail!!".to_string(),
-  });
+  actual.sort_by_key(|v| format!("{:?}",v));
   assert_eq!(actual, vec![
     Garnish("nutmeg".to_string()),
     Ingredient("cream".to_string()),
@@ -95,24 +90,14 @@ fn alexander_ingredients() -> Result<(), Error> {
     let n = graph.read_node(n_id)?;
     graph.read_property(&n.properties)
   }).collect::<Result<Vec<CocktailSchema>,_>>()?;
-  actual_v1.sort_by_key(|v| match v {
-    Cocktail(value) => format!("cocktail_{}", value),
-    Ingredient(value) => format!("ingredient_{}", value),
-    Garnish(value) => format!("garnish_{}", value),
-    _ => "zzz not a cocktail!!".to_string(),
-  });
+  actual_v1.sort_by_key(|v| format!("{:?}",v));
   let q = q_ingredients_v2.substract(q_ingredients_v1);
   let result = graph.query(ql::BasicQuery::V(q))?;
   let mut actual_v2 = result.vertices.into_iter().map(|n_id| {
     let n = graph.read_node(n_id)?;
     graph.read_property(&n.properties)
   }).collect::<Result<Vec<CocktailSchema>,_>>()?;
-  actual_v2.sort_by_key(|v| match v {
-    Cocktail(value) => format!("cocktail_{}", value),
-    Ingredient(value) => format!("ingredient_{}", value),
-    Garnish(value) => format!("garnish_{}", value),
-    _ => "zzz not a cocktail!!".to_string(),
-  });
+  actual_v2.sort_by_key(|v| format!("{:?}",v));
   let (alexander_original, alexander) = if actual_v1 == vec![Ingredient("gin".to_string())] {
     (actual_v1, actual_v2)
   } else {
@@ -162,10 +147,7 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
     let n = graph.read_node(n_id)?;
     graph.read_property(&n.properties)
   }).collect::<Result<Vec<CocktailSchema>,_>>()?;
-  actual.sort_by_key(|v| match v {
-    Cocktail(value) => value.clone(),
-    _ => "zzz not a cocktail!!".to_string(),
-  });
+  actual.sort_by_key(|v| format!("{:?}",v));
   assert_eq!(actual, expected);
 
   Ok(())
