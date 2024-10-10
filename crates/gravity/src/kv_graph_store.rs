@@ -75,8 +75,7 @@ where
           .map_err(|e| Error::KV(e))?
           .into_iter()
           .map(|entry| {
-            let id = String::from_utf8(entry)
-              .or(Err(Error::MalformedDB))?;
+            let id = String::from_utf8(entry)?;
             let id = uuid::Uuid::parse_str(&id)?;
             Ok((id, ql::VertexQueryContext::new(id)))
         })
@@ -93,11 +92,10 @@ where
         for prop_id in self.query_properties(q)? {
           let index_path = "indexes/".to_string() + &prop_id + "/";
           for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
-            let reference = String::from_utf8(entry)
-              .or(Err(Error::MalformedDB))?;
+            let reference = String::from_utf8(entry)?;
             let (prefix, reference) = reference
               .split_once("_")
-              .ok_or(Error::MalformedDB)?;
+              .ok_or(Error::MalformedDB(format!("could not split {} (prefix : {})", reference, index_path)))?;
             if prefix == "nodes" {
               let id = uuid::Uuid::parse_str(reference)?;
               result.insert(id, ql::VertexQueryContext::new(id));
@@ -166,8 +164,7 @@ where
           .map_err(|e| Error::KV(e))?
           .into_iter()
           .map(|entry| {
-            let id = String::from_utf8(entry)
-              .or(Err(Error::MalformedDB))?;
+            let id = String::from_utf8(entry)?;
             let key = id.clone();
             Ok((id, ql::EdgeQueryContext::new(key)))
         })
@@ -184,11 +181,10 @@ where
         for prop_id in self.query_properties(q)? {
           let index_path = "indexes/".to_string() + &prop_id + "/";
           for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
-            let reference = String::from_utf8(entry)
-              .or(Err(Error::MalformedDB))?;
+            let reference = String::from_utf8(entry)?;
             let (prefix, reference) = reference
               .split_once("_")
-              .ok_or(Error::MalformedDB)?;
+              .ok_or(Error::MalformedDB(format!("could not split {} (prefix : {})", reference, index_path)))?;
             if prefix == "edges" {
               let id = reference.to_string();
               let key = id.clone();
@@ -293,11 +289,10 @@ where
         for prop_id in self.query_properties(*q)? {
           let index_path = "indexes/".to_string() + &prop_id + "/";
           for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
-            let reference = String::from_utf8(entry)
-              .or(Err(Error::MalformedDB))?;
+            let reference = String::from_utf8(entry)?;
             let (prefix, reference) = reference
               .split_once("_")
-              .ok_or(Error::MalformedDB)?;
+              .ok_or(Error::MalformedDB(format!("could not split {} (prefix : {})", reference, index_path)))?;
             if prefix == "props" {
               result.insert(reference.to_string());
             }
@@ -364,12 +359,14 @@ where
 
 #[derive(Error, Debug)]
 pub enum Error<E: Send> {
-  #[error("wrongly formatted database at path TODO")]
-  MalformedDB,
+  #[error("wrongly formatted database: {0}")]
+  MalformedDB(String),
   #[error("node {0} allready exists")]
   NodeExists(String),
   #[error("the element existed before")]
   ExistedBefore,
+  #[error("wrongly formatted input: {0}")]
+  MalformedInput(#[from] std::string::FromUtf8Error),
   #[error("uuid parsing error (corrupted db)")]
   Uuid { #[from] source: uuid::Error },
   #[error("problem with kv store")]
