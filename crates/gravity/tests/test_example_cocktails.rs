@@ -11,7 +11,7 @@ fn trivial_queries() -> Result<(), Error> {
   // please give me a cup of tea -> we have no tea. this is a cocktail bar
   let teacup = Glass("teacup".to_string());
 
-  let q = ql::PropertyQuery::from_id(teacup.id())
+  let q = teacup.start()
     .referencing_vertices();
   let result = graph.query(ql::BasicQuery::V(q))?;
 
@@ -23,7 +23,7 @@ fn trivial_queries() -> Result<(), Error> {
 
   // ok, so please give me a cocktail glass
   let cocktail_glass = Glass("Cocktail glass".to_string());
-  let q = ql::PropertyQuery::from_id(cocktail_glass.id())
+  let q = cocktail_glass.start()
     .referencing_vertices();
   let result = graph.query(ql::BasicQuery::V(q))?;
 
@@ -47,12 +47,12 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
   let cocktail = SchemaType("Cocktail".to_string());
   let includes = Includes;
 
-  let q = ql::PropertyQuery::from_id(gin.id())
+  let q = gin.start()
     .referencing_vertices()
     .ingoing()
-    .intersect(ql::PropertyQuery::from_id(includes.id()).referencing_edges())
+    .intersect(includes.start().referencing_edges())
     .ingoing()
-    .intersect(ql::PropertyQuery::from_id(cocktail.id()).referencing_properties().referencing_vertices());
+    .intersect(cocktail.start().referencing_properties().referencing_vertices());
   let result = graph.query(ql::BasicQuery::V(q))?;
 
   let expected = vec![
@@ -321,6 +321,11 @@ pub enum CocktailSchema {
 impl CocktailSchema {
   pub fn id(&self) -> String {
     SchemaElement::<String, serde_json::Error>::get_key(self)
+  }
+
+  /// get a starting point for queries
+  pub fn start(&self) -> ql::PropertyQuery<String> {
+    ql::PropertyQuery::from_id(self.id())
   }
 }
 
