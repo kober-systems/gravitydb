@@ -3,6 +3,40 @@ use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
 #[test]
+fn trivial_queries() -> Result<(), Error> {
+  use CocktailSchema::*;
+
+  let graph = create_cocktail_graph()?;
+
+  // please give me a cup of tea -> we have no tea. this is a cocktail bar
+  let teacup = Glass("teacup".to_string());
+
+  let q = ql::PropertyQuery::from_id(teacup.id())
+    .referencing_vertices();
+  let result = graph.query(ql::BasicQuery::V(q))?;
+
+  let actual = result.vertices.into_iter().map(|n_id| {
+    let n = graph.read_node(n_id)?;
+    graph.read_property(&n.properties)
+  }).collect::<Result<Vec<CocktailSchema>,_>>()?;
+  assert_eq!(actual, vec![]);
+
+  // ok, so please give me a cocktail glass
+  let cocktail_glass = Glass("Cocktail glass".to_string());
+  let q = ql::PropertyQuery::from_id(cocktail_glass.id())
+    .referencing_vertices();
+  let result = graph.query(ql::BasicQuery::V(q))?;
+
+  let actual = result.vertices.into_iter().map(|n_id| {
+    let n = graph.read_node(n_id)?;
+    graph.read_property(&n.properties)
+  }).collect::<Result<Vec<CocktailSchema>,_>>()?;
+  assert_eq!(actual, vec![Glass("Cocktail glass".to_string())]);
+
+  Ok(())
+}
+
+#[test]
 fn which_cocktails_include_gin() -> Result<(), Error> {
   use CocktailSchema::*;
 
@@ -144,7 +178,7 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(aviation, creme_de_violette, &Includes)?;
   g.create_edge(aviation, maraschino_cherry, &Includes)?;
   g.create_edge(aviation, cocktail_glass, &ServedIn)?;
-  
+
   let between_the_sheets = g.create_node(Uuid::new_v4(), &Cocktail("Between the sheets".to_string()))?;
   g.create_edge(between_the_sheets, white_rum, &Includes)?;
   g.create_edge(between_the_sheets, cognac, &Includes)?;
@@ -220,7 +254,7 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(hanky_panky, fernet_branca, &Includes)?;
   g.create_edge(hanky_panky, orange_zest, &Includes)?;
   g.create_edge(hanky_panky, cocktail_glass, &ServedIn)?;
-  
+
   let john_collins = g.create_node(Uuid::new_v4(), &Cocktail("John Collins".to_string()))?;
   g.create_edge(john_collins, gin, &Includes)?;
   g.create_edge(john_collins, lemon_juice, &Includes)?;
@@ -229,7 +263,7 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(john_collins, lemon_slice, &Includes)?;
   g.create_edge(john_collins, maraschino_cherry, &Includes)?;
   g.create_edge(john_collins, collins_glass, &ServedIn)?;
-  
+
   let maidens_prayer = g.create_node(Uuid::new_v4(), &Cocktail("maiden's prayer".to_string()))?;
   g.create_edge(maidens_prayer, gin, &Includes)?;
   g.create_edge(maidens_prayer, lemon_juice, &Includes)?;
@@ -241,7 +275,7 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(martini, vermouth, &Includes)?;
   g.create_edge(martini, olive, &Includes)?;
   g.create_edge(martini, cocktail_glass, &ServedIn)?;
-  
+
   let royal_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Royal fizz".to_string()))?;
   g.create_edge(royal_fizz, gin, &Includes)?;
   g.create_edge(royal_fizz, lemon_juice, &Includes)?;
@@ -267,7 +301,6 @@ let americano_sparkling = g.create_node(Uuid::new_v4(), &Cocktail("Americano spa
   g.create_edge(vodka_martini, vermouth, &Includes)?;
   g.create_edge(vodka_martini, olive, &Includes)?;
   g.create_edge(vodka_martini, cocktail_glass, &ServedIn)?;
-
 
   Ok(g)
 }
