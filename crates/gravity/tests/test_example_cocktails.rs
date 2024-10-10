@@ -113,7 +113,7 @@ fn alexander_ingredients() -> Result<(), Error> {
     Garnish(value) => format!("garnish_{}", value),
     _ => "zzz not a cocktail!!".to_string(),
   });
-  let (alexander_original, alexander) = if (actual_v1 == vec![Ingredient("gin".to_string())]) {
+  let (alexander_original, alexander) = if actual_v1 == vec![Ingredient("gin".to_string())] {
     (actual_v1, actual_v2)
   } else {
     (actual_v2, actual_v1)
