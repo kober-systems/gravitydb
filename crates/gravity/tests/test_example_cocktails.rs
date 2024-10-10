@@ -130,17 +130,19 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
 
   let expected = vec![
     Cocktail("Alexander".to_string()),
-    Cocktail("Alexander".to_string()), // original
     Cocktail("Angel face".to_string()),
     Cocktail("Aviation".to_string()),
     Cocktail("Casino".to_string()),
     Cocktail("Clover Club".to_string()),
+    Cocktail("Dry Martini".to_string()),
     Cocktail("Gin fizz".to_string()),
     Cocktail("Golden fizz".to_string()),
-    Cocktail("maiden's prayer".to_string()),
+    Cocktail("Hanky panky".to_string()),
+    Cocktail("John Collins".to_string()),
     Cocktail("Martini".to_string()),
     Cocktail("Royal fizz".to_string()),
     Cocktail("Silver fizz".to_string()),
+    Cocktail("maiden's prayer".to_string()),
   ];
 
   let mut actual = result.vertices.into_iter().map(|n_id| {
