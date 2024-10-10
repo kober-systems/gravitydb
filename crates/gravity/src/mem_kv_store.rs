@@ -41,9 +41,10 @@ impl KVStore<Error> for MemoryKvStore
     let key = key_to_string(key)?;
     let iter: Vec<Vec<u8>> = self.data.iter()
       .into_iter()
-      .filter_map(|(k, v)| {
+      .filter_map(|(k, _v)| {
         if k.starts_with(&key) {
-          Some(v.to_vec())
+          let (_, k) = k.split_at(key.len());
+          Some(k.as_bytes().to_vec())
         } else {
           None
         }
