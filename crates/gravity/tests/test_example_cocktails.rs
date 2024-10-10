@@ -37,6 +37,94 @@ fn trivial_queries() -> Result<(), Error> {
 }
 
 #[test]
+fn alexander_ingredients() -> Result<(), Error> {
+  use CocktailSchema::*;
+
+  let graph = create_cocktail_graph()?;
+
+  // so which cocktail would you like to drink?
+  // <- alexander
+  // -> well there are two variants of it
+  let alexander = Cocktail("Alexander".to_string());
+
+  let q = alexander.start()
+    .referencing_vertices();
+  let result = graph.query(ql::BasicQuery::V(q))?;
+
+  assert_eq!(result.vertices.len(), 2);
+
+  // what is the difference between the variants?
+  let mut vertices: Vec<Uuid> = result.vertices.into_iter().collect();
+  let variant_1 = vertices.pop().unwrap();
+  let variant_2 = vertices.pop().unwrap();
+
+  // well both have in common ...
+  let q_ingredients_v1 = ql::VertexQuery::from_ids(vec![variant_1])
+    .outgoing()
+    .intersect(Includes.start().referencing_edges())
+    .outgoing();
+  let q_ingredients_v2 = ql::VertexQuery::from_ids(vec![variant_2])
+    .outgoing()
+    .intersect(Includes.start().referencing_edges())
+    .outgoing();
+  let q = q_ingredients_v1.clone()
+    .intersect(q_ingredients_v2.clone());
+  let result = graph.query(ql::BasicQuery::V(q))?;
+
+  let mut actual = result.vertices.into_iter().map(|n_id| {
+    let n = graph.read_node(n_id)?;
+    graph.read_property(&n.properties)
+  }).collect::<Result<Vec<CocktailSchema>,_>>()?;
+  actual.sort_by_key(|v| match v {
+    Cocktail(value) => format!("cocktail_{}", value),
+    Ingredient(value) => format!("ingredient_{}", value),
+    Garnish(value) => format!("garnish_{}", value),
+    _ => "zzz not a cocktail!!".to_string(),
+  });
+  assert_eq!(actual, vec![
+    Garnish("nutmeg".to_string()),
+    Ingredient("cream".to_string()),
+    Ingredient("crème de cacao".to_string()),
+  ]);
+
+  // But the base is different, the original one uses gin
+  // and the newer version cognac
+  let q = q_ingredients_v1.clone().substract(q_ingredients_v2.clone());
+  let result = graph.query(ql::BasicQuery::V(q))?;
+  let mut actual_v1 = result.vertices.into_iter().map(|n_id| {
+    let n = graph.read_node(n_id)?;
+    graph.read_property(&n.properties)
+  }).collect::<Result<Vec<CocktailSchema>,_>>()?;
+  actual_v1.sort_by_key(|v| match v {
+    Cocktail(value) => format!("cocktail_{}", value),
+    Ingredient(value) => format!("ingredient_{}", value),
+    Garnish(value) => format!("garnish_{}", value),
+    _ => "zzz not a cocktail!!".to_string(),
+  });
+  let q = q_ingredients_v2.substract(q_ingredients_v1);
+  let result = graph.query(ql::BasicQuery::V(q))?;
+  let mut actual_v2 = result.vertices.into_iter().map(|n_id| {
+    let n = graph.read_node(n_id)?;
+    graph.read_property(&n.properties)
+  }).collect::<Result<Vec<CocktailSchema>,_>>()?;
+  actual_v2.sort_by_key(|v| match v {
+    Cocktail(value) => format!("cocktail_{}", value),
+    Ingredient(value) => format!("ingredient_{}", value),
+    Garnish(value) => format!("garnish_{}", value),
+    _ => "zzz not a cocktail!!".to_string(),
+  });
+  let (alexander_original, alexander) = if (actual_v1 == vec![Ingredient("gin".to_string())]) {
+    (actual_v1, actual_v2)
+  } else {
+    (actual_v2, actual_v1)
+  };
+  assert_eq!(alexander_original, vec![Ingredient("gin".to_string())]);
+  assert_eq!(alexander, vec![Ingredient("cognac".to_string())]);
+
+  Ok(())
+}
+
+#[test]
 fn which_cocktails_include_gin() -> Result<(), Error> {
   use CocktailSchema::*;
 
