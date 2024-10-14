@@ -1,11 +1,11 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read --allow-write=.litstate --ext=ts
 
 const LITERATE_SOURCES = {
-  "docs/gravity.adoc": "",
-  "docs/query_language.adoc": "",
-  "docs/schema.adoc": "",
-  "docs/key_value_store.adoc": "",
-  "docs/backends_filestore.adoc": "",
+  "docs/gravity.adoc": "crates/gravity",
+  "docs/query_language.adoc": "crates/gravity",
+  "docs/schema.adoc": "crates/gravity",
+  "docs/key_value_store.adoc": "crates/gravity",
+  "docs/backends_filestore.adoc": "crates/backend_filestore",
 };
 
 ///////////////////////////////////////////////////////////
