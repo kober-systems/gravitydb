@@ -30,11 +30,11 @@ try {
 const files_modified_before = (await sh("git diff --name-only")).trim().split("\n");
 
 const files_modified_by_lisi = {
-  ...await json_sh("lisi --dry-run ../../docs/gravity.adoc", "crates/gravity"),
-  ...await json_sh("lisi --dry-run ../../docs/query_language.adoc", "crates/gravity"),
-  ...await json_sh("lisi --dry-run ../../docs/schema.adoc", "crates/gravity"),
-  ...await json_sh("lisi --dry-run ../../docs/key_value_store.adoc", "crates/gravity"),
-  ...await json_sh("lisi --dry-run ../../docs/backends_filestore.adoc", "crates/backend_filestore"),
+  ...await json_sh("lisi --dry-run ../../docs/gravity.adoc", "crates/gravity", false),
+  ...await json_sh("lisi --dry-run ../../docs/query_language.adoc", "crates/gravity", false),
+  ...await json_sh("lisi --dry-run ../../docs/schema.adoc", "crates/gravity", false),
+  ...await json_sh("lisi --dry-run ../../docs/key_value_store.adoc", "crates/gravity", false),
+  ...await json_sh("lisi --dry-run ../../docs/backends_filestore.adoc", "crates/backend_filestore", false),
 };
 
 var literate_sources_unchanged = true;
@@ -76,29 +76,34 @@ console.log("checking done");
 // helper functions
 ///////////////////////////////////////////////////////////
 
-async function sh(cmd: string, cwd?: string): string {
+async function sh(cmd: string, cwd?: string, print_stderr?: boolean): string {
   const [command, ...args] = cmd.split(" ");
-  return await run_cmd(command, args, cwd);
+  return await run_cmd(command, args, cwd, print_stderr);
 }
 
-async function run_cmd(cmd: string, args?: [string], cwd?: string): string {
+async function run_cmd(cmd: string, args?: [string], cwd?: string, print_stderr?: boolean): string {
   const command = new Deno.Command(cmd, {
     args: args,
     cwd: cwd,
   });
+  if (typeof print_stderr === 'undefined') {
+    print_stderr = true;
+  }
 
   // create subprocess and collect output
   const { code, stdout, stderr } = await command.output();
-  const errlog = await new TextDecoder().decode(stderr);
-  if (errlog.length > 0) {
-    await console.log(errlog);
+  if (print_stderr) {
+    const errlog = await new TextDecoder().decode(stderr);
+    if (errlog.length > 0) {
+      await console.log(errlog);
+    }
   }
 
   return new TextDecoder().decode(stdout);
 }
 
-async function json_sh(cmd: string, cwd?: string) {
-  const json = JSON.parse(await sh(cmd, cwd));
+async function json_sh(cmd: string, cwd?: string, print_stderr?: boolean) {
+  const json = JSON.parse(await sh(cmd, cwd, print_stderr));
   if (typeof cwd !== 'undefined') {
     const prefix = cwd.endsWith("/") ? cwd : cwd + "/";
     var out = {};
