@@ -5,7 +5,8 @@ watchexec --clear=reset \
   './build && \
    echo "changes in source code:" && \
    git --no-pager diff && \
-   echo "" && echo "new files:"  && \
-   git status --porcelain \
+   echo "" && echo "new files:" && \
+   git status --porcelain && \
+   echo "" && echo "literate state: `cat .litstate`" \
 '
 
