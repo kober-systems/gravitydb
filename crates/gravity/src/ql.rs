@@ -217,6 +217,24 @@ pub enum BasicQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
   P(PropertyQuery<PropertyId>),
 }
 
+impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> From<VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>> for BasicQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
+  fn from(value: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {
+    Self::V(value)
+  }
+}
+
+impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> From<EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>> for BasicQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
+  fn from(value: EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>) -> Self {
+    Self::E(value)
+  }
+}
+
+impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> From<PropertyQuery<PropertyId>> for BasicQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
+  fn from(value: PropertyQuery<PropertyId>) -> Self {
+    Self::P(value)
+  }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VertexQueryContext<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> {
   // The current vertex

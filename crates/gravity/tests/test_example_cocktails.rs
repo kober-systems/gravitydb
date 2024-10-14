@@ -13,7 +13,7 @@ fn trivial_queries() -> Result<(), Error> {
 
   let q = teacup.start()
     .referencing_vertices();
-  let result = graph.query(ql::BasicQuery::V(q))?;
+  let result = graph.query(q)?;
 
   let actual = result.vertices.into_iter().map(|n_id| {
     let n = graph.read_node(n_id)?;
@@ -25,7 +25,7 @@ fn trivial_queries() -> Result<(), Error> {
   let cocktail_glass = Glass("Cocktail glass".to_string());
   let q = cocktail_glass.start()
     .referencing_vertices();
-  let result = graph.query(ql::BasicQuery::V(q))?;
+  let result = graph.query(q)?;
 
   let actual = result.vertices.into_iter().map(|n_id| {
     let n = graph.read_node(n_id)?;
@@ -49,7 +49,7 @@ fn alexander_ingredients() -> Result<(), Error> {
 
   let q = alexander.start()
     .referencing_vertices();
-  let result = graph.query(ql::BasicQuery::V(q))?;
+  let result = graph.query(q)?;
 
   assert_eq!(result.vertices.len(), 2);
 
@@ -69,7 +69,7 @@ fn alexander_ingredients() -> Result<(), Error> {
     .outgoing();
   let q = q_ingredients_v1.clone()
     .intersect(q_ingredients_v2.clone());
-  let result = graph.query(ql::BasicQuery::V(q))?;
+  let result = graph.query(q)?;
 
   let mut actual = result.vertices.into_iter().map(|n_id| {
     let n = graph.read_node(n_id)?;
@@ -85,14 +85,14 @@ fn alexander_ingredients() -> Result<(), Error> {
   // But the base is different, the original one uses gin
   // and the newer version cognac
   let q = q_ingredients_v1.clone().substract(q_ingredients_v2.clone());
-  let result = graph.query(ql::BasicQuery::V(q))?;
+  let result = graph.query(q)?;
   let mut actual_v1 = result.vertices.into_iter().map(|n_id| {
     let n = graph.read_node(n_id)?;
     graph.read_property(&n.properties)
   }).collect::<Result<Vec<CocktailSchema>,_>>()?;
   actual_v1.sort_by_key(|v| format!("{:?}",v));
   let q = q_ingredients_v2.substract(q_ingredients_v1);
-  let result = graph.query(ql::BasicQuery::V(q))?;
+  let result = graph.query(q)?;
   let mut actual_v2 = result.vertices.into_iter().map(|n_id| {
     let n = graph.read_node(n_id)?;
     graph.read_property(&n.properties)
@@ -126,7 +126,7 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
     .intersect(includes.start().referencing_edges())
     .ingoing()
     .intersect(cocktail.start().referencing_properties().referencing_vertices());
-  let result = graph.query(ql::BasicQuery::V(q))?;
+  let result = graph.query(q)?;
 
   let expected = vec![
     Cocktail("Alexander".to_string()),

@@ -99,6 +99,32 @@ pub enum BasicQuery<<generic_types>> {
 }
 ----
 
+Damit der Nutzer sich später keine Gedanken darüber machen muss die
+Abfragen in diesen Datentyp umzuwandeln implementieren wir das `From`
+Trait.
+
+[[structs]]
+[source, rust]
+----
+impl<<generic_types>> From<VertexQuery<<generic_types>>> for BasicQuery<<generic_types>> {
+  fn from(value: VertexQuery<<generic_types>>) -> Self {
+    Self::V(value)
+  }
+}
+
+impl<<generic_types>> From<EdgeQuery<<generic_types>>> for BasicQuery<<generic_types>> {
+  fn from(value: EdgeQuery<<generic_types>>) -> Self {
+    Self::E(value)
+  }
+}
+
+impl<<generic_types>> From<PropertyQuery<PropertyId>> for BasicQuery<<generic_types>> {
+  fn from(value: PropertyQuery<PropertyId>) -> Self {
+    Self::P(value)
+  }
+}
+----
+
 Die Ids können dabei durch die Implementierung der Datenbank festgelegt
 werden, also
 

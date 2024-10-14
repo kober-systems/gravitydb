@@ -47,7 +47,8 @@ where
   K: KVStore<E>,
   E: Send,
 {
-  pub fn query(&self, q: BasicQuery) -> Result<QueryResult, Error<E>> {
+  pub fn query<Q: Into<BasicQuery>>(&self, q: Q) -> Result<QueryResult, Error<E>> {
+    let q = q.into();
     let context = match q {
       BasicQuery::V(q) => {
         self.query_nodes(q)?.into()
