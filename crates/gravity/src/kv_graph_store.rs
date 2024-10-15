@@ -324,7 +324,7 @@ where
   ///             the property and needs a backling
   /// ty:         the type of the element that needs a backlink
   fn create_idx_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<(), Error<E>> {
-    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
+    let index_path = "indexes/".to_string() + props_hash + "/";
     self.kv.create_bucket(index_path.as_bytes()).map_err(|e| Error::KV(e))?;
 
     let prefix = match ty {
@@ -340,7 +340,7 @@ where
   }
 
   fn delete_property_backlink(&mut self, props_hash: &str, id: &str, ty: BacklinkType) -> Result<bool, Error<E>> {
-    let index_path = "indexes/".to_string() + &props_hash.to_string() + "/";
+    let index_path = "indexes/".to_string() + props_hash + "/";
 
     let prefix = match ty {
       BacklinkType::Node => "nodes",
