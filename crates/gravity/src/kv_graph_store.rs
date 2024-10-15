@@ -76,6 +76,37 @@ where
     nodes_iter.chain(edges_iter).collect::<Result<Vec<T>,_>>()
   }
 
+  pub fn extract_path_properties(&self, result: &QueryResult) -> Result<Vec<Vec<T>>, Error<E>> {
+    result.paths.iter()
+      .map(|(start, path, end)| {
+        path.into_iter()
+          .fold(Ok(vec![]), |path, (v_id, e_id)| {
+            let mut path: Vec<_> = path?;
+            let n = self.read_node(*v_id)?;
+            let prop = self.read_property(&n.properties)?;
+            path.push(prop);
+
+            let e = self.read_edge(e_id)?;
+            let prop = self.read_property(&e.properties)?;
+            path.push(prop);
+
+            if let Some(e_id) = start {
+              let e = self.read_edge(e_id)?;
+              let prop = self.read_property(&e.properties)?;
+              path.insert(0, prop);
+            }
+            if let Some(v_id) = end {
+              let n = self.read_node(*v_id)?;
+              let prop = self.read_property(&n.properties)?;
+              path.push(prop);
+            }
+
+            Ok(path)
+          })
+      })
+      .collect::<Result<Vec<Vec<_>>, _>>()
+  }
+
   fn query_nodes(
     &self,
     q: ql::VertexQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>

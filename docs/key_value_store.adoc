@@ -1110,6 +1110,46 @@ pub fn extract_properties(&self, result: &QueryResult) -> Result<Vec<T>, Error<E
 }
 ----
 
+Manchmal interessiert einen der Lösungsweg mehr als die Lösung selbst.
+Dafür werden die Lösungspfade im Abfrageergebnis gespeichert. Wenn man
+diese anylysiert will man manchmal einfach die Properties durchgehen.
+Dazu stellen wir eine Hilfsfunktion bereit.
+
+[[fs_store_functions]]
+[source, rust]
+----
+pub fn extract_path_properties(&self, result: &QueryResult) -> Result<Vec<Vec<T>>, Error<E>> {
+  result.paths.iter()
+    .map(|(start, path, end)| {
+      path.into_iter()
+        .fold(Ok(vec![]), |path, (v_id, e_id)| {
+          let mut path: Vec<_> = path?;
+          let n = self.read_node(*v_id)?;
+          let prop = self.read_property(&n.properties)?;
+          path.push(prop);
+
+          let e = self.read_edge(e_id)?;
+          let prop = self.read_property(&e.properties)?;
+          path.push(prop);
+
+          if let Some(e_id) = start {
+            let e = self.read_edge(e_id)?;
+            let prop = self.read_property(&e.properties)?;
+            path.insert(0, prop);
+          }
+          if let Some(v_id) = end {
+            let n = self.read_node(*v_id)?;
+            let prop = self.read_property(&n.properties)?;
+            path.push(prop);
+          }
+
+          Ok(path)
+        })
+    })
+    .collect::<Result<Vec<Vec<_>>, _>>()
+}
+----
+
 === Abfragen verarbeiten
 Alle unsere Abfragen arbeiten mit einem Startpunkt. Von diesem
 Startpunkt aus arbeiten wir uns vorwärts indem wir bei allen

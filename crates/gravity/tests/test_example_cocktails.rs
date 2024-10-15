@@ -134,6 +134,31 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
   actual.sort_by_key(|v| format!("{:?}",v));
   assert_eq!(actual, expected);
 
+  // How do you do this? How does you reasoning work?
+
+  // I start from a known starting point and than traverse my way till I
+  // find all I search
+  let mut paths = graph.extract_path_properties(&result)?;
+  paths.sort_by_key(|v| format!("{:?}",v));
+
+  assert_eq!(paths, vec![
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Alexander".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Angel face".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Aviation".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Casino".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Clover Club".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Dry Martini".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Gin fizz".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Golden fizz".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Hanky panky".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("John Collins".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Martini".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Royal fizz".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Silver fizz".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("maiden's prayer".to_string())],
+    ]
+  );
+
   Ok(())
 }
 
