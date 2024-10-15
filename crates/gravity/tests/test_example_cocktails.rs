@@ -305,6 +305,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let creme_de_cacao = g.create_node(Uuid::new_v4(), &Ingredient("crème de cacao".to_string()))?;
   let creme_de_violette = g.create_node(Uuid::new_v4(), &Ingredient("crème de violette".to_string()))?;
   let curacao = g.create_node(Uuid::new_v4(), &Ingredient("curacao".to_string()))?;
+  let drambuie = g.create_node(Uuid::new_v4(), &Ingredient("drambuie".to_string()))?;
   let dry_gin = g.create_node(Uuid::new_v4(), &Ingredient("dry gin".to_string()))?;
   let egg_white = g.create_node(Uuid::new_v4(), &Ingredient("egg white".to_string()))?;
   let egg_yolk = g.create_node(Uuid::new_v4(), &Ingredient("egg yolk".to_string()))?;
@@ -387,7 +388,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(angel_face, calvados, &Includes)?;
   g.create_edge(angel_face, apricot_brandy, &Includes)?;
   g.create_edge(angel_face, cocktail_glass, &ServedIn)?;
-
+  
   let aviation = g.create_node(Uuid::new_v4(), &Cocktail("Aviation".to_string()))?;
   g.create_edge(aviation, gin, &Includes)?;
   g.create_edge(aviation, maraschino, &Includes)?;
@@ -586,6 +587,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(royal_fizz, whole_egg, &Includes)?;
   g.create_edge(royal_fizz, lemon_slice, &Includes)?;
   g.create_edge(royal_fizz, old_fashioned_glass, &ServedIn)?;
+  
+  let rusty_nail = g.create_node(Uuid::new_v4(), &Cocktail("Rusty nail".to_string()))?;
+  g.create_edge(rusty_nail, whiskey, &Includes)?;
+  g.create_edge(rusty_nail, drambuie, &Includes)?;
+  g.create_edge(rusty_nail, orange_zest, &Includes)?;
+  g.create_edge(rusty_nail, old_fashioned_glass, &ServedIn)?;
 
   let silver_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Silver fizz".to_string()))?;
   g.create_edge(silver_fizz, gin, &Includes)?;
