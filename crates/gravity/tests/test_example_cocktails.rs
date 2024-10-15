@@ -663,9 +663,14 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(whiskey_sour, maraschino_cherry, &Includes)?;
   g.create_edge(whiskey_sour, orange_slice, &Includes)?;
   g.create_edge(whiskey_sour, old_fashioned_glass, &ServedIn)?;
-  
 
-  Ok(g)
+  let white_lady = g.create_node(Uuid::new_v4(), &Cocktail("White lady".to_string()))?;
+  g.create_edge(white_lady, gin, &Includes)?;
+  g.create_edge(white_lady, lemon_juice, &Includes)?;
+  g.create_edge(white_lady, triple_sec, &Includes)?;
+  g.create_edge(white_lady, cocktail_glass, &ServedIn)?;
+  
+    Ok(g)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
