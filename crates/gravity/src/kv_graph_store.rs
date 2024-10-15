@@ -64,6 +64,18 @@ where
     Ok(context)
   }
 
+  pub fn extract_properties(&self, result: QueryResult) -> Result<Vec<T>, Error<E>> {
+    let nodes_iter = result.vertices.into_iter().map(|n_id| {
+      let n = self.read_node(n_id)?;
+      self.read_property(&n.properties)
+    });
+    let edges_iter = result.edges.into_iter().map(|e_id| {
+      let e = self.read_edge(&e_id)?;
+      self.read_property(&e.properties)
+    });
+    nodes_iter.chain(edges_iter).collect::<Result<Vec<T>,_>>()
+  }
+
   fn query_nodes(
     &self,
     q: ql::VertexQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>
