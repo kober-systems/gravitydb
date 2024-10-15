@@ -603,6 +603,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(sazerac, lemon_zest, &Includes)?;
   g.create_edge(sazerac, old_fashioned_glass, &ServedIn)?;
   
+  let sidecar = g.create_node(Uuid::new_v4(), &Cocktail("Sidecar".to_string()))?;
+  g.create_edge(sidecar, cognac, &Includes)?;
+  g.create_edge(sidecar, triple_sec, &Includes)?;
+  g.create_edge(sidecar, lemon_juice, &Includes)?;
+  g.create_edge(sidecar, cocktail_glass, &ServedIn)?;
+  
   let silver_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Silver fizz".to_string()))?;
   g.create_edge(silver_fizz, gin, &Includes)?;
   g.create_edge(silver_fizz, lemon_juice, &Includes)?;
