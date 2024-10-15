@@ -293,6 +293,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   use CocktailSchema::*;
 
   // ingredients
+  let angostura_bitters = g.create_node(Uuid::new_v4(), &Ingredient("angostura bitters".to_string()))?;
   let apricot_brandy = g.create_node(Uuid::new_v4(), &Ingredient("apricot brandy".to_string()))?;
   let aromatic_bitters = g.create_node(Uuid::new_v4(), &Ingredient("aromatic bitters".to_string()))?;
   let brandy = g.create_node(Uuid::new_v4(), &Ingredient("brandy".to_string()))?;
@@ -480,7 +481,14 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(maidens_prayer, lemon_juice, &Includes)?;
   g.create_edge(maidens_prayer, triple_sec, &Includes)?;
   g.create_edge(maidens_prayer, cocktail_glass, &ServedIn)?;
-
+  
+  let manhattan = g.create_node(Uuid::new_v4(), &Cocktail("Manhattan".to_string()))?;
+  g.create_edge(manhattan, whiskey, &Includes)?;
+  g.create_edge(manhattan, sweet_red_vermouth, &Includes)?;
+  g.create_edge(manhattan, angostura_bitters, &Includes)?;
+  g.create_edge(manhattan, maraschino_cherry, &Includes)?;
+  g.create_edge(manhattan, cocktail_glass, &ServedIn)?;
+  
   let martini = g.create_node(Uuid::new_v4(), &Cocktail("Martini".to_string()))?;
   g.create_edge(martini, gin, &Includes)?;
   g.create_edge(martini, vermouth, &Includes)?;
