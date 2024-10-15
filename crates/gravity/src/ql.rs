@@ -487,7 +487,7 @@ pub struct QueryResult<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> {
   /// All edges matched by the query
   pub edges: HashSet<EdgeId>,
   /// All Paths matched by the query
-  pub paths: Vec<Vec<(VertexId, Option<EdgeId>)>>,
+  pub paths: Vec<(Option<EdgeId>, Vec<(VertexId, EdgeId)>, Option<VertexId>)>,
   pub variables: HashMap<String, serde_json::Value>,
 }
 
@@ -507,7 +507,7 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<VertexId, Vert
     let QueryResult {
       mut vertices,
       mut edges,
-      paths,
+      mut paths,
       mut variables,
     } = QueryResult::new();
 
@@ -515,9 +515,9 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<VertexId, Vert
       vertices.insert(id);
 
       let VertexQueryContext {
-        id: _,
-        path: _,
-        start: _,
+        id,
+        path,
+        start,
         variables: ctx_vars,
         v_store,
         e_store,
@@ -525,9 +525,7 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<VertexId, Vert
 
       vertices.extend(v_store);
       edges.extend(e_store);
-
-      // TODO paths
-
+      paths.push((start, path, Some(id)));
       variables.extend(ctx_vars.into_iter());
     }
 
@@ -545,7 +543,7 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<EdgeId, EdgeQu
     let QueryResult {
       mut vertices,
       mut edges,
-      paths,
+      mut paths,
       mut variables,
     } = QueryResult::new();
 
@@ -554,8 +552,8 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<EdgeId, EdgeQu
 
       let EdgeQueryContext {
         id: _,
-        path: _,
-        start: _,
+        path,
+        start,
         variables: ctx_vars,
         v_store,
         e_store,
@@ -563,9 +561,7 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<EdgeId, EdgeQu
 
       vertices.extend(v_store);
       edges.extend(e_store);
-
-      // TODO paths
-
+      paths.push((start, path, None));
       variables.extend(ctx_vars.into_iter());
     }
 

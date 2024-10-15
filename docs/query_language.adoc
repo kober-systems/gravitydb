@@ -968,7 +968,7 @@ pub struct QueryResult<<ctx_generics>> {
   /// All edges matched by the query
   pub edges: HashSet<EdgeId>,
   /// All Paths matched by the query
-  pub paths: Vec<Vec<(VertexId, Option<EdgeId>)>>,
+  pub paths: Vec<(Option<EdgeId>, Vec<(VertexId, EdgeId)>, Option<VertexId>)>,
   pub variables: HashMap<String, serde_json::Value>,
 }
 
@@ -1095,7 +1095,7 @@ impl<<ctx_generics>> From<HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>
     let QueryResult {
       mut vertices,
       mut edges,
-      paths,
+      mut paths,
       mut variables,
     } = QueryResult::new();
 
@@ -1103,9 +1103,9 @@ impl<<ctx_generics>> From<HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>
       vertices.insert(id);
 
       let VertexQueryContext {
-        id: _,
-        path: _,
-        start: _,
+        id,
+        path,
+        start,
         variables: ctx_vars,
         v_store,
         e_store,
@@ -1113,9 +1113,7 @@ impl<<ctx_generics>> From<HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>
 
       vertices.extend(v_store);
       edges.extend(e_store);
-
-      // TODO paths
-
+      paths.push((start, path, Some(id)));
       variables.extend(ctx_vars.into_iter());
     }
 
@@ -1133,7 +1131,7 @@ impl<<ctx_generics>> From<HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>> f
     let QueryResult {
       mut vertices,
       mut edges,
-      paths,
+      mut paths,
       mut variables,
     } = QueryResult::new();
 
@@ -1142,8 +1140,8 @@ impl<<ctx_generics>> From<HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>> f
 
       let EdgeQueryContext {
         id: _,
-        path: _,
-        start: _,
+        path,
+        start,
         variables: ctx_vars,
         v_store,
         e_store,
@@ -1151,9 +1149,7 @@ impl<<ctx_generics>> From<HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>> f
 
       vertices.extend(v_store);
       edges.extend(e_store);
-
-      // TODO paths
-
+      paths.push((start, path, None));
       variables.extend(ctx_vars.into_iter());
     }
 
