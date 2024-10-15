@@ -137,6 +137,90 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
   Ok(())
 }
 
+#[test]
+fn cocktail_statistic() -> Result<(), Error> {
+  use CocktailSchema::*;
+
+  let graph = create_cocktail_graph()?;
+
+  // So what is the typical cocktail?
+  let cocktail = SchemaType("Cocktail".to_string());
+  let includes = Includes;
+
+  let q_all_cocktails = cocktail.start()
+    .referencing_properties()
+    .referencing_vertices();
+  let result = graph.query(q_all_cocktails)?;
+
+  // Let me see...
+  let ingredients = result.vertices.into_iter().map(|c| {
+    graph.extract_properties(graph.query(
+      ql::VertexQuery::from_ids(vec![c])
+        .outgoing()
+        .intersect(includes.start().referencing_edges())
+        .outgoing()
+    )?)
+  }).collect::<Result<Vec<_>,_>>()?;
+  let statistics = ingredients
+    .iter()
+    .map(|ingredients| {
+      ingredients.into_iter().fold((0, 0, 0), |(i_cnt, g_cnt, other_cnt), ingredient| {
+        match ingredient {
+          CocktailSchema::Ingredient(_) => (i_cnt + 1, g_cnt, other_cnt),
+          CocktailSchema::Garnish(_) => (i_cnt, g_cnt + 1, other_cnt),
+          _ => (i_cnt, g_cnt, other_cnt + 1),
+        }
+      })
+    });
+  // the cocktails I know have between .. and .. ingredients and between
+  // .. and .. garnishes. Other things are never put in a cocktail.
+  assert_eq!(statistics.clone().map(|(cnt,_,_)| cnt).min().unwrap(), 1);
+  assert_eq!(statistics.clone().map(|(cnt,_,_)| cnt).max().unwrap(), 6);
+  assert_eq!(statistics.clone().map(|(_,cnt,_)| cnt).min().unwrap(), 0);
+  assert_eq!(statistics.clone().map(|(_,cnt,_)| cnt).max().unwrap(), 2);
+  assert_eq!(statistics.clone().map(|(_,_,cnt)| cnt).sum::<u32>(), 0);
+  // The normal cocktail has .. ingrediants and .. garnishes.
+  let sum = statistics.clone().fold(0, |acc, (cnt,_,_)| { acc + cnt}) as f32;
+  let cnt = statistics.clone().count() as f32;
+  assert_eq!(format!("{:.3}", sum / cnt), "3.455");
+  let sum = statistics.clone().fold(0, |acc, (_,cnt,_)| { acc + cnt}) as f32;
+  assert_eq!(format!("{:.3}", sum / cnt), "0.909");
+
+  // The most used ingredients are ...
+  use std::collections::HashMap;
+  let mut statistics = ingredients
+        .into_iter()
+        .fold(HashMap::default(), |mut acc, ingredients| -> HashMap<String, u32> {
+          for ingredient in ingredients.into_iter() {
+            if let CocktailSchema::Ingredient(v)  = ingredient {
+              let cnt = acc.remove(&v).unwrap_or(0);
+              acc.insert(v, cnt + 1);
+            }
+          }
+
+          acc
+        })
+        .into_iter()
+        .collect::<Vec<(String, u32)>>();
+  statistics.sort_by(|(key1, cnt1), (key2, cnt2)| {
+    if cnt1 == cnt2 {
+      key1.cmp(key2)
+    } else {
+      // reverse order as we want most used ingredients
+      cnt2.cmp(cnt1)
+    }
+  });
+  assert_eq!(&statistics[..5], vec![
+    ("gin".to_string(), 14),
+    ("lemon juice".to_string(), 11),
+    ("club soda".to_string(), 6),
+    ("sugar syrup".to_string(), 6),
+    ("campari".to_string(), 3),
+  ]);
+
+  Ok(())
+}
+
 fn create_cocktail_graph() -> Result<GStore, Error> {
   let kv = mem_kv_store::MemoryKvStore::default();
   let mut g = kv_graph_store::KvGraphStore::from_kv(kv);
