@@ -724,15 +724,19 @@ Seiteneffekte (TODO link) gesetzt wurden.
 ----
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VertexQueryContext<<ctx_generics>> {
-  // The current vertex
+  /// The current vertex
   pub id: VertexId,
-  // The path that led till here
+  /// The path that led till here
   pub path: Vec<(VertexId, EdgeId)>,
-  // If the path started by an edge it
-  // set here
+  /// If the path started by an edge it
+  /// set here
   pub start: Option<EdgeId>,
-  // Variables that were set in side effects
+  /// Variables that were set in side effects
   pub variables: HashMap<String, serde_json::Value>,
+  /// Vertexes stored with the store action
+  pub v_store: HashSet<VertexId>,
+  /// Edges stored with the store action
+  pub e_store: HashSet<EdgeId>,
 }
 
 impl<<ctx_generics>> VertexQueryContext<VertexId, EdgeId> {
@@ -741,15 +745,19 @@ impl<<ctx_generics>> VertexQueryContext<VertexId, EdgeId> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EdgeQueryContext<<ctx_generics>> {
-  // The current vertex
+  /// The current vertex
   pub id: EdgeId,
-  // The path that led till here
+  /// The path that led till here
   pub path: Vec<(VertexId, EdgeId)>,
-  // If the path started by an edge it
-  // set here
+  /// If the path started by an edge it
+  /// set here
   pub start: Option<EdgeId>,
-  // Variables that were set in side effects
+  /// Variables that were set in side effects
   pub variables: HashMap<String, serde_json::Value>,
+  /// Vertexes stored with the store action
+  pub v_store: HashSet<VertexId>,
+  /// Edges stored with the store action
+  pub e_store: HashSet<EdgeId>,
 }
 
 impl<<ctx_generics>> EdgeQueryContext<VertexId, EdgeId> {
@@ -953,13 +961,13 @@ Abfrageergebnisse zusammenfasst.
 [[structs]]
 [source, rust]
 ----
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct QueryResult<<ctx_generics>> {
-  // All vertices matched by the query
+  /// All vertices matched by the query
   pub vertices: HashSet<VertexId>,
-  // All edges matched by the query
+  /// All edges matched by the query
   pub edges: HashSet<EdgeId>,
-  // All Paths matched by the query
+  /// All Paths matched by the query
   pub paths: Vec<Vec<(VertexId, Option<EdgeId>)>>,
   pub variables: HashMap<String, serde_json::Value>,
 }
@@ -991,6 +999,8 @@ pub fn new(id: VertexId) -> Self {
     path: Vec::new(),
     start: None,
     variables: HashMap::default(),
+    v_store: HashSet::default(),
+    e_store: HashSet::default(),
   }
 }
 ----
@@ -1004,6 +1014,8 @@ pub fn new(id: EdgeId) -> Self {
     path: Vec::new(),
     start: Some(id),
     variables: HashMap::default(),
+    v_store: HashSet::default(),
+    e_store: HashSet::default(),
   }
 }
 ----
@@ -1025,6 +1037,8 @@ pub fn into_edge_ctx(self, id: EdgeId) -> EdgeQueryContext<VertexId, EdgeId> {
     mut path,
     start,
     variables,
+    v_store,
+    e_store,
   } = self;
 
   path.push((vid, id.clone()));
@@ -1034,6 +1048,8 @@ pub fn into_edge_ctx(self, id: EdgeId) -> EdgeQueryContext<VertexId, EdgeId> {
     path,
     start,
     variables,
+    v_store,
+    e_store,
   }
 }
 ----
@@ -1047,6 +1063,8 @@ pub fn into_vertex_ctx(self, id: VertexId) -> VertexQueryContext<VertexId, EdgeI
     path,
     start,
     variables,
+    v_store,
+    e_store,
   } = self;
 
   VertexQueryContext {
@@ -1054,6 +1072,8 @@ pub fn into_vertex_ctx(self, id: VertexId) -> VertexQueryContext<VertexId, EdgeI
     path,
     start,
     variables,
+    v_store,
+    e_store,
   }
 }
 ----
@@ -1074,7 +1094,7 @@ impl<<ctx_generics>> From<HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>
   fn from(mut item: HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>>) -> Self {
     let QueryResult {
       mut vertices,
-      edges,
+      mut edges,
       paths,
       mut variables,
     } = QueryResult::new();
@@ -1087,7 +1107,12 @@ impl<<ctx_generics>> From<HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>
         path: _,
         start: _,
         variables: ctx_vars,
+        v_store,
+        e_store,
       } = ctx;
+
+      vertices.extend(v_store);
+      edges.extend(e_store);
 
       // TODO paths
 
@@ -1106,7 +1131,7 @@ impl<<ctx_generics>> From<HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>
 impl<<ctx_generics>> From<HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>> for QueryResult<VertexId, EdgeId> {
   fn from(mut item: HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>) -> Self {
     let QueryResult {
-      vertices,
+      mut vertices,
       mut edges,
       paths,
       mut variables,
@@ -1120,7 +1145,12 @@ impl<<ctx_generics>> From<HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>> f
         path: _,
         start: _,
         variables: ctx_vars,
+        v_store,
+        e_store,
       } = ctx;
+
+      vertices.extend(v_store);
+      edges.extend(e_store);
 
       // TODO paths
 
