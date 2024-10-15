@@ -15,7 +15,7 @@ fn trivial_queries() -> Result<(), Error> {
     .referencing_vertices();
   let result = graph.query(q)?;
 
-  let actual = graph.extract_properties(result)?;
+  let actual = graph.extract_properties(&result)?;
   assert_eq!(actual, vec![]);
 
   // ok, so please give me a cocktail glass
@@ -24,7 +24,7 @@ fn trivial_queries() -> Result<(), Error> {
     .referencing_vertices();
   let result = graph.query(q)?;
 
-  let actual = graph.extract_properties(result)?;
+  let actual = graph.extract_properties(&result)?;
   assert_eq!(actual, vec![Glass("Cocktail glass".to_string())]);
 
   Ok(())
@@ -65,7 +65,7 @@ fn alexander_ingredients() -> Result<(), Error> {
     .intersect(q_ingredients_v2.clone());
   let result = graph.query(q)?;
 
-  let mut actual = graph.extract_properties(result)?;
+  let mut actual = graph.extract_properties(&result)?;
   actual.sort_by_key(|v| format!("{:?}",v));
   assert_eq!(actual, vec![
     Garnish("nutmeg".to_string()),
@@ -77,11 +77,11 @@ fn alexander_ingredients() -> Result<(), Error> {
   // and the newer version cognac
   let q = q_ingredients_v1.clone().substract(q_ingredients_v2.clone());
   let result = graph.query(q)?;
-  let mut actual_v1 = graph.extract_properties(result)?;
+  let mut actual_v1 = graph.extract_properties(&result)?;
   actual_v1.sort_by_key(|v| format!("{:?}",v));
   let q = q_ingredients_v2.substract(q_ingredients_v1);
   let result = graph.query(q)?;
-  let mut actual_v2 = graph.extract_properties(result)?;
+  let mut actual_v2 = graph.extract_properties(&result)?;
   actual_v2.sort_by_key(|v| format!("{:?}",v));
   let (alexander_original, alexander) = if actual_v1 == vec![Ingredient("gin".to_string())] {
     (actual_v1, actual_v2)
@@ -130,7 +130,7 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
     Cocktail("maiden's prayer".to_string()),
   ];
 
-  let mut actual = graph.extract_properties(result)?;
+  let mut actual = graph.extract_properties(&result)?;
   actual.sort_by_key(|v| format!("{:?}",v));
   assert_eq!(actual, expected);
 
@@ -154,7 +154,7 @@ fn cocktail_statistic() -> Result<(), Error> {
 
   // Let me see...
   let ingredients = result.vertices.into_iter().map(|c| {
-    graph.extract_properties(graph.query(
+    graph.extract_properties(&graph.query(
       ql::VertexQuery::from_ids(vec![c])
         .outgoing()
         .intersect(includes.start().referencing_edges())
