@@ -608,7 +608,6 @@ Properties.
 .Funktionen für Knoten
 ----
 fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, Error<E>> {
-  <<check_if_node_exists_allready>>
   <<create_node>>
   let props_hash = self.create_property(properties)?;
   let node = NodeData {
@@ -622,9 +621,7 @@ fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, 
 
   let path = "nodes/".to_string() + &key;
 
-  if self.kv.exists(path.as_bytes()).map_err(|e| Error::KV(e))? {
-    return Err(Error::NodeExists(path));
-  };
+  <<check_if_node_exists_allready>>
 
   <<write_node>>
   self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
@@ -696,6 +693,14 @@ fn delete_node(&mut self, id: uuid::Uuid) -> Result<uuid::Uuid, Error<E>> {
 
 Wenn bereits ein Knoten mit entsprechender ID existiert kann er nicht
 erzeugt werden (höchstens aktualisiert).
+
+[[check_if_node_exists_allready]]
+[source, rust]
+----
+if self.kv.exists(path.as_bytes()).map_err(|e| Error::KV(e))? {
+  return Err(Error::NodeExists(path));
+};
+----
 
 [[errors]]
 [source, rust]
