@@ -1,7 +1,7 @@
 = Eine Graphstore-Implementierung für Key-Value Stores
 
 Ein GraphStore kann abstrahiert werden auf einen Store, der auf
-beliebigen Key Value Stores aufbaut. Dadurch kann man verschieden
+beliebigen Key Value Stores aufbaut. Dadurch kann man verschiedene
 Implementierungen des KV-Stores als Backends entwickeln welche auf
 unterschiedliche Bedürfnisse angepasst werden können.
 
@@ -36,7 +36,7 @@ db/--+
 TODO Implementierung des in memory stores
 
 [%collapsible]
-.Beispiel in Memory Store
+.Beispiel in-Memory Store
 ====
 
 Bei einer neuen Datenbank erzeugen wir zunächst all diese Ordner.
@@ -325,7 +325,7 @@ Daten abzuspeichern.
 
 === Indexe und Garbarge-Collection
 Wenn wir Elemente löschen, ergibt sich die Aufgabe, dass wir eventuell
-verbundene Elemente mit löschen müssen wenn kein Verweis mehr darauf
+verbundene Elemente mitlöschen müssen wenn kein Verweis mehr darauf
 existiert. Dazu legen wir eine zweite Ordnerstruktur (im Ordner
 `indexes` TODO eventuell sollten wir einen Unterordner von `indexes`
 verwenden um weitere unsichtbare Verweistypen zu ermöglichen) an.
@@ -467,7 +467,7 @@ Wenn man die Daten in der Datenbank manipuliert ist es wichtig, dass
 die Datenbank nicht unbrauchbar wird oder kapput geht wenn irgend etwas
 schief geht. Man spricht hier von atomaren Opterationen die entweder
 als ganzes funktionieren oder abgebrochen werden aber die Anwendung
-nicht in einem Zwischenzustand zurück lassen. Zu diesem Zweck hat man
+nicht in einem Zwischenzustand zurücklassen. Zu diesem Zweck hat man
 https://en.wikipedia.org/wiki/Database_transaction[Transaktionen]
 erdacht footnote:[Weitere Informationen sind
 unter https://en.wikipedia.org/wiki/ACID und
@@ -488,7 +488,7 @@ enthält welcher der beiden stores gerade der aktuelle ist (zum lesen.
 Dieser muss immer valid sein) und welcher Prozess auf den anderen Store
 zum schreiben zugreift (kann auch leer also kein Prozess sein).
 
-Will ein Prozess zum schreiben zugreifen so muss er zuerst ein Datei
+Will ein Prozess zum schreiben zugreifen so muss er zuerst eine Datei
 anlegen, welche zeigt das er gerade den Zugriff hat und dann diese Datei
 verschieben, so dass sie den offiziellen Zeiger ersezt (verschieben von
 Dateien ist eine atomare Operation und kann daher nicht aus Versehen
