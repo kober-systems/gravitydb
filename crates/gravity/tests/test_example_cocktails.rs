@@ -293,6 +293,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   use CocktailSchema::*;
 
   // ingredients
+  let absinthe = g.create_node(Uuid::new_v4(), &Ingredient("absinthe".to_string()))?;
   let angostura_bitters = g.create_node(Uuid::new_v4(), &Ingredient("angostura bitters".to_string()))?;
   let apricot_brandy = g.create_node(Uuid::new_v4(), &Ingredient("apricot brandy".to_string()))?;
   let aromatic_bitters = g.create_node(Uuid::new_v4(), &Ingredient("aromatic bitters".to_string()))?;
@@ -315,6 +316,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let lime_juice = g.create_node(Uuid::new_v4(), &Ingredient("lime juice".to_string()))?;
   let maraschino = g.create_node(Uuid::new_v4(), &Ingredient("maraschino".to_string()))?;
   let orange_bitters = g.create_node(Uuid::new_v4(), &Ingredient("orange bitters".to_string()))?;
+  let orange_juice = g.create_node(Uuid::new_v4(), &Ingredient("orange juice".to_string()))?;
   let pineapple_juice = g.create_node(Uuid::new_v4(), &Ingredient("pineapple juice".to_string()))?;
   let raspberry_syrup = g.create_node(Uuid::new_v4(), &Ingredient("raspberry syrup".to_string()))?;
   let soda = g.create_node(Uuid::new_v4(), &Ingredient("club soda".to_string()))?;
@@ -513,6 +515,13 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(mary_pickford, maraschino, &Includes)?;
   g.create_edge(mary_pickford, maraschino_cherry, &Includes)?;
   g.create_edge(mary_pickford, cocktail_glass, &ServedIn)?;
+  
+  let monkey_gland = g.create_node(Uuid::new_v4(), &Cocktail("Monkey Gland".to_string()))?;
+  g.create_edge(monkey_gland, gin, &Includes)?;
+  g.create_edge(monkey_gland, orange_juice, &Includes)?;
+  g.create_edge(monkey_gland, absinthe, &Includes)?;
+  g.create_edge(monkey_gland, grenadine, &Includes)?;
+  g.create_edge(monkey_gland, cocktail_glass, &ServedIn)?;
   
   let royal_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Royal fizz".to_string()))?;
   g.create_edge(royal_fizz, gin, &Includes)?;
