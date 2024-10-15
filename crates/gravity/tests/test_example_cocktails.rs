@@ -376,7 +376,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(americano_sparkling, soda, &Includes)?;
   g.create_edge(americano_sparkling, lemon_slice, &Includes)?;
   g.create_edge(americano_sparkling, old_fashioned_glass, &ServedIn)?;
-
+  
   let angel_face = g.create_node(Uuid::new_v4(), &Cocktail("Angel face".to_string()))?;
   g.create_edge(angel_face, gin, &Includes)?;
   g.create_edge(angel_face, calvados, &Includes)?;
@@ -541,6 +541,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(old_fashioned, maraschino_cherry, &Includes)?;
   g.create_edge(old_fashioned, old_fashioned_glass, &ServedIn)?;
     
+  let paradise = g.create_node(Uuid::new_v4(), &Cocktail("Paradise".to_string()))?;
+  g.create_edge(paradise, gin, &Includes)?;
+  g.create_edge(paradise, apricot_brandy, &Includes)?;
+  g.create_edge(paradise, orange_juice, &Includes)?;
+  g.create_edge(paradise, cocktail_glass, &ServedIn)?;
+
   let royal_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Royal fizz".to_string()))?;
   g.create_edge(royal_fizz, gin, &Includes)?;
   g.create_edge(royal_fizz, lemon_juice, &Includes)?;
