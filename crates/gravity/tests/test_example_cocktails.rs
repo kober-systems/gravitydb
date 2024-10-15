@@ -318,6 +318,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let orange_bitters = g.create_node(Uuid::new_v4(), &Ingredient("orange bitters".to_string()))?;
   let orange_juice = g.create_node(Uuid::new_v4(), &Ingredient("orange juice".to_string()))?;
   let pineapple_juice = g.create_node(Uuid::new_v4(), &Ingredient("pineapple juice".to_string()))?;
+  let port = g.create_node(Uuid::new_v4(), &Ingredient("port".to_string()))?;
   let raspberry_syrup = g.create_node(Uuid::new_v4(), &Ingredient("raspberry syrup".to_string()))?;
   let soda = g.create_node(Uuid::new_v4(), &Ingredient("club soda".to_string()))?;
   let sugar_cane_juice = g.create_node(Uuid::new_v4(), &Ingredient("sugar cane juice".to_string()))?;
@@ -555,6 +556,13 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(planters_punch, sugar_cane_juice, &Includes)?;
   g.create_edge(planters_punch, orange_zest, &Includes)?;
   g.create_edge(planters_punch, beverage_glass, &ServedIn)?;
+  
+  let porto_flip = g.create_node(Uuid::new_v4(), &Cocktail("Porto flip".to_string()))?;
+  g.create_edge(porto_flip, brandy, &Includes)?;
+  g.create_edge(porto_flip, port, &Includes)?;
+  g.create_edge(porto_flip, egg_yolk, &Includes)?;
+  g.create_edge(porto_flip, nutmeg, &Includes)?;
+  g.create_edge(porto_flip, cocktail_glass, &ServedIn)?;
   
   let royal_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Royal fizz".to_string()))?;
   g.create_edge(royal_fizz, gin, &Includes)?;
