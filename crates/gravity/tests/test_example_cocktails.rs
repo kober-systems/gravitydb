@@ -310,10 +310,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let fernet_branca = g.create_node(Uuid::new_v4(), &Ingredient("fernet branca".to_string()))?;
   let gin = g.create_node(Uuid::new_v4(), &Ingredient("gin".to_string()))?;
   let green_chartreuse = g.create_node(Uuid::new_v4(), &Ingredient("green chartreuse".to_string()))?;
+  let grenadine = g.create_node(Uuid::new_v4(), &Ingredient("grenadine".to_string()))?;
   let lemon_juice = g.create_node(Uuid::new_v4(), &Ingredient("lemon juice".to_string()))?;
   let lime_juice = g.create_node(Uuid::new_v4(), &Ingredient("lime juice".to_string()))?;
   let maraschino = g.create_node(Uuid::new_v4(), &Ingredient("maraschino".to_string()))?;
   let orange_bitters = g.create_node(Uuid::new_v4(), &Ingredient("orange bitters".to_string()))?;
+  let pineapple_juice = g.create_node(Uuid::new_v4(), &Ingredient("pineapple juice".to_string()))?;
   let raspberry_syrup = g.create_node(Uuid::new_v4(), &Ingredient("raspberry syrup".to_string()))?;
   let soda = g.create_node(Uuid::new_v4(), &Ingredient("club soda".to_string()))?;
   let sugar_syrup = g.create_node(Uuid::new_v4(), &Ingredient("sugar syrup".to_string()))?;
@@ -503,6 +505,14 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(martini, vermouth, &Includes)?;
   g.create_edge(martini, olive, &Includes)?;
   g.create_edge(martini, cocktail_glass, &ServedIn)?;
+  
+  let mary_pickford = g.create_node(Uuid::new_v4(), &Cocktail("Mary Pickford".to_string()))?;
+  g.create_edge(mary_pickford, white_rum, &Includes)?;
+  g.create_edge(mary_pickford, pineapple_juice, &Includes)?;
+  g.create_edge(mary_pickford, grenadine, &Includes)?;
+  g.create_edge(mary_pickford, maraschino, &Includes)?;
+  g.create_edge(mary_pickford, maraschino_cherry, &Includes)?;
+  g.create_edge(mary_pickford, cocktail_glass, &ServedIn)?;
   
   let royal_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Royal fizz".to_string()))?;
   g.create_edge(royal_fizz, gin, &Includes)?;
