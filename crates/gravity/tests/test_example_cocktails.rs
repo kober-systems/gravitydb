@@ -159,6 +159,46 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
     ]
   );
 
+  // But this is not the only way of reasoning. You can get to the
+  // same results from different starting points. For example from the
+  // cocktails ...
+  let q = cocktail.start()
+    .referencing_properties()
+    .referencing_vertices()
+    .intersect(gin.start()
+      .referencing_vertices()
+      .ingoing()
+      .intersect(includes.start().referencing_edges())
+      .ingoing()
+    );
+  let result = graph.query(q)?;
+
+  let mut actual = graph.extract_properties(&result)?;
+  actual.sort_by_key(|v| format!("{:?}",v));
+  assert_eq!(actual, expected);
+
+  let q = includes.start()
+    .referencing_edges()
+    .ingoing()
+    .intersect(gin.start()
+      .referencing_vertices()
+      .ingoing()
+      .ingoing()
+    )
+    .intersect(cocktail.start()
+      .referencing_properties()
+      .referencing_vertices()
+    );
+  let result = graph.query(q)?;
+
+  let mut actual = graph.extract_properties(&result)?;
+  actual.sort_by_key(|v| format!("{:?}",v));
+  assert_eq!(actual, expected);
+
+  // While this leads to the same results the reasoning is different.
+  // This can become important when you start optimizing your queries
+  // for performance.
+
   Ok(())
 }
 
