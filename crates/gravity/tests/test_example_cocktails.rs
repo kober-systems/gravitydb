@@ -319,6 +319,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let orange_bitters = g.create_node(Uuid::new_v4(), &Ingredient("orange bitters".to_string()))?;
   let orange_flower_water = g.create_node(Uuid::new_v4(), &Ingredient("orange flower water".to_string()))?;
   let orange_juice = g.create_node(Uuid::new_v4(), &Ingredient("orange juice".to_string()))?;
+  let peychauds_bitters = g.create_node(Uuid::new_v4(), &Ingredient("peychauds bitters".to_string()))?;
   let pineapple_juice = g.create_node(Uuid::new_v4(), &Ingredient("pineapple juice".to_string()))?;
   let port = g.create_node(Uuid::new_v4(), &Ingredient("port".to_string()))?;
   let raspberry_syrup = g.create_node(Uuid::new_v4(), &Ingredient("raspberry syrup".to_string()))?;
@@ -593,7 +594,15 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(rusty_nail, drambuie, &Includes)?;
   g.create_edge(rusty_nail, orange_zest, &Includes)?;
   g.create_edge(rusty_nail, old_fashioned_glass, &ServedIn)?;
-
+  
+  let sazerac = g.create_node(Uuid::new_v4(), &Cocktail("Sazerac".to_string()))?;
+  g.create_edge(sazerac, cognac, &Includes)?;
+  g.create_edge(sazerac, absinthe, &Includes)?;
+  g.create_edge(sazerac, sugar_cube, &Includes)?;
+  g.create_edge(sazerac, peychauds_bitters, &Includes)?;
+  g.create_edge(sazerac, lemon_zest, &Includes)?;
+  g.create_edge(sazerac, old_fashioned_glass, &ServedIn)?;
+  
   let silver_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Silver fizz".to_string()))?;
   g.create_edge(silver_fizz, gin, &Includes)?;
   g.create_edge(silver_fizz, lemon_juice, &Includes)?;
