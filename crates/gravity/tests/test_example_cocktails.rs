@@ -316,6 +316,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let lime_juice = g.create_node(Uuid::new_v4(), &Ingredient("lime juice".to_string()))?;
   let maraschino = g.create_node(Uuid::new_v4(), &Ingredient("maraschino".to_string()))?;
   let orange_bitters = g.create_node(Uuid::new_v4(), &Ingredient("orange bitters".to_string()))?;
+  let orange_flower_water = g.create_node(Uuid::new_v4(), &Ingredient("orange flower water".to_string()))?;
   let orange_juice = g.create_node(Uuid::new_v4(), &Ingredient("orange juice".to_string()))?;
   let pineapple_juice = g.create_node(Uuid::new_v4(), &Ingredient("pineapple juice".to_string()))?;
   let port = g.create_node(Uuid::new_v4(), &Ingredient("port".to_string()))?;
@@ -328,6 +329,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let sweet_vermouth = g.create_node(Uuid::new_v4(), &Ingredient("sweet vermouth".to_string()))?;
   let sweet_red_vermouth = g.create_node(Uuid::new_v4(), &Ingredient("sweet red vermouth".to_string()))?;
   let triple_sec = g.create_node(Uuid::new_v4(), &Ingredient("triple sec".to_string()))?;
+  let vanilla_extract = g.create_node(Uuid::new_v4(), &Ingredient("vanilla extract".to_string()))?;
   let vermouth = g.create_node(Uuid::new_v4(), &Ingredient("vermouth".to_string()))?;
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
   let water = g.create_node(Uuid::new_v4(), &Ingredient("water".to_string()))?;
@@ -426,7 +428,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(casino, lemon_twist, &Includes)?;
   g.create_edge(casino, maraschino_cherry, &Includes)?;
   g.create_edge(casino, cocktail_glass, &ServedIn)?;
-
+  
   let clover_club = g.create_node(Uuid::new_v4(), &Cocktail("Clover Club".to_string()))?;
   g.create_edge(clover_club, gin, &Includes)?;
   g.create_edge(clover_club, lemon_juice, &Includes)?;
@@ -458,11 +460,10 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(golden_fizz, lemon_juice, &Includes)?;
   g.create_edge(golden_fizz, sugar_syrup, &Includes)?;
   g.create_edge(golden_fizz, soda, &Includes)?;
-  g.create_edge(golden_fizz, gin, &Includes)?;
   g.create_edge(golden_fizz, egg_yolk, &Includes)?;
   g.create_edge(golden_fizz, lemon_slice, &Includes)?;
   g.create_edge(golden_fizz, old_fashioned_glass, &ServedIn)?;
-
+  
   let hanky_panky = g.create_node(Uuid::new_v4(), &Cocktail("Hanky panky".to_string()))?;
   g.create_edge(hanky_panky, gin, &Includes)?;
   g.create_edge(hanky_panky, sweet_red_vermouth, &Includes)?;
@@ -563,6 +564,18 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(porto_flip, egg_yolk, &Includes)?;
   g.create_edge(porto_flip, nutmeg, &Includes)?;
   g.create_edge(porto_flip, cocktail_glass, &ServedIn)?;
+  
+  let ramos_gin_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Ramos gin fizz".to_string()))?;
+  g.create_edge(ramos_gin_fizz, gin, &Includes)?;
+  g.create_edge(ramos_gin_fizz, lime_juice, &Includes)?;
+  g.create_edge(ramos_gin_fizz, lemon_juice, &Includes)?;
+  g.create_edge(ramos_gin_fizz, sugar_syrup, &Includes)?;
+  g.create_edge(ramos_gin_fizz, cream, &Includes)?;
+  g.create_edge(ramos_gin_fizz, orange_flower_water, &Includes)?;
+  g.create_edge(ramos_gin_fizz, egg_white, &Includes)?;
+  g.create_edge(ramos_gin_fizz, vanilla_extract, &Includes)?;
+  g.create_edge(ramos_gin_fizz, soda, &Includes)?;
+  g.create_edge(ramos_gin_fizz, collins_glass, &ServedIn)?;
   
   let royal_fizz = g.create_node(Uuid::new_v4(), &Cocktail("Royal fizz".to_string()))?;
   g.create_edge(royal_fizz, gin, &Includes)?;
