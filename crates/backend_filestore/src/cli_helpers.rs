@@ -221,7 +221,8 @@ where
       // TODO Umschliessende Huelle? Alle miteinander verbundenen Edges und Vertices?
     }
     Repl => {
-      lua_repl::<T>()?;
+      let db = open::<T>(&opt.db_path)?;
+      lua_repl::<T>(db)?;
     }
     ResultData => {
       let data = read_input(opt.input)?;
@@ -241,7 +242,7 @@ where
   Ok(())
 }
 
-fn lua_repl<T>() -> Result<()>
+fn lua_repl<T>(db: KvGraphStore<T, FsKvStore, FileStoreError>) -> Result<()>
 where
   T: Prop,
 {
@@ -252,17 +253,7 @@ where
   let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
 
   let globals = lua.globals();
-  let db_open = lua.create_function(|_, path: String| {
-    use mlua::prelude::LuaError;
-    use std::sync::Arc;
-
-    let path = Path::new(&path);
-    match open::<T>(&path) {
-      Ok(db) => Ok(db),
-      Err(e) => Err(LuaError::ExternalError(Arc::new(e))),
-    }
-  })?;
-  globals.set("db_open", db_open)?;
+  globals.set("db", db)?;
   ql::init_lua::<String, HashId, HashId, String, String>(&lua)?;
 
   loop {
