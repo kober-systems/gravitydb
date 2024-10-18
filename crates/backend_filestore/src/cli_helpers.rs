@@ -36,7 +36,7 @@ pub fn log_level(level: u64) -> log::Level {
 pub trait Prop: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData {}
 impl <T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + mlua::UserData> Prop for T {}
 
-pub fn db_cmds<T>() -> Result<()>
+pub fn db_cmds<T>(init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
 where
   T: Prop,
 {
@@ -222,7 +222,7 @@ where
     }
     Repl => {
       let db = open::<T>(&opt.db_path)?;
-      lua_repl::<T>(db)?;
+      lua_repl::<T>(db, init_fn)?;
     }
     ResultData => {
       let data = read_input(opt.input)?;
@@ -242,7 +242,7 @@ where
   Ok(())
 }
 
-fn lua_repl<T>(db: KvGraphStore<T, FsKvStore, FileStoreError>) -> Result<()>
+fn lua_repl<T>(db: KvGraphStore<T, FsKvStore, FileStoreError>, init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
 where
   T: Prop,
 {
@@ -255,6 +255,7 @@ where
   let globals = lua.globals();
   globals.set("db", db)?;
   ql::init_lua::<String, HashId, HashId, String, String>(&lua)?;
+  init_fn(&lua)?;
 
   loop {
     let mut prompt = "> ";
