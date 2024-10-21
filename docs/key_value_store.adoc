@@ -1904,9 +1904,9 @@ Funktionen bieten um die Datenbank zu manipulieren. Dazu binden wir den
 #[cfg(feature="lua")]
 impl<P, K, E> mlua::UserData for KvGraphStore<P, K, E>
 where
-  P: Property<HashId, SerialisationError> + mlua::UserData + std::clone::Clone + 'static,
+  for<'lua> P: Property<HashId, SerialisationError> + mlua::UserData + std::clone::Clone + 'lua + mlua::FromLua<'lua>,
   K: KVStore<E>,
-  E: Send + Sync + std::fmt::Debug + 'static,
+  E: Send + Sync + std::fmt::Debug,
 {
   fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
     use mlua::prelude::LuaError;
@@ -1915,7 +1915,7 @@ where
       let id = uuid::Uuid::new_v4();
       match db.create_node(id, &props) {
         Ok(_) => Ok(()),
-        Err(e) => Err(LuaError::external(e))
+        Err(e) => Err(LuaError::external(e.to_string()))
       }
     });
   }

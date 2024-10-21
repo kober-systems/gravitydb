@@ -38,7 +38,7 @@ impl <T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + ml
 
 pub fn db_cmds<T>(init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
 where
-  T: Prop,
+  for<'lua> T: Prop + 'lua + mlua::FromLua<'lua>,
 {
   #[derive(StructOpt)]
   pub struct Opt {
@@ -244,7 +244,7 @@ where
 
 fn lua_repl<T>(db: KvGraphStore<T, FsKvStore, FileStoreError>, init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
 where
-  T: Prop,
+  for<'lua> T: Prop + 'lua + mlua::FromLua<'lua>,
 {
   use mlua::{Error, Lua, MultiValue};
   use rustyline::{Editor, error::ReadlineError};
@@ -253,7 +253,7 @@ where
   let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
 
   let globals = lua.globals();
-  globals.set("db", db)?;
+  globals.raw_set("db", db)?;
   ql::init_lua::<String, HashId, HashId, String, String>(&lua)?;
   init_fn(&lua)?;
 

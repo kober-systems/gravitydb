@@ -338,7 +338,7 @@ Wir stellen dabei ein Programm-Template bereit, welches alle wichtigen db Funkti
 ----
 pub fn db_cmds<T>(<<customize_params|join=", ">>) -> Result<()>
 where
-  T: Prop,
+  for<'lua> T: Prop + 'lua + mlua::FromLua<'lua>,
 {
   <<cli_parse_cmd_options>>
 
@@ -352,7 +352,7 @@ where
 
 fn lua_repl<T>(db: KvGraphStore<T, FsKvStore, FileStoreError>, init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
 where
-  T: Prop,
+  for<'lua> T: Prop + 'lua + mlua::FromLua<'lua>,
 {
   <<run_lua_repl>>
 }
@@ -833,7 +833,7 @@ verfügbar zu machen.
 [source, rust]
 ----
 let globals = lua.globals();
-globals.set("db", db)?;
+globals.raw_set("db", db)?;
 ----
 
 Zudem laden wir die Funktionen der Abfragesprache Zoe (TODO link) in

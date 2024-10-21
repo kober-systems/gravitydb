@@ -44,7 +44,7 @@ where
 
 use sha2::Digest;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, mlua::FromLua)]
 pub struct GenericProperty(Vec<u8>);
 
 impl<E> SchemaElement<String, E> for GenericProperty

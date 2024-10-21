@@ -4,6 +4,7 @@ use std::convert::From;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(mlua::FromLua)]
 pub enum VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 {
   /// Query over all vertices in the database
@@ -88,6 +89,7 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> VertexQuery<VertexId, EdgeI
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(mlua::FromLua)]
 pub enum EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 {
   /// Query over all edges in the database
@@ -414,9 +416,9 @@ where
 #[cfg(feature="lua")]
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> mlua::UserData for EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
-  VertexId:   Clone + 'static,
-  EdgeId:     Clone + 'static,
-  PropertyId: Clone + 'static,
+  for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + mlua::FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
@@ -437,7 +439,7 @@ where
 }
 
 #[cfg(feature="lua")]
-#[derive(Clone)]
+#[derive(Clone, mlua::FromLua)]
 struct LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
   q: PropertyQuery<PropertyId>,
   marker: std::marker::PhantomData<VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>,
@@ -456,9 +458,9 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> LuaPropertyQuery<VertexId, 
 #[cfg(feature="lua")]
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> mlua::UserData for LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
-  VertexId:   Clone + 'static,
-  EdgeId:     Clone + 'static,
-  PropertyId: Clone + 'static,
+  for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + mlua::FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
