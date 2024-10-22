@@ -315,6 +315,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let benedictine = g.create_node(Uuid::new_v4(), &Ingredient("benedictine".to_string()))?;
   let black_pepper = g.create_node(Uuid::new_v4(), &Ingredient("black pepper".to_string()))?;
   let brandy = g.create_node(Uuid::new_v4(), &Ingredient("brandy".to_string()))?;
+  let cachaca = g.create_node(Uuid::new_v4(), &Ingredient("cachaça".to_string()))?;
   let calvados = g.create_node(Uuid::new_v4(), &Ingredient("calvados".to_string()))?;
   let campari = g.create_node(Uuid::new_v4(), &Ingredient("campari".to_string()))?;
   let celery_salt = g.create_node(Uuid::new_v4(), &Ingredient("celery salt".to_string()))?;
@@ -334,6 +335,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let green_chartreuse = g.create_node(Uuid::new_v4(), &Ingredient("green chartreuse".to_string()))?;
   let grenadine = g.create_node(Uuid::new_v4(), &Ingredient("grenadine".to_string()))?;
   let lemon_juice = g.create_node(Uuid::new_v4(), &Ingredient("lemon juice".to_string()))?;
+  let lime = g.create_node(Uuid::new_v4(), &Ingredient("lime".to_string()))?;
   let lime_juice = g.create_node(Uuid::new_v4(), &Ingredient("lime juice".to_string()))?;
   let maraschino = g.create_node(Uuid::new_v4(), &Ingredient("maraschino".to_string()))?;
   let orange_bitters = g.create_node(Uuid::new_v4(), &Ingredient("orange bitters".to_string()))?;
@@ -361,6 +363,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let vodka = g.create_node(Uuid::new_v4(), &Ingredient("vodka".to_string()))?;
   let water = g.create_node(Uuid::new_v4(), &Ingredient("water".to_string()))?;
   let whiskey = g.create_node(Uuid::new_v4(), &Ingredient("whiskey".to_string()))?;
+  let white_cane_sugar = g.create_node(Uuid::new_v4(), &Ingredient("white cane sugar".to_string()))?;
   let white_creme_de_menthe = g.create_node(Uuid::new_v4(), &Ingredient("crème de cacao".to_string()))?;
   let white_rum = g.create_node(Uuid::new_v4(), &Ingredient("white rum".to_string()))?;
   let whole_egg = g.create_node(Uuid::new_v4(), &Ingredient("whole egg".to_string()))?;
@@ -484,6 +487,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(casino, lemon_twist, &Includes)?;
   g.create_edge(casino, maraschino_cherry, &Includes)?;
   g.create_edge(casino, cocktail_glass, &ServedIn)?;
+  
+  let caipirinha = g.create_node(Uuid::new_v4(), &Cocktail("Caipirinha".to_string()))?;
+  g.create_edge(caipirinha, cachaca, &Includes)?;
+  g.create_edge(caipirinha, lime, &Includes)?;
+  g.create_edge(caipirinha, white_cane_sugar, &Includes)?;
+  g.create_edge(caipirinha, old_fashioned_glass, &ServedIn)?;
 
   let clover_club = g.create_node(Uuid::new_v4(), &Cocktail("Clover Club".to_string()))?;
   g.create_edge(clover_club, gin, &Includes)?;
