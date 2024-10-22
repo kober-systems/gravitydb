@@ -269,6 +269,7 @@ version = "0.1.0"
 dependencies = [
  "mlua",
  "pretty_assertions",
+ "rustyline",
  "serde",
  "serde_json",
  "sha2",
@@ -285,7 +286,6 @@ dependencies = [
  "gravity",
  "log",
  "mlua",
- "rustyline",
  "serde",
  "serde_json",
  "sha2",
@@ -635,9 +635,9 @@ checksum = "583034fd73374156e66797ed8e5b0d5690409c9226b22d87cb7f19821c05d152"
 
 [[package]]
 name = "rustix"
-version = "0.38.34"
+version = "0.38.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70dc5ec042f7a43c4a73241207cecc9873a06d45debb38b329f8541d85c2730f"
+checksum = "8acb788b847c24f28525660c4d7758620a7210875711f79e7f663cc152726811"
 dependencies = [
  "bitflags 2.6.0",
  "errno",

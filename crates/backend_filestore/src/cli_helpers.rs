@@ -222,7 +222,7 @@ where
     }
     Repl => {
       let db = open::<T>(&opt.db_path)?;
-      lua_repl::<T>(db, init_fn)?;
+      gravity::kv_graph_store::lua_repl::<T, FsKvStore, _, anyhow::Error>(db, init_fn)?;
     }
     ResultData => {
       let data = read_input(opt.input)?;
@@ -240,122 +240,6 @@ where
   }
 
   Ok(())
-}
-
-use rustyline::completion::Completer;
-use rustyline::{Helper, Hinter, Validator, Highlighter};
-
-#[derive(Helper, Hinter, Validator, Highlighter)]
-struct LuaCompleter<'a> { lua: &'a mlua::Lua }
-
-impl Completer for LuaCompleter<'_> {
-  type Candidate = String;
-  fn complete(
-          &self,
-          line: &str,
-          pos: usize,
-          _ctx: &rustyline::Context<'_>
-  ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-    let mut completetions = vec![];
-
-    let line = &line[..pos];
-    let bounderies = [' ', '\t', '(', ')', '[', ']', '{', '}'];
-    let start = line.rfind(&bounderies).unwrap_or(0);
-    let tokens = &line[start..].split(&['.', ':']);
-    let level_cnt = tokens.clone().count();
-
-    use mlua::Value::*;
-
-    tokens.clone().fold((1, Table(self.lua.globals())), |(level, v), t| {
-      let t = t.trim_start_matches(&bounderies);
-      if let Table(ref v) = v {
-        if level == level_cnt {
-          v.for_each(|k: mlua::Value, _v: mlua::Value| {
-              if let Ok(k) = k.to_string() {
-                if k.starts_with(t) {
-                  completetions.push(k[t.len()..].to_string());
-                }
-            };
-
-            Ok(())
-          }).unwrap_or_default();
-        } else {
-          return (level + 1, match v.raw_get(t) {
-            Ok(v) => {
-              v
-            }
-            Err(_) => {
-              Nil
-            }
-          });
-        }
-      }
-
-      (level + 1, v)
-    });
-
-    let startposition = pos;
-
-    Ok((startposition, completetions))
-  }
-}
-
-fn lua_repl<T>(db: KvGraphStore<T, FsKvStore, FileStoreError>, init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
-where
-  for<'lua> T: Prop + 'lua + mlua::FromLua<'lua>,
-{
-  use mlua::{Error, Lua, MultiValue};
-  use rustyline::{Editor, error::ReadlineError};
-
-  let lua = Lua::new();
-  let mut editor = Editor::<LuaCompleter, rustyline::history::DefaultHistory>::new().expect("Failed to make rustyline editor");
-  editor.set_helper(Some(LuaCompleter { lua: &lua }));
-
-  let globals = lua.globals();
-  globals.raw_set("db", db)?;
-  ql::init_lua::<String, HashId, HashId, String, String>(&lua)?;
-  init_fn(&lua)?;
-
-  loop {
-    let mut prompt = "> ";
-    let mut line = String::new();
-
-    loop {
-      let input = match editor.readline(prompt) {
-        Ok(out) => Ok(out),
-        Err(ReadlineError::Eof) => return Ok(()),
-        Err(e) => Err(e),
-      }?;
-      line.push_str(&input);
-
-      match lua.load(&line).eval::<MultiValue>() {
-        Ok(values) => {
-          editor.add_history_entry(line);
-          println!(
-            "{}",
-            values
-              .iter()
-              .map(|value| format!("{:?}", value))
-              .collect::<Vec<_>>()
-              .join("\t")
-          );
-          break;
-        }
-        Err(Error::SyntaxError {
-          incomplete_input: true,
-          ..
-        }) => {
-          // continue reading input and append it to `line`
-          line.push_str("\n"); // separate input lines
-          prompt = ">> ";
-        }
-        Err(e) => {
-          eprintln!("error: {}", e);
-          break;
-        }
-      }
-    }
-  }
 }
 
 fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore, FileStoreError>, FileStoreError>

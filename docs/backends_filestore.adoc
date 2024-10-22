@@ -350,15 +350,6 @@ where
   Ok(())
 }
 
-<<lua_repl_completer>>
-
-fn lua_repl<T>(db: KvGraphStore<T, FsKvStore, FileStoreError>, init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
-where
-  for<'lua> T: Prop + 'lua + mlua::FromLua<'lua>,
-{
-  <<run_lua_repl>>
-}
-
 fn open<T>(path: &Path) -> Result<KvGraphStore<T, FsKvStore, FileStoreError>, FileStoreError>
 where
   T: Prop,
@@ -756,99 +747,14 @@ Erlaubt die interaktive Manipulation der Datenbank mit einer lua repl.
 Repl,
 ----
 
-Der Ablauf ist wie bei jeder anderen repl auch:
-
-* Wir lesen das Script soweit ein, wie möglich
-* Dann für wir das eingelesene Statement des Scripts aus
-** Kommt es zu Fehlern untersuchen wir ob das Script noch nicht
-   vollständig ist, oder ob wir die Verarbeitung abbrechen müssen.
-* Wir formatieren die Ausgabe und geben sie für den Benutzer aus.
-* Und dann kehren wir zum Anfang zurück (lesen das nächste Statement des
-  Scripts ein).
-
-[[run_lua_repl]]
-[source, rust]
-----
-use mlua::{Error, Lua, MultiValue};
-use rustyline::{Editor, error::ReadlineError};
-
-let lua = Lua::new();
-let mut editor = Editor::<LuaCompleter, rustyline::history::DefaultHistory>::new().expect("Failed to make rustyline editor");
-editor.set_helper(Some(LuaCompleter { lua: &lua }));
-
-<<init_lua_environment>>
-
-loop {
-  let mut prompt = "> ";
-  let mut line = String::new();
-
-  loop {
-    let input = match editor.readline(prompt) {
-      Ok(out) => Ok(out),
-      Err(ReadlineError::Eof) => return Ok(()),
-      Err(e) => Err(e),
-    }?;
-    line.push_str(&input);
-
-    match lua.load(&line).eval::<MultiValue>() {
-      Ok(values) => {
-        editor.add_history_entry(line);
-        println!(
-          "{}",
-          values
-            .iter()
-            .map(|value| format!("{:?}", value))
-            .collect::<Vec<_>>()
-            .join("\t")
-        );
-        break;
-      }
-      Err(Error::SyntaxError {
-        incomplete_input: true,
-        ..
-      }) => {
-        // continue reading input and append it to `line`
-        line.push_str("\n"); // separate input lines
-        prompt = ">> ";
-      }
-      Err(e) => {
-        eprintln!("error: {}", e);
-        break;
-      }
-    }
-  }
-}
-----
-
 [[run_cli_cmds]]
 [source, rust]
 ----
 Repl => {
   let db = open::<T>(&opt.db_path)?;
-  lua_repl::<T>(db, init_fn)?;
+  gravity::kv_graph_store::lua_repl::<T, FsKvStore, _, anyhow::Error>(db, init_fn)?;
 }
 ----
-
-Und wir benötigen einige Constructor Funktionen um die Datenbank
-verfügbar zu machen.
-
-[[init_lua_environment]]
-[source, rust]
-----
-let globals = lua.globals();
-globals.raw_set("db", db)?;
-----
-
-Zudem laden wir die Funktionen der Abfragesprache Zoe (TODO link) in
-unsere Lua Umgebung.
-
-[[init_lua_environment]]
-[source, rust]
-----
-ql::init_lua::<String, HashId, HashId, String, String>(&lua)?; // <1>
-----
-<1> Die generischen Parameter besetzen wir mit den in der Db
-    hardverdrahteten Id Typen
 
 [[util_imports]]
 [source, rust]
@@ -865,77 +771,6 @@ werden kann.
 [source, rust]
 ----
 init_fn: fn(&mlua::Lua) -> mlua::Result<()>
-----
-
-[[init_lua_environment]]
-[source, rust]
-----
-init_fn(&lua)?;
-----
-
-Um besser mit der Repl arbeiten zu können stellen wir dem User eine
-Autovervollständigung zur Verfügung.
-
-[[lua_repl_completer]]
-[source, rust]
-----
-use rustyline::completion::Completer;
-use rustyline::{Helper, Hinter, Validator, Highlighter};
-
-#[derive(Helper, Hinter, Validator, Highlighter)]
-struct LuaCompleter<'a> { lua: &'a mlua::Lua }
-
-impl Completer for LuaCompleter<'_> {
-  type Candidate = String;
-  fn complete(
-          &self,
-          line: &str,
-          pos: usize,
-          _ctx: &rustyline::Context<'_>
-  ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-    let mut completetions = vec![];
-
-    let line = &line[..pos];
-    let bounderies = [' ', '\t', '(', ')', '[', ']', '{', '}'];
-    let start = line.rfind(&bounderies).unwrap_or(0);
-    let tokens = &line[start..].split(&['.', ':']);
-    let level_cnt = tokens.clone().count();
-
-    use mlua::Value::*;
-
-    tokens.clone().fold((1, Table(self.lua.globals())), |(level, v), t| {
-      let t = t.trim_start_matches(&bounderies);
-      if let Table(ref v) = v {
-        if level == level_cnt {
-          v.for_each(|k: mlua::Value, _v: mlua::Value| {
-              if let Ok(k) = k.to_string() {
-                if k.starts_with(t) {
-                  completetions.push(k[t.len()..].to_string());
-                }
-            };
-
-            Ok(())
-          }).unwrap_or_default();
-        } else {
-          return (level + 1, match v.raw_get(t) {
-            Ok(v) => {
-              v
-            }
-            Err(_) => {
-              Nil
-            }
-          });
-        }
-      }
-
-      (level + 1, v)
-    });
-
-    let startposition = pos;
-
-    Ok((startposition, completetions))
-  }
-}
 ----
 
 === result_outer_hull

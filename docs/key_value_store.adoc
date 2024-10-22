@@ -1845,14 +1845,15 @@ Der Ablauf ist wie bei jeder anderen repl auch:
 * Und dann kehren wir zum Anfang zurück (lesen das nächste Statement des
   Scripts ein).
 
-[[run_cli_cmds]]
+[[run_lua_repl]]
 [source, rust]
 ----
 use mlua::{Error, Lua, MultiValue};
-use rustyline::Editor;
+use rustyline::{Editor, error::ReadlineError};
 
 let lua = Lua::new();
-let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
+let mut editor = Editor::<LuaCompleter, rustyline::history::DefaultHistory>::new().expect("Failed to make rustyline editor");
+editor.set_helper(Some(LuaCompleter { lua: &lua }));
 
 <<init_lua_environment>>
 
@@ -1861,7 +1862,11 @@ loop {
   let mut line = String::new();
 
   loop {
-    let input = editor.readline(prompt)?;
+    let input = match editor.readline(prompt) {
+      Ok(out) => Ok(out),
+      Err(ReadlineError::Eof) => return Ok(()),
+      Err(e) => Err(e),
+    }?;
     line.push_str(&input);
 
     match lua.load(&line).eval::<MultiValue>() {
@@ -1929,17 +1934,7 @@ verfügbar zu machen.
 [source, rust]
 ----
 let globals = lua.globals();
-let db_open = lua.create_function(|_, path: String| {
-  use mlua::prelude::LuaError;
-  use std::sync::Arc;
-
-  let path = crate::Path::new(&path);
-  match open::<T>(&path) {
-    Ok(db) => Ok(db),
-    Err(e) => Err(LuaError::ExternalError(Arc::new(e))),
-  }
-})?;
-globals.set("db_open", db_open)?;
+globals.raw_set("db", db)?;
 ----
 
 Zudem laden wir die Funktionen der Abfragesprache Zoe (TODO link) in
@@ -1952,4 +1947,100 @@ ql::init_lua::<String, HashId, HashId, String, String>(&lua)?; // <1>
 ----
 <1> Die generischen Parameter besetzen wir mit den in der Db
     hardverdrahteten Id Typen
+
+Die konkreten Implementierungen wollen möglicherweise ebenfalls die
+Lua Umgebung initialisieren (z.B. um Schema spezifische Anpassungen
+vorzunehmen). Deshalb übergeben wir einen Parameter, welche angepasst
+werden kann.
+
+[[customize_params]]
+[source, rust]
+----
+init_fn: fn(&mlua::Lua) -> mlua::Result<()>
+----
+
+[[init_lua_environment]]
+[source, rust]
+----
+init_fn(&lua)?;
+----
+
+Um besser mit der Repl arbeiten zu können stellen wir dem User eine
+Autovervollständigung zur Verfügung.
+
+[[lua_repl_completer]]
+[source, rust]
+----
+use rustyline::completion::Completer;
+use rustyline::{Helper, Hinter, Validator, Highlighter};
+
+#[derive(Helper, Hinter, Validator, Highlighter)]
+struct LuaCompleter<'a> { lua: &'a mlua::Lua }
+
+impl Completer for LuaCompleter<'_> {
+  type Candidate = String;
+  fn complete(
+          &self,
+          line: &str,
+          pos: usize,
+          _ctx: &rustyline::Context<'_>
+  ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
+    let mut completetions = vec![];
+
+    let line = &line[..pos];
+    let bounderies = [' ', '\t', '(', ')', '[', ']', '{', '}'];
+    let start = line.rfind(&bounderies).unwrap_or(0);
+    let tokens = &line[start..].split(&['.', ':']);
+    let level_cnt = tokens.clone().count();
+
+    use mlua::Value::*;
+
+    tokens.clone().fold((1, Table(self.lua.globals())), |(level, v), t| {
+      let t = t.trim_start_matches(&bounderies);
+      if let Table(ref v) = v {
+        if level == level_cnt {
+          v.for_each(|k: mlua::Value, _v: mlua::Value| {
+              if let Ok(k) = k.to_string() {
+                if k.starts_with(t) {
+                  completetions.push(k[t.len()..].to_string());
+                }
+            };
+
+            Ok(())
+          }).unwrap_or_default();
+        } else {
+          return (level + 1, match v.raw_get(t) {
+            Ok(v) => {
+              v
+            }
+            Err(_) => {
+              Nil
+            }
+          });
+        }
+      }
+
+      (level + 1, v)
+    });
+
+    Ok((pos, completetions))
+  }
+}
+----
+
+[[interface_implementations]]
+[source, rust]
+----
+<<lua_repl_completer>>
+
+pub fn lua_repl<T, Kv, E, OutE>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<(), OutE>
+where
+  for<'lua> T: Property<HashId, SerialisationError> + 'lua + mlua::FromLua<'lua> + mlua::UserData + Clone,
+  Kv: KVStore<E> + 'static,
+  E: Send + Sync + std::fmt::Debug + 'static,
+  OutE: From<rustyline::error::ReadlineError> + From<mlua::Error>,
+{
+  <<run_lua_repl>>
+}
+----
 

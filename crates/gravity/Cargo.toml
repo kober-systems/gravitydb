@@ -13,9 +13,10 @@ sha2 = "0.9.5" # TODO nur bei Standardimplementierung
 uuid = { version = "1.10", features = ["serde", "v4"] }
 thiserror = "1.0"
 mlua = { version = "0.9", features = ["luau", "serialize", "macros"], optional = true }
+rustyline = { version = "14", features = ["derive"], optional = true }
 
 [features]
-lua = ["mlua"]
+lua = ["mlua", "rustyline" ]
 
 [dev-dependencies]
 pretty_assertions = "1"
