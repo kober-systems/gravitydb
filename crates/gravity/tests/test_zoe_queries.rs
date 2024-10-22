@@ -1,4 +1,5 @@
 use gravity::*;
+use pretty_assertions::assert_eq;
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 

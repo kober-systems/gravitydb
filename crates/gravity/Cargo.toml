@@ -16,3 +16,6 @@ mlua = { version = "0.9", features = ["luau", "serialize", "macros"], optional =
 
 [features]
 lua = ["mlua"]
+
+[dev-dependencies]
+pretty_assertions = "1"

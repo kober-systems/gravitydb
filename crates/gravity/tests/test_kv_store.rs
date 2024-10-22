@@ -1,4 +1,5 @@
 use gravity::*;
+use pretty_assertions::assert_eq;
 use uuid::uuid;
 
 #[test]
