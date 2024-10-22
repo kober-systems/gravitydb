@@ -336,9 +336,11 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let orange_bitters = g.create_node(Uuid::new_v4(), &Ingredient("orange bitters".to_string()))?;
   let orange_flower_water = g.create_node(Uuid::new_v4(), &Ingredient("orange flower water".to_string()))?;
   let orange_juice = g.create_node(Uuid::new_v4(), &Ingredient("orange juice".to_string()))?;
+  let peach_puree = g.create_node(Uuid::new_v4(), &Ingredient("peach purée".to_string()))?;
   let peychauds_bitters = g.create_node(Uuid::new_v4(), &Ingredient("peychauds bitters".to_string()))?;
   let pineapple_juice = g.create_node(Uuid::new_v4(), &Ingredient("pineapple juice".to_string()))?;
   let port = g.create_node(Uuid::new_v4(), &Ingredient("port".to_string()))?;
+  let prosecco = g.create_node(Uuid::new_v4(), &Ingredient("prosecco".to_string()))?;
   let raspberry_syrup = g.create_node(Uuid::new_v4(), &Ingredient("raspberry syrup".to_string()))?;
   let rum = g.create_node(Uuid::new_v4(), &Ingredient("rum".to_string()))?;
   let soda = g.create_node(Uuid::new_v4(), &Ingredient("club soda".to_string()))?;
@@ -373,6 +375,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
 
   // glasses
   let beverage_glass = g.create_node(Uuid::new_v4(), &Glass("Beverage glass".to_string()))?;
+  let champagne_flute = g.create_node(Uuid::new_v4(), &Glass("Champagne flute".to_string()))?;
   let cocktail_glass = g.create_node(Uuid::new_v4(), &Glass("Cocktail glass".to_string()))?;
   let collins_glass = g.create_node(Uuid::new_v4(), &Glass("Collins glass".to_string()))?;
   let old_fashioned_glass = g.create_node(Uuid::new_v4(), &Glass("Old fashioned glass".to_string()))?;
@@ -419,7 +422,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(aviation, creme_de_violette, &Includes)?;
   g.create_edge(aviation, maraschino_cherry, &Includes)?;
   g.create_edge(aviation, cocktail_glass, &ServedIn)?;
-
+  
+  let bellini = g.create_node(Uuid::new_v4(), &Cocktail("Bellini".to_string()))?;
+  g.create_edge(bellini, prosecco, &Includes)?;
+  g.create_edge(bellini, peach_puree, &Includes)?;
+  g.create_edge(bellini, champagne_flute, &ServedIn)?;
+  
   let between_the_sheets = g.create_node(Uuid::new_v4(), &Cocktail("Between the sheets".to_string()))?;
   g.create_edge(between_the_sheets, white_rum, &Includes)?;
   g.create_edge(between_the_sheets, cognac, &Includes)?;
