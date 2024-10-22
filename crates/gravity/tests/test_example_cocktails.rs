@@ -316,6 +316,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let brandy = g.create_node(Uuid::new_v4(), &Ingredient("brandy".to_string()))?;
   let calvados = g.create_node(Uuid::new_v4(), &Ingredient("calvados".to_string()))?;
   let campari = g.create_node(Uuid::new_v4(), &Ingredient("campari".to_string()))?;
+  let coffee_liqueur = g.create_node(Uuid::new_v4(), &Ingredient("coffee liqueur".to_string()))?;
   let cognac = g.create_node(Uuid::new_v4(), &Ingredient("cognac".to_string()))?;
   let cream = g.create_node(Uuid::new_v4(), &Ingredient("cream".to_string()))?;
   let creme_de_cacao = g.create_node(Uuid::new_v4(), &Ingredient("crème de cacao".to_string()))?;
@@ -434,7 +435,12 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(between_the_sheets, lemon_juice, &Includes)?;
   g.create_edge(between_the_sheets, triple_sec, &Includes)?;
   g.create_edge(between_the_sheets, cocktail_glass, &ServedIn)?;
-
+  
+  let black_russian = g.create_node(Uuid::new_v4(), &Cocktail("Black Russian".to_string()))?;
+  g.create_edge(black_russian, vodka, &Includes)?;
+  g.create_edge(black_russian, coffee_liqueur, &Includes)?;
+  g.create_edge(black_russian, old_fashioned_glass, &ServedIn)?;
+  
   let boulevardier = g.create_node(Uuid::new_v4(), &Cocktail("Boulevardier".to_string()))?;
   g.create_edge(boulevardier, whiskey, &Includes)?;
   g.create_edge(boulevardier, campari, &Includes)?;
