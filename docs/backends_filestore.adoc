@@ -350,6 +350,8 @@ where
   Ok(())
 }
 
+<<lua_repl_completer>>
+
 fn lua_repl<T>(db: KvGraphStore<T, FsKvStore, FileStoreError>, init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
 where
   for<'lua> T: Prop + 'lua + mlua::FromLua<'lua>,
@@ -771,7 +773,8 @@ use mlua::{Error, Lua, MultiValue};
 use rustyline::{Editor, error::ReadlineError};
 
 let lua = Lua::new();
-let mut editor = Editor::<()>::new().expect("Failed to make rustyline editor");
+let mut editor = Editor::<LuaCompleter, rustyline::history::DefaultHistory>::new().expect("Failed to make rustyline editor");
+editor.set_helper(Some(LuaCompleter { lua: &lua }));
 
 <<init_lua_environment>>
 
@@ -868,6 +871,71 @@ init_fn: fn(&mlua::Lua) -> mlua::Result<()>
 [source, rust]
 ----
 init_fn(&lua)?;
+----
+
+Um besser mit der Repl arbeiten zu können stellen wir dem User eine
+Autovervollständigung zur Verfügung.
+
+[[lua_repl_completer]]
+[source, rust]
+----
+use rustyline::completion::Completer;
+use rustyline::{Helper, Hinter, Validator, Highlighter};
+
+#[derive(Helper, Hinter, Validator, Highlighter)]
+struct LuaCompleter<'a> { lua: &'a mlua::Lua }
+
+impl Completer for LuaCompleter<'_> {
+  type Candidate = String;
+  fn complete(
+          &self,
+          line: &str,
+          pos: usize,
+          _ctx: &rustyline::Context<'_>
+  ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
+    let mut completetions = vec![];
+
+    let line = &line[..pos];
+    let bounderies = [' ', '\t', '(', ')', '[', ']', '{', '}'];
+    let start = line.rfind(&bounderies).unwrap_or(0);
+    let tokens = &line[start..].split(&['.', ':']);
+    let level_cnt = tokens.clone().count();
+
+    use mlua::Value::*;
+
+    tokens.clone().fold((1, Table(self.lua.globals())), |(level, v), t| {
+      let t = t.trim_start_matches(&bounderies);
+      if let Table(ref v) = v {
+        if level == level_cnt {
+          v.for_each(|k: mlua::Value, _v: mlua::Value| {
+              if let Ok(k) = k.to_string() {
+                if k.starts_with(t) {
+                  completetions.push(k[t.len()..].to_string());
+                }
+            };
+
+            Ok(())
+          }).unwrap_or_default();
+        } else {
+          return (level + 1, match v.raw_get(t) {
+            Ok(v) => {
+              v
+            }
+            Err(_) => {
+              Nil
+            }
+          });
+        }
+      }
+
+      (level + 1, v)
+    });
+
+    let startposition = pos;
+
+    Ok((startposition, completetions))
+  }
+}
 ----
 
 === result_outer_hull
