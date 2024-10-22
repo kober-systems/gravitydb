@@ -125,9 +125,16 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
     Cocktail("Golden fizz".to_string()),
     Cocktail("Hanky panky".to_string()),
     Cocktail("John Collins".to_string()),
+    Cocktail("Last Word".to_string()),
     Cocktail("Martini".to_string()),
+    Cocktail("Monkey Gland".to_string()),
+    Cocktail("Negroni".to_string()),
+    Cocktail("Paradise".to_string()),
+    Cocktail("Ramos gin fizz".to_string()),
     Cocktail("Royal fizz".to_string()),
     Cocktail("Silver fizz".to_string()),
+    Cocktail("Tuxedo".to_string()),
+    Cocktail("White lady".to_string()),
     Cocktail("maiden's prayer".to_string()),
   ];
 
@@ -153,9 +160,16 @@ fn which_cocktails_include_gin() -> Result<(), Error> {
       vec![Ingredient("gin".to_string()), Includes, Cocktail("Golden fizz".to_string())],
       vec![Ingredient("gin".to_string()), Includes, Cocktail("Hanky panky".to_string())],
       vec![Ingredient("gin".to_string()), Includes, Cocktail("John Collins".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Last Word".to_string())],
       vec![Ingredient("gin".to_string()), Includes, Cocktail("Martini".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Monkey Gland".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Negroni".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Paradise".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Ramos gin fizz".to_string())],
       vec![Ingredient("gin".to_string()), Includes, Cocktail("Royal fizz".to_string())],
       vec![Ingredient("gin".to_string()), Includes, Cocktail("Silver fizz".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("Tuxedo".to_string())],
+      vec![Ingredient("gin".to_string()), Includes, Cocktail("White lady".to_string())],
       vec![Ingredient("gin".to_string()), Includes, Cocktail("maiden's prayer".to_string())],
     ]
   );
@@ -241,16 +255,16 @@ fn cocktail_statistic() -> Result<(), Error> {
   // the cocktails I know have between .. and .. ingredients and between
   // .. and .. garnishes. Other things are never put in a cocktail.
   assert_eq!(statistics.clone().map(|(cnt,_,_)| cnt).min().unwrap(), 1);
-  assert_eq!(statistics.clone().map(|(cnt,_,_)| cnt).max().unwrap(), 6);
+  assert_eq!(statistics.clone().map(|(cnt,_,_)| cnt).max().unwrap(), 9);
   assert_eq!(statistics.clone().map(|(_,cnt,_)| cnt).min().unwrap(), 0);
   assert_eq!(statistics.clone().map(|(_,cnt,_)| cnt).max().unwrap(), 2);
   assert_eq!(statistics.clone().map(|(_,_,cnt)| cnt).sum::<u32>(), 0);
   // The normal cocktail has .. ingrediants and .. garnishes.
   let sum = statistics.clone().fold(0, |acc, (cnt,_,_)| { acc + cnt}) as f32;
   let cnt = statistics.clone().count() as f32;
-  assert_eq!(format!("{:.3}", sum / cnt), "3.455");
+  assert_eq!(format!("{:.3}", sum / cnt), "3.585");
   let sum = statistics.clone().fold(0, |acc, (_,cnt,_)| { acc + cnt}) as f32;
-  assert_eq!(format!("{:.3}", sum / cnt), "0.909");
+  assert_eq!(format!("{:.3}", sum / cnt), "0.902");
 
   // The most used ingredients are ...
   use std::collections::HashMap;
@@ -277,11 +291,11 @@ fn cocktail_statistic() -> Result<(), Error> {
     }
   });
   assert_eq!(&statistics[..5], vec![
-    ("gin".to_string(), 14),
-    ("lemon juice".to_string(), 11),
-    ("club soda".to_string(), 6),
-    ("sugar syrup".to_string(), 6),
-    ("campari".to_string(), 3),
+    ("gin".to_string(), 21),
+    ("lemon juice".to_string(), 15),
+    ("sugar syrup".to_string(), 8),
+    ("club soda".to_string(), 7),
+    ("maraschino".to_string(), 7),
   ]);
 
   Ok(())
