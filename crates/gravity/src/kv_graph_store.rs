@@ -806,14 +806,9 @@ where
   use mlua::{Error, MultiValue};
   use rustyline::{Editor, error::ReadlineError};
 
-  let lua = Lua::new();
+  let lua = lua_init(db, init_fn)?;
   let mut editor = Editor::<LuaCompleter, rustyline::history::DefaultHistory>::new().expect("Failed to make rustyline editor");
   editor.set_helper(Some(LuaCompleter { lua: &lua }));
-
-  let globals = lua.globals();
-  globals.raw_set("db", db)?;
-  ql::init_lua::<String, HashId, HashId, String, String>(&lua)?;
-  init_fn(&lua)?;
 
   loop {
     let mut prompt = "> ";
@@ -855,6 +850,31 @@ where
       }
     }
   }
+}
+
+#[cfg(feature="lua")]
+pub fn lua_run<T, Kv, E>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>, code: String) -> Result<(), mlua::Error>
+where
+  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
+  Kv: KVStore<E> + 'static,
+  E: Send + Sync + std::fmt::Debug + 'static,
+{
+  lua_init(db, init_fn)?.load(&code).eval()
+}
+
+#[cfg(feature="lua")]
+fn lua_init<T, Kv, E>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<Lua, mlua::Error>
+where
+  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
+  Kv: KVStore<E> + 'static,
+  E: Send + Sync + std::fmt::Debug + 'static,
+{
+  let lua = Lua::new();
+  lua.globals().raw_set("db", db)?;
+  ql::init_lua::<String, HashId, HashId, String, String>(&lua)?;
+  init_fn(&lua)?;
+
+  Ok(lua)
 }
 
 #[derive(Deserialize, Serialize, Debug)]
