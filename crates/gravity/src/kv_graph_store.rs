@@ -10,6 +10,8 @@ use core::hash::Hash;
 use crate::KVStore;
 use std::marker::PhantomData;
 use thiserror::Error;
+#[cfg(feature="lua")]
+use mlua::{Lua, FromLua, UserData, UserDataMethods};
 
 pub trait Node<P: Property<HashId, SerialisationError>> {
   fn id(&self) -> uuid::Uuid;
@@ -716,13 +718,13 @@ where
 }
 
 #[cfg(feature="lua")]
-impl<P, K, E> mlua::UserData for KvGraphStore<P, K, E>
+impl<P, K, E> UserData for KvGraphStore<P, K, E>
 where
-  for<'lua> P: Property<HashId, SerialisationError> + mlua::UserData + std::clone::Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> P: Property<HashId, SerialisationError> + UserData + std::clone::Clone + 'lua + FromLua<'lua>,
   K: KVStore<E>,
   E: Send + Sync + std::fmt::Debug,
 {
-  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
     use mlua::prelude::LuaError;
 
     methods.add_method_mut("create_node", |_, db, props: P| {
@@ -739,7 +741,7 @@ use rustyline::completion::Completer;
 use rustyline::{Helper, Hinter, Validator, Highlighter};
 
 #[derive(Helper, Hinter, Validator, Highlighter)]
-struct LuaCompleter<'a> { lua: &'a mlua::Lua }
+struct LuaCompleter<'a> { lua: &'a Lua }
 
 impl Completer for LuaCompleter<'_> {
   type Candidate = String;
@@ -791,9 +793,9 @@ impl Completer for LuaCompleter<'_> {
   }
 }
 
-pub fn lua_repl<T, Kv, E, OutE>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<(), OutE>
+pub fn lua_repl<T, Kv, E, OutE>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<(), OutE>
 where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + mlua::FromLua<'lua> + mlua::UserData + Clone,
+  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
   Kv: KVStore<E> + 'static,
   E: Send + Sync + std::fmt::Debug + 'static,
   OutE: From<rustyline::error::ReadlineError> + From<mlua::Error>,

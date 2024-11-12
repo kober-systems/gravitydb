@@ -274,8 +274,11 @@ erlaubt direkt mit der Datenbank zu arbeiten.
 .Allgemeines Schema für beliebige Properties
 ----
 use sha2::Digest;
+#[cfg(feature="lua")]
+use mlua::{FromLua, UserData};
 
-#[derive(Debug, Clone, mlua::FromLua)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "lua", derive(FromLua))]
 pub struct GenericProperty(Vec<u8>);
 
 impl<E> SchemaElement<String, E> for GenericProperty
@@ -301,7 +304,7 @@ impl<E> Property<String, E> for GenericProperty {
 }
 
 #[cfg(feature="lua")]
-impl mlua::UserData for GenericProperty {}
+impl UserData for GenericProperty {}
 ----
 <1> Wir bilden keine Verweise der Dateien untereinander ab, da wir ja
     bei dieser allgemeinen Fassung des Schemas die Dateien selbst gar

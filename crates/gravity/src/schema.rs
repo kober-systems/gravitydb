@@ -43,8 +43,11 @@ where
 }
 
 use sha2::Digest;
+#[cfg(feature="lua")]
+use mlua::{FromLua, UserData};
 
-#[derive(Debug, Clone, mlua::FromLua)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "lua", derive(FromLua))]
 pub struct GenericProperty(Vec<u8>);
 
 impl<E> SchemaElement<String, E> for GenericProperty
@@ -70,7 +73,7 @@ impl<E> Property<String, E> for GenericProperty {
 }
 
 #[cfg(feature="lua")]
-impl mlua::UserData for GenericProperty {}
+impl UserData for GenericProperty {}
 
 
 impl<E> SchemaElement<String, E> for Vec<u8>

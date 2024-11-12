@@ -1,10 +1,12 @@
 use core::hash::Hash;
 use std::collections::{HashMap, HashSet};
+#[cfg(feature="lua")]
+use mlua::{Lua, FromLua, UserData, UserDataMethods};
 use std::convert::From;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(mlua::FromLua)]
+#[cfg_attr(feature = "lua", derive(FromLua))]
 pub enum VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 {
   /// Query over all vertices in the database
@@ -89,7 +91,7 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> VertexQuery<VertexId, EdgeI
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(mlua::FromLua)]
+#[cfg_attr(feature = "lua", derive(FromLua))]
 pub enum EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 {
   /// Query over all edges in the database
@@ -346,11 +348,11 @@ pub struct ShellFilter {
 }
 
 #[cfg(feature="lua")]
-pub fn init_lua<VertexId, EdgeId, PropertyId, VFilter, EFilter>(lua: &mlua::Lua) -> mlua::Result<()>
+pub fn init_lua<VertexId, EdgeId, PropertyId, VFilter, EFilter>(lua: &Lua) -> mlua::Result<()>
 where
-  for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
@@ -385,7 +387,7 @@ where
 }
 
 #[cfg(feature="lua")]
-impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> mlua::UserData for VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
+impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> UserData for VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
   VertexId:   Clone + 'static,
   EdgeId:     Clone + 'static,
@@ -393,7 +395,7 @@ where
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
     //methods.add_method("union", |_, this, q2: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>| {
     //  Ok(this.clone().union(q2))
     //});
@@ -414,15 +416,15 @@ where
 }
 
 #[cfg(feature="lua")]
-impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> mlua::UserData for EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
+impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> UserData for EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
-  for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
     methods.add_function("union", |_, queries: (Self, Self)| {
       let (q1, q2) = queries;
       Ok(q1.union(q2))
@@ -439,7 +441,7 @@ where
 }
 
 #[cfg(feature="lua")]
-#[derive(Clone, mlua::FromLua)]
+#[derive(Clone, FromLua)]
 struct LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
   q: PropertyQuery<PropertyId>,
   marker: std::marker::PhantomData<VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>,
@@ -456,15 +458,15 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> LuaPropertyQuery<VertexId, 
 }
 
 #[cfg(feature="lua")]
-impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> mlua::UserData for LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
+impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> UserData for LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
-  for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
     methods.add_function("referencing_properties", |_, q: Self| {
       let q = q.q;
       Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from_property_query(q.referencing_properties()))

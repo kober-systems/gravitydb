@@ -55,7 +55,7 @@ Eigenschaften (Properties) beziehen.
 [source, rust]
 ----
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(mlua::FromLua)]
+#[cfg_attr(feature = "lua", derive(FromLua))]
 pub enum VertexQuery<<generic_types>>
 {
   <<vertex_query_fields>>
@@ -66,7 +66,7 @@ impl<<generic_types>> VertexQuery<<generic_types>> {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(mlua::FromLua)]
+#[cfg_attr(feature = "lua", derive(FromLua))]
 pub enum EdgeQuery<<generic_types>>
 {
   <<edge_query_fields>>
@@ -237,7 +237,7 @@ Vorgensweise mit Methoden Memory Probleme entstehen können.
 [source, rust]
 ----
 #[cfg(feature="lua")]
-impl<<generic_types>> mlua::UserData for VertexQuery<<generic_types>>
+impl<<generic_types>> UserData for VertexQuery<<generic_types>>
 where
   VertexId:   Clone + 'static,
   EdgeId:     Clone + 'static,
@@ -245,7 +245,7 @@ where
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
     //methods.add_method("union", |_, this, q2: VertexQuery<<generic_types>>| {
     //  Ok(this.clone().union(q2))
     //});
@@ -259,15 +259,15 @@ where
 [source, rust]
 ----
 #[cfg(feature="lua")]
-impl<<generic_types>> mlua::UserData for EdgeQuery<<generic_types>>
+impl<<generic_types>> UserData for EdgeQuery<<generic_types>>
 where
-  for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
     <<query_lua_functions>>
   }
 }
@@ -285,7 +285,7 @@ die zusätzlichen generischen Parameter übergeben.
 [source, rust]
 ----
 #[cfg(feature="lua")]
-#[derive(Clone, mlua::FromLua)]
+#[derive(Clone, FromLua)]
 struct LuaPropertyQuery<<generic_types>> {
   q: PropertyQuery<PropertyId>,
   marker: std::marker::PhantomData<VertexQuery<<generic_types>>>,
@@ -302,15 +302,15 @@ impl<<generic_types>> LuaPropertyQuery<<generic_types>> {
 }
 
 #[cfg(feature="lua")]
-impl<<generic_types>> mlua::UserData for LuaPropertyQuery<<generic_types>>
+impl<<generic_types>> UserData for LuaPropertyQuery<<generic_types>>
 where
-  for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
     <<prop_query_lua_functions>>
   }
 }
@@ -928,11 +928,11 @@ stellen.
 [source, rust]
 ----
 #[cfg(feature="lua")]
-pub fn init_lua<<generic_types>>(lua: &mlua::Lua) -> mlua::Result<()>
+pub fn init_lua<<generic_types>>(lua: &Lua) -> mlua::Result<()>
 where
-  for<'lua> VertexId:   Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + mlua::FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + mlua::FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
@@ -943,6 +943,15 @@ where
 }
 
 <<implement_lua_types|join="\n\n">>
+----
+
+Wir importieren außerdem die benötigten Typen.
+
+[[imports]]
+[source, rust]
+----
+#[cfg(feature="lua")]
+use mlua::{Lua, FromLua, UserData, UserDataMethods};
 ----
 
 == Boilerplate-Code
