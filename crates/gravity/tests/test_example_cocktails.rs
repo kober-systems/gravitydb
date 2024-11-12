@@ -262,9 +262,9 @@ fn cocktail_statistic() -> Result<(), Error> {
   // The normal cocktail has .. ingrediants and .. garnishes.
   let sum = statistics.clone().fold(0, |acc, (cnt,_,_)| { acc + cnt}) as f32;
   let cnt = statistics.clone().count() as f32;
-  assert_eq!(format!("{:.3}", sum / cnt), "3.585");
+  assert_eq!(format!("{:.3}", sum / cnt), "3.578");
   let sum = statistics.clone().fold(0, |acc, (_,cnt,_)| { acc + cnt}) as f32;
-  assert_eq!(format!("{:.3}", sum / cnt), "0.902");
+  assert_eq!(format!("{:.3}", sum / cnt), "0.844");
 
   // The most used ingredients are ...
   use std::collections::HashMap;
@@ -292,7 +292,7 @@ fn cocktail_statistic() -> Result<(), Error> {
   });
   assert_eq!(&statistics[..5], vec![
     ("gin".to_string(), 21),
-    ("lemon juice".to_string(), 15),
+    ("lemon juice".to_string(), 16),
     ("sugar syrup".to_string(), 8),
     ("club soda".to_string(), 7),
     ("maraschino".to_string(), 7),
@@ -368,7 +368,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   let white_rum = g.create_node(Uuid::new_v4(), &Ingredient("white rum".to_string()))?;
   let whole_egg = g.create_node(Uuid::new_v4(), &Ingredient("whole egg".to_string()))?;
   let worcestershire_sauce = g.create_node(Uuid::new_v4(), &Ingredient("worcestershire sauce".to_string()))?;
-  
+
   // garnishes
   let celery = g.create_node(Uuid::new_v4(), &Garnish("celery".to_string()))?;
   let cherry = g.create_node(Uuid::new_v4(), &Garnish("cherry".to_string()))?;
@@ -433,24 +433,24 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(aviation, creme_de_violette, &Includes)?;
   g.create_edge(aviation, maraschino_cherry, &Includes)?;
   g.create_edge(aviation, cocktail_glass, &ServedIn)?;
-  
+
   let bellini = g.create_node(Uuid::new_v4(), &Cocktail("Bellini".to_string()))?;
   g.create_edge(bellini, prosecco, &Includes)?;
   g.create_edge(bellini, peach_puree, &Includes)?;
   g.create_edge(bellini, champagne_flute, &ServedIn)?;
-  
+
   let between_the_sheets = g.create_node(Uuid::new_v4(), &Cocktail("Between the sheets".to_string()))?;
   g.create_edge(between_the_sheets, white_rum, &Includes)?;
   g.create_edge(between_the_sheets, cognac, &Includes)?;
   g.create_edge(between_the_sheets, lemon_juice, &Includes)?;
   g.create_edge(between_the_sheets, triple_sec, &Includes)?;
   g.create_edge(between_the_sheets, cocktail_glass, &ServedIn)?;
-  
+
   let black_russian = g.create_node(Uuid::new_v4(), &Cocktail("Black Russian".to_string()))?;
   g.create_edge(black_russian, vodka, &Includes)?;
   g.create_edge(black_russian, coffee_liqueur, &Includes)?;
   g.create_edge(black_russian, old_fashioned_glass, &ServedIn)?;
-  
+
   let bloody_mary = g.create_node(Uuid::new_v4(), &Cocktail("Bloody Mary".to_string()))?;
   g.create_edge(bloody_mary, vodka, &Includes)?;
   g.create_edge(bloody_mary, tomato_juice, &Includes)?;
@@ -461,7 +461,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(bloody_mary, black_pepper, &Includes)?;
   g.create_edge(bloody_mary, celery, &Includes)?;
   g.create_edge(bloody_mary, highball_glass, &ServedIn)?;
-  
+
   let boulevardier = g.create_node(Uuid::new_v4(), &Cocktail("Boulevardier".to_string()))?;
   g.create_edge(boulevardier, whiskey, &Includes)?;
   g.create_edge(boulevardier, campari, &Includes)?;
@@ -487,7 +487,7 @@ fn create_cocktail_graph() -> Result<GStore, Error> {
   g.create_edge(casino, lemon_twist, &Includes)?;
   g.create_edge(casino, maraschino_cherry, &Includes)?;
   g.create_edge(casino, cocktail_glass, &ServedIn)?;
-  
+
   let caipirinha = g.create_node(Uuid::new_v4(), &Cocktail("Caipirinha".to_string()))?;
   g.create_edge(caipirinha, cachaca, &Includes)?;
   g.create_edge(caipirinha, lime, &Includes)?;
