@@ -1848,7 +1848,7 @@ Der Ablauf ist wie bei jeder anderen repl auch:
 [[run_lua_repl]]
 [source, rust]
 ----
-use mlua::{Error, Lua, MultiValue};
+use mlua::{Error, MultiValue};
 use rustyline::{Editor, error::ReadlineError};
 
 let lua = Lua::new();
@@ -1871,7 +1871,7 @@ loop {
 
     match lua.load(&line).eval::<MultiValue>() {
       Ok(values) => {
-        editor.add_history_entry(line);
+        editor.add_history_entry(line)?;
         println!(
           "{}",
           values

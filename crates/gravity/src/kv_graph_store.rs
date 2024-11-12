@@ -803,7 +803,7 @@ where
   E: Send + Sync + std::fmt::Debug + 'static,
   OutE: From<rustyline::error::ReadlineError> + From<mlua::Error>,
 {
-  use mlua::{Error, Lua, MultiValue};
+  use mlua::{Error, MultiValue};
   use rustyline::{Editor, error::ReadlineError};
 
   let lua = Lua::new();
@@ -829,7 +829,7 @@ where
 
       match lua.load(&line).eval::<MultiValue>() {
         Ok(values) => {
-          editor.add_history_entry(line);
+          editor.add_history_entry(line)?;
           println!(
             "{}",
             values
