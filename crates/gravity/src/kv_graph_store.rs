@@ -853,13 +853,14 @@ where
 }
 
 #[cfg(feature="lua")]
-pub fn lua_run<T, Kv, E>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>, code: String) -> Result<(), mlua::Error>
+pub fn lua_run<T, Kv, E, S>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>, code: S) -> Result<(), mlua::Error>
 where
   for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
   Kv: KVStore<E> + 'static,
   E: Send + Sync + std::fmt::Debug + 'static,
+  S: AsRef<str>,
 {
-  lua_init(db, init_fn)?.load(&code).eval()
+  lua_init(db, init_fn)?.load(code.as_ref()).eval()
 }
 
 #[cfg(feature="lua")]
