@@ -286,14 +286,14 @@ die zusätzlichen generischen Parameter übergeben.
 ----
 #[cfg(feature="lua")]
 #[derive(Clone, FromLua)]
-struct LuaPropertyQuery<<generic_types>> {
+pub struct LuaPropertyQuery<<generic_types>> {
   q: PropertyQuery<PropertyId>,
   marker: std::marker::PhantomData<VertexQuery<<generic_types>>>,
 }
 
 #[cfg(feature="lua")]
 impl<<generic_types>> LuaPropertyQuery<<generic_types>> {
-  fn from_property_query(q: PropertyQuery<PropertyId>) -> Self {
+  pub fn from_property_query(q: PropertyQuery<PropertyId>) -> Self {
     LuaPropertyQuery {
       q,
       marker: std::marker::PhantomData,

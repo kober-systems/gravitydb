@@ -442,14 +442,14 @@ where
 
 #[cfg(feature="lua")]
 #[derive(Clone, FromLua)]
-struct LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
+pub struct LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
   q: PropertyQuery<PropertyId>,
   marker: std::marker::PhantomData<VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>,
 }
 
 #[cfg(feature="lua")]
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
-  fn from_property_query(q: PropertyQuery<PropertyId>) -> Self {
+  pub fn from_property_query(q: PropertyQuery<PropertyId>) -> Self {
     LuaPropertyQuery {
       q,
       marker: std::marker::PhantomData,
