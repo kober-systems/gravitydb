@@ -737,12 +737,14 @@ where
   }
 }
 
-use rustyline::completion::Completer;
-use rustyline::{Helper, Hinter, Validator, Highlighter};
+#[cfg(feature="lua")]
+use rustyline::{completion::Completer, Helper, Hinter, Validator, Highlighter};
 
+#[cfg(feature="lua")]
 #[derive(Helper, Hinter, Validator, Highlighter)]
 struct LuaCompleter<'a> { lua: &'a Lua }
 
+#[cfg(feature="lua")]
 impl Completer for LuaCompleter<'_> {
   type Candidate = String;
   fn complete(
@@ -793,6 +795,7 @@ impl Completer for LuaCompleter<'_> {
   }
 }
 
+#[cfg(feature="lua")]
 pub fn lua_repl<T, Kv, E, OutE>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<(), OutE>
 where
   for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
