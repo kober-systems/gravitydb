@@ -239,9 +239,9 @@ Vorgensweise mit Methoden Memory Probleme entstehen können.
 #[cfg(feature="lua")]
 impl<<generic_types>> UserData for VertexQuery<<generic_types>>
 where
-  VertexId:   Clone + 'static,
-  EdgeId:     Clone + 'static,
-  PropertyId: Clone + 'static,
+  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
@@ -505,6 +505,23 @@ pub fn ingoing(self) -> VertexQuery<<generic_types>> {
   VertexQuery::In(self)
 }
 ----
+
+[%collapsible]
+.Implementierung der Lua API
+====
+
+[[query_lua_functions]]
+[source, rust]
+----
+methods.add_function("out", |_, q: Self| {
+  Ok(q.outgoing())
+});
+methods.add_function("in", |_, q: Self| {
+  Ok(q.ingoing())
+});
+----
+
+====
 
 === Filter
 Neben den <<traversals, Sprüngen von einem Knoten zum nächsten>> wollen

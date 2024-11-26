@@ -389,9 +389,9 @@ where
 #[cfg(feature="lua")]
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> UserData for VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
-  VertexId:   Clone + 'static,
-  EdgeId:     Clone + 'static,
-  PropertyId: Clone + 'static,
+  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
+  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
@@ -400,6 +400,12 @@ where
     //  Ok(this.clone().union(q2))
     //});
 
+    methods.add_function("out", |_, q: Self| {
+      Ok(q.outgoing())
+    });
+    methods.add_function("in", |_, q: Self| {
+      Ok(q.ingoing())
+    });
     methods.add_function("union", |_, queries: (Self, Self)| {
       let (q1, q2) = queries;
       Ok(q1.union(q2))
@@ -425,6 +431,12 @@ where
   EFilter:    Clone + 'static,
 {
   fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    methods.add_function("out", |_, q: Self| {
+      Ok(q.outgoing())
+    });
+    methods.add_function("in", |_, q: Self| {
+      Ok(q.ingoing())
+    });
     methods.add_function("union", |_, queries: (Self, Self)| {
       let (q1, q2) = queries;
       Ok(q1.union(q2))
