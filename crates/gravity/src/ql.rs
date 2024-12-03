@@ -511,6 +511,13 @@ pub struct QueryResult<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> {
   pub variables: HashMap<String, serde_json::Value>,
 }
 
+#[cfg(feature="lua")]
+impl<VertexId, EdgeId> UserData for QueryResult<VertexId, EdgeId>
+where
+  for<'lua> VertexId: Hash + Eq + Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:   Hash + Eq + Clone + 'lua + FromLua<'lua>,
+{}
+
 impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> QueryResult<VertexId, EdgeId> {
   pub fn new() -> Self {
     QueryResult {

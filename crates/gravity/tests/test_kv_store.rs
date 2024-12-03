@@ -1,4 +1,5 @@
 use gravity::*;
+use gravity::kv_graph_store::Uuid;
 use pretty_assertions::assert_eq;
 use uuid::uuid;
 
@@ -6,7 +7,7 @@ use uuid::uuid;
 fn create_a_node_in_empty_store() -> Result<(), Error> {
   let mut graph = create_empty_graph();
 
-  graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
+  graph.create_node(Uuid(uuid!(NODE1_UUID)), &PROPERTY_EMPTY.to_vec())?;
 
   let mut store = get_kv_store(graph);
   let node_path = format!("nodes/{}", NODE1_UUID);
@@ -34,16 +35,16 @@ fn create_a_node_in_empty_store() -> Result<(), Error> {
 fn cannot_create_a_node_twice() -> Result<(), Error> {
   let mut graph = create_empty_graph();
 
-  graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
+  graph.create_node(Uuid(uuid!(NODE1_UUID)), &PROPERTY_EMPTY.to_vec())?;
 
   // can not create an identical node
-  match graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec()) {
+  match graph.create_node(Uuid(uuid!(NODE1_UUID)), &PROPERTY_EMPTY.to_vec()) {
     Err(Error::NodeExists(msg)) => assert_eq!(msg, "nodes/a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d8"),
     _ => panic!("should fail because node exists"),
   };
 
   // can not create a node with the same id but changed content
-  match graph.create_node(uuid!(NODE1_UUID), &PROPERTY_SIMPLE.to_vec()) {
+  match graph.create_node(Uuid(uuid!(NODE1_UUID)), &PROPERTY_SIMPLE.to_vec()) {
     Err(Error::NodeExists(msg)) => assert_eq!(msg, "nodes/a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d8"),
     _ => panic!("should fail because node exists"),
   };
@@ -55,8 +56,8 @@ fn cannot_create_a_node_twice() -> Result<(), Error> {
 fn nodes_can_be_connected_with_themselfes() -> Result<(), Error> {
   let mut graph = create_empty_graph();
 
-  graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
-  graph.create_edge(uuid!(NODE1_UUID), uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
+  graph.create_node(Uuid(uuid!(NODE1_UUID)), &PROPERTY_EMPTY.to_vec())?;
+  graph.create_edge(Uuid(uuid!(NODE1_UUID)), Uuid(uuid!(NODE1_UUID)), &PROPERTY_EMPTY.to_vec())?;
 
   let mut store = get_kv_store(graph);
   let node_path = format!("nodes/{}", NODE1_UUID);
@@ -101,9 +102,9 @@ fn nodes_can_be_connected_with_themselfes() -> Result<(), Error> {
 fn create_two_nodes_with_connection() -> Result<(), Error> {
   let mut graph = create_empty_graph();
 
-  graph.create_node(uuid!(NODE1_UUID), &PROPERTY_EMPTY.to_vec())?;
-  graph.create_node(uuid!(NODE2_UUID), &PROPERTY_SIMPLE.to_vec())?;
-  graph.create_edge(uuid!(NODE1_UUID), uuid!(NODE2_UUID), &PROPERTY_EMPTY.to_vec())?;
+  graph.create_node(Uuid(uuid!(NODE1_UUID)), &PROPERTY_EMPTY.to_vec())?;
+  graph.create_node(Uuid(uuid!(NODE2_UUID)), &PROPERTY_SIMPLE.to_vec())?;
+  graph.create_edge(Uuid(uuid!(NODE1_UUID)), Uuid(uuid!(NODE2_UUID)), &PROPERTY_EMPTY.to_vec())?;
 
   let mut store = get_kv_store(graph);
   let node1_path = format!("nodes/{}", NODE1_UUID);

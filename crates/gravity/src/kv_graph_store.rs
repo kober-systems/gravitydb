@@ -1,4 +1,5 @@
 use sha2::Digest;
+use uuid::fmt::Hyphenated;
 use crate::schema::SchemaElement;
 use serde::{Serialize, Deserialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -14,7 +15,7 @@ use thiserror::Error;
 use mlua::{Lua, FromLua, UserData, UserDataMethods};
 
 pub trait Node<P: Property<HashId, SerialisationError>> {
-  fn id(&self) -> uuid::Uuid;
+  fn id(&self) -> VertexId;
   fn properties(&self) -> P;
 }
 
@@ -26,11 +27,28 @@ enum BacklinkType {
   Property,
 }
 
-type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
-type QueryResult = ql::QueryResult<uuid::Uuid, HashId>;
+#[derive(Hash, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "lua", derive(FromLua))]
+pub struct Uuid(pub uuid::Uuid);
 
-type NodeCtx = HashMap<uuid::Uuid, ql::VertexQueryContext<uuid::Uuid, HashId>>;
-type EdgeCtx = HashMap<HashId, ql::EdgeQueryContext<uuid::Uuid, HashId>>;
+impl Uuid {
+  pub fn new() -> Self {
+    Self(uuid::Uuid::new_v4())
+  }
+
+  pub fn hyphenated(&self) -> Hyphenated {
+    self.0.hyphenated()
+  }
+}
+
+type VertexId = Uuid;
+type BasicQuery = ql::BasicQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+type QueryResult = ql::QueryResult<VertexId, HashId>;
+
+type NodeCtx = HashMap<VertexId, ql::VertexQueryContext<VertexId, HashId>>;
+type EdgeCtx = HashMap<HashId, ql::EdgeQueryContext<VertexId, HashId>>;
 
 pub struct KvGraphStore<T, K, E>
 where
@@ -111,7 +129,7 @@ where
 
   fn query_nodes(
     &self,
-    q: ql::VertexQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>
+    q: ql::VertexQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>
   ) -> Result<NodeCtx, Error<E>> {
     use ql::VertexQuery::*;
 
@@ -122,7 +140,7 @@ where
           .into_iter()
           .map(|entry| {
             let id = String::from_utf8(entry)?;
-            let id = uuid::Uuid::parse_str(&id)?;
+            let id = Uuid(uuid::Uuid::parse_str(&id)?);
             Ok((id, ql::VertexQueryContext::new(id)))
         })
         .collect::<Result<HashMap<_,_>, Error<E>>>()?
@@ -143,7 +161,7 @@ where
               .split_once("_")
               .ok_or(Error::MalformedDB(format!("could not split {} (prefix : {})", reference, index_path)))?;
             if prefix == "nodes" {
-              let id = uuid::Uuid::parse_str(reference)?;
+              let id = Uuid(uuid::Uuid::parse_str(reference)?);
               result.insert(id, ql::VertexQueryContext::new(id));
             }
           }
@@ -200,7 +218,7 @@ where
 
   fn query_edges(
     &self,
-    q: ql::EdgeQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>,
+    q: ql::EdgeQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>,
   ) -> Result<EdgeCtx, Error<E>> {
     use ql::EdgeQuery::*;
 
@@ -427,13 +445,13 @@ pub enum SerialisationError {
   Json { #[from] source: serde_json::Error },
 }
 
-impl<P, K, E> GraphStore<uuid::Uuid, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
+impl<P, K, E> GraphStore<VertexId, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
 where
   P: Property<HashId, SerialisationError>,
   K: KVStore<E>,
   E: Send,
 {
-  fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, Error<E>> {
+  fn create_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Error<E>> {
     let props_hash = self.create_property(properties)?;
     let node = NodeData {
       id,
@@ -457,7 +475,7 @@ where
     Ok(id)
   }
 
-  fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error<E>> {
+  fn read_node(&self, id: VertexId) -> Result<NodeData, Error<E>> {
     let path = "nodes/".to_string() + &uuid_to_key(id);
 
     let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
@@ -465,7 +483,7 @@ where
     Ok(node)
   }
 
-  fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, Error<E>> {
+  fn update_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Error<E>> {
     let props_hash = self.create_property(properties)?;
     let path = "nodes/".to_string() + &uuid_to_key(id);
     let NodeData {
@@ -494,7 +512,7 @@ where
     Ok(id)
   }
 
-  fn delete_node(&mut self, id: uuid::Uuid) -> Result<uuid::Uuid, Error<E>> {
+  fn delete_node(&mut self, id: VertexId) -> Result<VertexId, Error<E>> {
     let NodeData {
       id,
       properties,
@@ -514,7 +532,7 @@ where
     Ok(id)
   }
 
-  fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &P) -> Result<HashId, Error<E>> {
+  fn create_edge(&mut self, n1: VertexId, n2: VertexId, properties: &P) -> Result<HashId, Error<E>> {
     let props_hash = self.create_property(properties)?;
     let edge = EdgeData {
       n1,
@@ -728,9 +746,23 @@ where
     use mlua::prelude::LuaError;
 
     methods.add_method_mut("create_node", |_, db, props: P| {
-      let id = uuid::Uuid::new_v4();
+      let id = Uuid(uuid::Uuid::new_v4());
       match db.create_node(id, &props) {
         Ok(_) => Ok(()),
+        Err(e) => Err(LuaError::external(e.to_string()))
+      }
+    });
+
+    methods.add_method_mut("query", |_, db, query: mlua::AnyUserData| {
+      let query : BasicQuery = match query.take::<ql::VertexQuery<_,_,_,_,_>>() {
+        Ok(q) => q.into(),
+        Err(_) => match query.take::<ql::EdgeQuery<_,_,_,_,_>>() {
+          Ok(q) => q.into(),
+          Err(_) => query.take::<ql::PropertyQuery<_>>()?.into(),
+        }
+      };
+      match db.query(query) {
+        Ok(result) => Ok(result),
         Err(e) => Err(LuaError::external(e.to_string()))
       }
     });
@@ -883,7 +915,7 @@ where
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct NodeData {
-  pub id: uuid::Uuid,
+  pub id: VertexId,
   // Schlüssel des Datensatzes, welcher die Eigenschaften
   // des Knotens enthält
   pub properties: HashId,
@@ -914,8 +946,8 @@ impl SchemaElement<String, SerialisationError> for NodeData
 #[derive(Deserialize, Serialize, Debug)]
 pub struct EdgeData {
   pub properties: HashId,
-  pub n1: uuid::Uuid,
-  pub n2: uuid::Uuid,
+  pub n1: VertexId,
+  pub n2: VertexId,
 }
 
 impl SchemaElement<HashId, SerialisationError> for EdgeData
@@ -945,7 +977,7 @@ pub struct Change {
 }
 
 pub struct NodeChange {
-  pub id: uuid::Uuid,
+  pub id: VertexId,
   pub properties: HashId,
 }
 
@@ -955,7 +987,7 @@ pub struct ChangeSet {
   //pub properties: BTreeSet<Property>,
 }
 
-fn uuid_to_key(id: uuid::Uuid) -> String {
+fn uuid_to_key(id: VertexId) -> String {
   id
     .hyphenated()
     .encode_lower(&mut uuid::Uuid::encode_buffer())

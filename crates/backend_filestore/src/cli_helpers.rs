@@ -3,7 +3,7 @@ use crate::{FileStoreError, FsKvStore};
 use anyhow::bail;
 use std::io::{self, Write};
 use gravity::{ql, GraphStore};
-use gravity::kv_graph_store::{KvGraphStore, SerialisationError};
+use gravity::kv_graph_store::{KvGraphStore, SerialisationError, Uuid};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use std::io::Read;
@@ -173,16 +173,16 @@ where
 
       let mut db = open(&opt.db_path)?;
       if !update {
-        db.create_node(id, &properties)?;
+        db.create_node(Uuid(id), &properties)?;
       } else {
-        db.update_node(id, &properties)?;
+        db.update_node(Uuid(id), &properties)?;
       }
 
       println!("{}", id); // TODO opt.output, opt.output_fmt
     }
     DeleteNode {id} => {
       let mut db = open::<T>(&opt.db_path)?;
-      db.delete_node(id)?;
+      db.delete_node(Uuid(id))?;
       log::info!("deleted node {}", id);
     }
     CreateEdge { n1, n2 } => {
@@ -190,7 +190,7 @@ where
       let properties: T = SchemaElement::deserialize(&properties)?;
 
       let mut db = open(&opt.db_path)?;
-      let id = db.create_edge(n1, n2, &properties)?;
+      let id = db.create_edge(Uuid(n1), Uuid(n2), &properties)?;
 
       println!("{}", id); // TODO opt.output, opt.output_fmt
     }
@@ -258,7 +258,7 @@ where
   Ok(KvGraphStore::from_kv(kv))
 }
 
-type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+type BasicQuery = ql::BasicQuery<Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
 
 fn to_query(data: &Vec<u8>) -> Result<BasicQuery, SerialisationError> {
   // TODO Verschiedene Query Sprachen über zweiten Parameter
