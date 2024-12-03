@@ -165,6 +165,10 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> EdgeQuery<VertexId, EdgeId,
   pub fn ingoing(self) -> VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
     VertexQuery::In(self)
   }
+
+  pub fn store(self) -> Self {
+    EdgeQuery::Store(Box::new(self))
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

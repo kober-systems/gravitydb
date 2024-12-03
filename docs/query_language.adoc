@@ -890,6 +890,14 @@ pub fn store(self) -> Self {
 }
 ----
 
+[[edge_query_functions]]
+[source, rust]
+----
+pub fn store(self) -> Self {
+  EdgeQuery::Store(Box::new(self))
+}
+----
+
 Manchmal braucht man die rohe Gewalt beliebiger Seiteneffekte. Hier
 kann man machen, was immer man will mit dem Kontext (TODO link). But
 remember: With great power comes great responsability.
