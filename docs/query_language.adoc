@@ -86,6 +86,10 @@ impl<PropertyId> PropertyQuery<PropertyId> {
 }
 ----
 
+[%collapsible]
+.Details zur ergonomischeren Benutzung der Typen
+====
+
 Wir fassen alle diese (lesenden) Abfragen in einen gemeinsamen
 Abfragetyp zusammen. Das ist praktischer, wenn wir ihn später in Filtern
 verwenden.
@@ -126,6 +130,8 @@ impl<<generic_types>> From<PropertyQuery<PropertyId>> for BasicQuery<<generic_ty
   }
 }
 ----
+
+====
 
 Die Ids können dabei durch die Implementierung der Datenbank festgelegt
 werden, also
