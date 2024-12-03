@@ -888,19 +888,11 @@ Store(Box<VertexQuery<<generic_types>>>),
 Store(Box<EdgeQuery<<generic_types>>>),
 ----
 
-[[vertex_query_functions]]
+[[query_functions_template]]
 [source, rust]
 ----
 pub fn store(self) -> Self {
-  VertexQuery::Store(Box::new(self))
-}
-----
-
-[[edge_query_functions]]
-[source, rust]
-----
-pub fn store(self) -> Self {
-  EdgeQuery::Store(Box::new(self))
+  <<Type>>Query::Store(Box::new(self))
 }
 ----
 

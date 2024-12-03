@@ -73,6 +73,10 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> VertexQuery<VertexId, EdgeI
     VertexQuery::Substract(Box::new(self), Box::new(q))
   }
 
+  pub fn store(self) -> Self {
+    VertexQuery::Store(Box::new(self))
+  }
+
   pub fn outgoing(self) -> EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
     EdgeQuery::Out(Box::new(self))
   }
@@ -83,10 +87,6 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> VertexQuery<VertexId, EdgeI
 
   pub fn filter(self, filter: VFilter) -> Self {
     VertexQuery::Filter(Box::new(self), filter)
-  }
-
-  pub fn store(self) -> Self {
-    VertexQuery::Store(Box::new(self))
   }
 }
 
@@ -158,16 +158,16 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> EdgeQuery<VertexId, EdgeId,
     EdgeQuery::Substract(Box::new(self), Box::new(q))
   }
 
+  pub fn store(self) -> Self {
+    EdgeQuery::Store(Box::new(self))
+  }
+
   pub fn outgoing(self) -> VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
     VertexQuery::Out(self)
   }
 
   pub fn ingoing(self) -> VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
     VertexQuery::In(self)
-  }
-
-  pub fn store(self) -> Self {
-    EdgeQuery::Store(Box::new(self))
   }
 }
 
