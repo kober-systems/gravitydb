@@ -104,16 +104,43 @@ Wie wir später noch sehen werden hat diese Strukturierung Vorteile um
 die Daten gut <<sync, synchronisieren>> und effektiv durchsuchen zu
 können.
 
+[%collapsible]
+====
+
+[[structs]]
+[source, rust]
+----
+type VertexId = Uuid;
+----
+
+[[structs]]
+[source, rust]
+----
+#[derive(Hash, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "lua", derive(FromLua))]
+pub struct Uuid(pub uuid::Uuid);
+
+impl Uuid {
+  pub fn new() -> Self {
+    Self(uuid::Uuid::new_v4())
+  }
+
+  <<vertexid_functions|join="\n\n">>
+}
+----
+
 Um diese Keys umzusetzen verwenden wir die https://docs.rs/uuid[uuid]
 und https://docs.rs/sha2[sha2] crates. Für sie definieren wir eine
 Hilfsschnittstelle, um die Umwandlung in einen Datenbankschlüssel zu
 erlauben.
 
-[[helper_functions]]
+[[vertexid_functions]]
 [source, rust]
 ----
-fn uuid_to_key(id: uuid::Uuid) -> String {
-  id
+pub fn to_key(&self) -> String {
+  self.0
     .hyphenated()
     .encode_lower(&mut uuid::Uuid::encode_buffer())
     .to_string()
@@ -145,6 +172,8 @@ Digest traits.
 ----
 use sha2::Digest;
 ----
+
+====
 
 === Die einzelnen Datentypen
 Nun wollen wir die Einzelheiten und Schemata der einzelnen Datentypen
@@ -209,7 +238,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 ----
 #[derive(Deserialize, Serialize, Debug)]
 pub struct NodeData {
-  pub id: uuid::Uuid,
+  pub id: VertexId,
   // Schlüssel des Datensatzes, welcher die Eigenschaften
   // des Knotens enthält
   pub properties: HashId,
@@ -222,7 +251,7 @@ pub struct NodeData {
 impl SchemaElement<String, SerialisationError> for NodeData
 {
   fn get_key(&self) -> String {
-    uuid_to_key(self.id)
+    self.id.to_key()
   }
 
   fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {
@@ -267,8 +296,8 @@ Links) gespeichert. Sie haben folgendes Schema:
 #[derive(Deserialize, Serialize, Debug)]
 pub struct EdgeData {
   pub properties: HashId,
-  pub n1: uuid::Uuid,
-  pub n2: uuid::Uuid,
+  pub n1: VertexId,
+  pub n2: VertexId,
 }
 
 impl SchemaElement<HashId, SerialisationError> for EdgeData
@@ -541,7 +570,7 @@ pub struct Change {
 }
 
 pub struct NodeChange {
-  pub id: uuid::Uuid,
+  pub id: VertexId,
   pub properties: HashId,
 }
 
@@ -607,7 +636,7 @@ Properties.
 [source, rust]
 .Funktionen für Knoten
 ----
-fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, Error<E>> {
+fn create_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Error<E>> {
   <<create_node>>
   let props_hash = self.create_property(properties)?;
   let node = NodeData {
@@ -631,19 +660,19 @@ fn create_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, 
   Ok(id)
 }
 
-fn read_node(&self, id: uuid::Uuid) -> Result<NodeData, Error<E>> {
-  let path = "nodes/".to_string() + &uuid_to_key(id);
+fn read_node(&self, id: VertexId) -> Result<NodeData, Error<E>> {
+  let path = "nodes/".to_string() + &id.to_key();
 
   let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
   let node: NodeData = SchemaElement::deserialize(&data)?;
   Ok(node)
 }
 
-fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, Error<E>> {
+fn update_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Error<E>> {
   <<create_new_property>>
   let props_hash = self.create_property(properties)?;
   <<update_node_data>>
-  let path = "nodes/".to_string() + &uuid_to_key(id);
+  let path = "nodes/".to_string() + &id.to_key();
   let NodeData {
     id,
     properties: old_properties,
@@ -659,7 +688,7 @@ fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, 
   let node = SchemaElement::serialize(&node)?;
   self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-  let key = uuid_to_key(id);
+  let key = id.to_key();
   let last_reference = self.delete_property_backlink(&old_properties, &key, BacklinkType::Node)?;
   if last_reference {
     self.delete_property(&old_properties)?;
@@ -670,7 +699,7 @@ fn update_node(&mut self, id: uuid::Uuid, properties: &P) -> Result<uuid::Uuid, 
   Ok(id)
 }
 
-fn delete_node(&mut self, id: uuid::Uuid) -> Result<uuid::Uuid, Error<E>> {
+fn delete_node(&mut self, id: VertexId) -> Result<VertexId, Error<E>> {
   let NodeData {
     id,
     properties,
@@ -678,7 +707,7 @@ fn delete_node(&mut self, id: uuid::Uuid) -> Result<uuid::Uuid, Error<E>> {
     outgoing: _,
   } = self.read_node(id)?;
 
-  let key = uuid_to_key(id);
+  let key = id.to_key();
   let path = "nodes/".to_string() + &key;
 
   let last_reference = self.delete_property_backlink(&properties, &key, BacklinkType::Node)?;
@@ -713,7 +742,7 @@ NodeExists(String),
 [source, rust]
 .Funktionen für Verbindungen
 ----
-fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &P) -> Result<HashId, Error<E>> {
+fn create_edge(&mut self, n1: VertexId, n2: VertexId, properties: &P) -> Result<HashId, Error<E>> {
   let props_hash = self.create_property(properties)?;
   let edge = EdgeData {
     n1,
@@ -729,7 +758,7 @@ fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &P) -> Res
 
   self.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
 
-  let path = "nodes/".to_string() + &uuid_to_key(n1);
+  let path = "nodes/".to_string() + &n1.to_key();
   let NodeData {
     id,
     properties,
@@ -746,7 +775,7 @@ fn create_edge(&mut self, n1: uuid::Uuid, n2: uuid::Uuid, properties: &P) -> Res
   let node = SchemaElement::serialize(&node)?;
   self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-  let path = "nodes/".to_string() + &uuid_to_key(n2);
+  let path = "nodes/".to_string() + &n2.to_key();
   let NodeData {
     id,
     properties,
@@ -785,7 +814,7 @@ fn delete_edge(&mut self, id: &HashId) -> Result<(), Error<E>> {
 
   self.kv.delete_record(&path.as_bytes()).map_err(|e| Error::KV(e))?;
 
-  let path = "nodes/".to_string() + &uuid_to_key(n1);
+  let path = "nodes/".to_string() + &n1.to_key();
   let NodeData {
     id: _id,
     properties,
@@ -802,7 +831,7 @@ fn delete_edge(&mut self, id: &HashId) -> Result<(), Error<E>> {
   let node = SchemaElement::serialize(&node)?;
   self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-  let path = "nodes/".to_string() + &uuid_to_key(n2);
+  let path = "nodes/".to_string() + &n2.to_key();
   let NodeData {
     id: _id,
     properties,
@@ -941,7 +970,7 @@ use crate::GraphStore;
 [[interface_implementations]]
 [source, rust]
 ----
-impl<P, K, E> GraphStore<uuid::Uuid, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
+impl<P, K, E> GraphStore<VertexId, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
 where
   P: Property<HashId, SerialisationError>,
   K: KVStore<E>,
@@ -1011,7 +1040,7 @@ use crate::schema::Property;
 [source, rust]
 ----
 pub trait Node<P: Property<HashId, SerialisationError>> {
-  fn id(&self) -> uuid::Uuid;
+  fn id(&self) -> VertexId;
   fn properties(&self) -> P;
 }
 ----
@@ -1044,8 +1073,8 @@ wird].
 [[structs]]
 [source, rust]
 ----
-type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
-type QueryResult = ql::QueryResult<uuid::Uuid, HashId>;
+type BasicQuery = ql::BasicQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+type QueryResult = ql::QueryResult<VertexId, HashId>;
 ----
 
 Wir gehen davon aus, dass die Abfragen als Json codiert übermittelt
@@ -1087,6 +1116,31 @@ pub fn query<Q: Into<BasicQuery>>(&self, q: Q) -> Result<QueryResult, Error<E>> 
   Ok(context)
 }
 ----
+
+[%collapsible]
+.Lua Bindings
+====
+
+[[lua_bindings]]
+[source, rust]
+----
+methods.add_method_mut("query", |_, db, query: mlua::AnyUserData| {
+  let query: BasicQuery = match query.take::<ql::VertexQuery<_,_,_,_,_>>() {
+    Ok(q) => q.into(),
+    Err(_) => match query.take::<ql::EdgeQuery<_,_,_,_,_>>() {
+      Ok(q) => q.into(),
+      Err(_) => query.take::<ql::PropertyQuery<_>>()?.into(),
+    }
+  };
+  match db.query(query) {
+    Ok(result) => Ok(result),
+    Err(e) => Err(LuaError::external(e.to_string()))
+  }
+});
+----
+
+====
+
 
 Nachdem man eine Abfrage gemacht hat, erhält man als Ergebnis ein
 `QueryResult`. Im Grunde genommen kann man das als eine Art Subgraphen
@@ -1166,8 +1220,8 @@ erfüllen) und die jeweils zu ihnen hinführenden Pfade bekommen.
 [source, rust]
 .Ergebnistypen eines Abfrageschrittes
 ----
-type NodeCtx = HashMap<uuid::Uuid, ql::VertexQueryContext<uuid::Uuid, HashId>>;
-type EdgeCtx = HashMap<HashId, ql::EdgeQueryContext<uuid::Uuid, HashId>>;
+type NodeCtx = HashMap<VertexId, ql::VertexQueryContext<VertexId, HashId>>;
+type EdgeCtx = HashMap<HashId, ql::EdgeQueryContext<VertexId, HashId>>;
 ----
 
 Unsere Funktionen bekommen demnach eine Abfrage übergeben und geben eine
@@ -1178,7 +1232,7 @@ entsprechende Ergebnismenge zurück.
 ----
 fn query_nodes(
   &self,
-  q: ql::VertexQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>
+  q: ql::VertexQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>
 ) -> Result<NodeCtx, Error<E>> {
   use ql::VertexQuery::*;
 
@@ -1191,7 +1245,7 @@ fn query_nodes(
 
 fn query_edges(
   &self,
-  q: ql::EdgeQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>,
+  q: ql::EdgeQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>,
 ) -> Result<EdgeCtx, Error<E>> {
   use ql::EdgeQuery::*;
 
@@ -1256,7 +1310,7 @@ All => {
     .into_iter()
     .map(|entry| {
       let id = String::from_utf8(entry)?;
-      let id = uuid::Uuid::parse_str(&id)?;
+      let id = Uuid(uuid::Uuid::parse_str(&id)?);
       Ok((id, ql::VertexQueryContext::new(id)))
   })
   .collect::<Result<HashMap<_,_>, Error<E>>>()?
@@ -1367,7 +1421,7 @@ Property(q) => {
         .split_once("_")
         .ok_or(Error::MalformedDB(format!("could not split {} (prefix : {})", reference, index_path)))?;
       if prefix == "nodes" {
-        let id = uuid::Uuid::parse_str(reference)?;
+        let id = Uuid(uuid::Uuid::parse_str(reference)?);
         result.insert(id, ql::VertexQueryContext::new(id));
       }
     }
@@ -1915,12 +1969,14 @@ where
     use mlua::prelude::LuaError;
 
     methods.add_method_mut("create_node", |_, db, props: P| {
-      let id = uuid::Uuid::new_v4();
+      let id = Uuid::new();
       match db.create_node(id, &props) {
         Ok(_) => Ok(()),
         Err(e) => Err(LuaError::external(e.to_string()))
       }
     });
+
+    <<lua_bindings|join="\n\n">>
   }
 }
 ----

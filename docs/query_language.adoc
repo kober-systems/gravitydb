@@ -1018,6 +1018,23 @@ impl<<ctx_generics>> QueryResult<VertexId, EdgeId> {
 }
 ----
 
+[%collapsible]
+.Implementierung der Lua API
+====
+
+[[structs]]
+[source, rust]
+----
+#[cfg(feature="lua")]
+impl<VertexId, EdgeId> UserData for QueryResult<VertexId, EdgeId>
+where
+  for<'lua> VertexId: Hash + Eq + Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:   Hash + Eq + Clone + 'lua + FromLua<'lua>,
+{}
+----
+
+====
+
 === Nützliche Funktionen
 
 ==== Konstruktoren

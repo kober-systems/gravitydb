@@ -535,9 +535,9 @@ CreateNode {<<create_node_params|join=", ">>} => {
 
   let mut db = open(&opt.db_path)?;
   if !update {
-    db.create_node(id, &properties)?;
+    db.create_node(Uuid(id), &properties)?;
   } else {
-    db.update_node(id, &properties)?;
+    db.update_node(Uuid(id), &properties)?;
   }
 
   println!("{}", id); // TODO opt.output, opt.output_fmt
@@ -570,7 +570,7 @@ id: uuid::Uuid,
 ----
 DeleteNode {id} => {
   let mut db = open::<T>(&opt.db_path)?;
-  db.delete_node(id)?;
+  db.delete_node(Uuid(id))?;
   log::info!("deleted node {}", id);
 }
 ----
@@ -606,7 +606,7 @@ CreateEdge { n1, n2 } => {
   let properties: T = SchemaElement::deserialize(&properties)?;
 
   let mut db = open(&opt.db_path)?;
-  let id = db.create_edge(n1, n2, &properties)?;
+  let id = db.create_edge(Uuid(n1), Uuid(n2), &properties)?;
 
   println!("{}", id); // TODO opt.output, opt.output_fmt
 }
@@ -720,7 +720,7 @@ wird].
 [[helper_structs]]
 [source, rust]
 ----
-type BasicQuery = ql::BasicQuery<uuid::Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+type BasicQuery = ql::BasicQuery<Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
 ----
 
 Wir gehen davon aus, dass die Abfragen als Json codiert übermittelt werden.
@@ -854,7 +854,7 @@ Natürlich benötigen wir in allen Tools den File Store.
 [[util_imports]]
 [source, rust]
 ----
-use gravity::kv_graph_store::{KvGraphStore, SerialisationError};
+use gravity::kv_graph_store::{KvGraphStore, SerialisationError, Uuid};
 ----
 
 ==== Allgemeingültige Kommandozeilen Parameter

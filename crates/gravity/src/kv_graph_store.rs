@@ -1,5 +1,4 @@
 use sha2::Digest;
-use uuid::fmt::Hyphenated;
 use crate::schema::SchemaElement;
 use serde::{Serialize, Deserialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -19,13 +18,7 @@ pub trait Node<P: Property<HashId, SerialisationError>> {
   fn properties(&self) -> P;
 }
 
-type HashId = String;
-
-enum BacklinkType {
-  Node,
-  Edge,
-  Property,
-}
+type VertexId = Uuid;
 
 #[derive(Hash, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
@@ -38,12 +31,22 @@ impl Uuid {
     Self(uuid::Uuid::new_v4())
   }
 
-  pub fn hyphenated(&self) -> Hyphenated {
-    self.0.hyphenated()
+  pub fn to_key(&self) -> String {
+    self.0
+      .hyphenated()
+      .encode_lower(&mut uuid::Uuid::encode_buffer())
+      .to_string()
   }
 }
 
-type VertexId = Uuid;
+type HashId = String;
+
+enum BacklinkType {
+  Node,
+  Edge,
+  Property,
+}
+
 type BasicQuery = ql::BasicQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
 type QueryResult = ql::QueryResult<VertexId, HashId>;
 
@@ -476,7 +479,7 @@ where
   }
 
   fn read_node(&self, id: VertexId) -> Result<NodeData, Error<E>> {
-    let path = "nodes/".to_string() + &uuid_to_key(id);
+    let path = "nodes/".to_string() + &id.to_key();
 
     let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
     let node: NodeData = SchemaElement::deserialize(&data)?;
@@ -485,7 +488,7 @@ where
 
   fn update_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Error<E>> {
     let props_hash = self.create_property(properties)?;
-    let path = "nodes/".to_string() + &uuid_to_key(id);
+    let path = "nodes/".to_string() + &id.to_key();
     let NodeData {
       id,
       properties: old_properties,
@@ -501,7 +504,7 @@ where
     let node = SchemaElement::serialize(&node)?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    let key = uuid_to_key(id);
+    let key = id.to_key();
     let last_reference = self.delete_property_backlink(&old_properties, &key, BacklinkType::Node)?;
     if last_reference {
       self.delete_property(&old_properties)?;
@@ -520,7 +523,7 @@ where
       outgoing: _,
     } = self.read_node(id)?;
 
-    let key = uuid_to_key(id);
+    let key = id.to_key();
     let path = "nodes/".to_string() + &key;
 
     let last_reference = self.delete_property_backlink(&properties, &key, BacklinkType::Node)?;
@@ -548,7 +551,7 @@ where
 
     self.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
 
-    let path = "nodes/".to_string() + &uuid_to_key(n1);
+    let path = "nodes/".to_string() + &n1.to_key();
     let NodeData {
       id,
       properties,
@@ -565,7 +568,7 @@ where
     let node = SchemaElement::serialize(&node)?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    let path = "nodes/".to_string() + &uuid_to_key(n2);
+    let path = "nodes/".to_string() + &n2.to_key();
     let NodeData {
       id,
       properties,
@@ -604,7 +607,7 @@ where
 
     self.kv.delete_record(&path.as_bytes()).map_err(|e| Error::KV(e))?;
 
-    let path = "nodes/".to_string() + &uuid_to_key(n1);
+    let path = "nodes/".to_string() + &n1.to_key();
     let NodeData {
       id: _id,
       properties,
@@ -621,7 +624,7 @@ where
     let node = SchemaElement::serialize(&node)?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    let path = "nodes/".to_string() + &uuid_to_key(n2);
+    let path = "nodes/".to_string() + &n2.to_key();
     let NodeData {
       id: _id,
       properties,
@@ -746,7 +749,7 @@ where
     use mlua::prelude::LuaError;
 
     methods.add_method_mut("create_node", |_, db, props: P| {
-      let id = Uuid(uuid::Uuid::new_v4());
+      let id = Uuid::new();
       match db.create_node(id, &props) {
         Ok(_) => Ok(()),
         Err(e) => Err(LuaError::external(e.to_string()))
@@ -754,7 +757,7 @@ where
     });
 
     methods.add_method_mut("query", |_, db, query: mlua::AnyUserData| {
-      let query : BasicQuery = match query.take::<ql::VertexQuery<_,_,_,_,_>>() {
+      let query: BasicQuery = match query.take::<ql::VertexQuery<_,_,_,_,_>>() {
         Ok(q) => q.into(),
         Err(_) => match query.take::<ql::EdgeQuery<_,_,_,_,_>>() {
           Ok(q) => q.into(),
@@ -928,7 +931,7 @@ pub struct NodeData {
 impl SchemaElement<String, SerialisationError> for NodeData
 {
   fn get_key(&self) -> String {
-    uuid_to_key(self.id)
+    self.id.to_key()
   }
 
   fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {
@@ -985,13 +988,6 @@ pub struct ChangeSet {
   pub nodes: BTreeSet<NodeChange>,
   pub edges: BTreeSet<EdgeData>,
   //pub properties: BTreeSet<Property>,
-}
-
-fn uuid_to_key(id: VertexId) -> String {
-  id
-    .hyphenated()
-    .encode_lower(&mut uuid::Uuid::encode_buffer())
-    .to_string()
 }
 
 pub fn to_query(data: &Vec<u8>) -> Result<BasicQuery, SerialisationError> {
