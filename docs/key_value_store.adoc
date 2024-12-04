@@ -1073,7 +1073,7 @@ wird].
 [[structs]]
 [source, rust]
 ----
-type BasicQuery = ql::BasicQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+pub type BasicQuery = ql::BasicQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
 type QueryResult = ql::QueryResult<VertexId, HashId>;
 ----
 

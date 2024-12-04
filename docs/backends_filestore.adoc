@@ -720,7 +720,7 @@ wird].
 [[helper_structs]]
 [source, rust]
 ----
-type BasicQuery = ql::BasicQuery<Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+type BasicQuery = gravity::kv_graph_store::BasicQuery;
 ----
 
 Wir gehen davon aus, dass die Abfragen als Json codiert übermittelt werden.

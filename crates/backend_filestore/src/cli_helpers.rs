@@ -258,7 +258,7 @@ where
   Ok(KvGraphStore::from_kv(kv))
 }
 
-type BasicQuery = ql::BasicQuery<Uuid, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+type BasicQuery = gravity::kv_graph_store::BasicQuery;
 
 fn to_query(data: &Vec<u8>) -> Result<BasicQuery, SerialisationError> {
   // TODO Verschiedene Query Sprachen über zweiten Parameter

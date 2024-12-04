@@ -47,7 +47,7 @@ enum BacklinkType {
   Property,
 }
 
-type BasicQuery = ql::BasicQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
+pub type BasicQuery = ql::BasicQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
 type QueryResult = ql::QueryResult<VertexId, HashId>;
 
 type NodeCtx = HashMap<VertexId, ql::VertexQueryContext<VertexId, HashId>>;
