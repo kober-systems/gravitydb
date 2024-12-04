@@ -2,7 +2,7 @@ use gravity::schema::{SchemaElement, Property};
 use crate::{FileStoreError, FsKvStore};
 use anyhow::bail;
 use std::io::{self, Write};
-use gravity::{ql, GraphStore};
+use gravity::GraphStore;
 use gravity::kv_graph_store::{KvGraphStore, SerialisationError, Uuid};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;

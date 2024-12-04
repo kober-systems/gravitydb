@@ -759,7 +759,7 @@ Repl => {
 [[util_imports]]
 [source, rust]
 ----
-use gravity::{ql, GraphStore};
+use gravity::GraphStore;
 ----
 
 Die konkreten Implementierungen wollen möglicherweise ebenfalls die
