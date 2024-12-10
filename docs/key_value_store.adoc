@@ -746,9 +746,7 @@ fn update_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Erro
   };
   let key = id.to_key();
   let node = SchemaElement::serialize(&node)?;
-  self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
-
-  self.create_idx_backlink(&props_hash, &key, BacklinkType::Node)?;
+  <<write_node>>
 
   let last_reference = self.delete_property_backlink(&old_properties, &key, BacklinkType::Node)?;
   if last_reference {
