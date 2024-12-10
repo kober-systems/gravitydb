@@ -504,16 +504,16 @@ where
       incoming,
       outgoing,
     };
+    let key = id.to_key();
     let node = SchemaElement::serialize(&node)?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
-    let key = id.to_key();
+    self.create_idx_backlink(&props_hash, &key, BacklinkType::Node)?;
+
     let last_reference = self.delete_property_backlink(&old_properties, &key, BacklinkType::Node)?;
     if last_reference {
       self.delete_property(&old_properties)?;
     }
-
-    self.create_idx_backlink(&props_hash, &key, BacklinkType::Node)?;
 
     Ok(id)
   }
