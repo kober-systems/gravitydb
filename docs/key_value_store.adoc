@@ -1246,7 +1246,7 @@ pub fn query<Q: Into<BasicQuery>>(&self, q: Q) -> Result<QueryResult, Error<E>> 
 [[lua_bindings]]
 [source, rust]
 ----
-methods.add_method_mut("query", |_, db, query: mlua::AnyUserData| {
+methods.add_method_mut("query", |lua, db, query: mlua::AnyUserData| {
   let query: BasicQuery = match query.take::<ql::VertexQuery<_,_,_,_,_>>() {
     Ok(q) => q.into(),
     Err(_) => match query.take::<ql::EdgeQuery<_,_,_,_,_>>() {
@@ -1255,7 +1255,7 @@ methods.add_method_mut("query", |_, db, query: mlua::AnyUserData| {
     }
   };
   match db.query(query) {
-    Ok(result) => Ok(result),
+    Ok(result) => Ok(lua.to_value(&result)),
     Err(e) => Err(LuaError::external(e.to_string()))
   }
 });
@@ -2245,6 +2245,6 @@ where
 [source, rust]
 ----
 #[cfg(feature="lua")]
-use mlua::{Lua, FromLua, UserData, UserDataMethods};
+use mlua::{Lua, FromLua, UserData, UserDataMethods, LuaSerdeExt};
 ----
 

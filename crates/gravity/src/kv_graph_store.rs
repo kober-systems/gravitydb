@@ -11,7 +11,7 @@ use crate::KVStore;
 use std::marker::PhantomData;
 use thiserror::Error;
 #[cfg(feature="lua")]
-use mlua::{Lua, FromLua, UserData, UserDataMethods};
+use mlua::{Lua, FromLua, UserData, UserDataMethods, LuaSerdeExt};
 
 pub trait Node<P: Property<HashId, SerialisationError>> {
   fn id(&self) -> VertexId;
@@ -787,7 +787,7 @@ where
       }
     });
 
-    methods.add_method_mut("query", |_, db, query: mlua::AnyUserData| {
+    methods.add_method_mut("query", |lua, db, query: mlua::AnyUserData| {
       let query: BasicQuery = match query.take::<ql::VertexQuery<_,_,_,_,_>>() {
         Ok(q) => q.into(),
         Err(_) => match query.take::<ql::EdgeQuery<_,_,_,_,_>>() {
@@ -796,7 +796,7 @@ where
         }
       };
       match db.query(query) {
-        Ok(result) => Ok(result),
+        Ok(result) => Ok(lua.to_value(&result)),
         Err(e) => Err(LuaError::external(e.to_string()))
       }
     });
