@@ -40,7 +40,13 @@ impl Uuid {
 }
 
 #[cfg(feature="lua")]
-impl UserData for Uuid {}
+impl UserData for Uuid {
+  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    methods.add_function("key", |_, id: Self| {
+      Ok(id.to_key())
+    });
+  }
+}
 
 type HashId = String;
 
