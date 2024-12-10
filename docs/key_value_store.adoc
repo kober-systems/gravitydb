@@ -662,7 +662,48 @@ fn create_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Erro
 
   Ok(id)
 }
+----
 
+Wenn bereits ein Knoten mit entsprechender ID existiert kann er nicht
+erzeugt werden (höchstens aktualisiert).
+
+[[check_if_node_exists_allready]]
+[source, rust]
+----
+if self.kv.exists(path.as_bytes()).map_err(|e| Error::KV(e))? {
+  return Err(Error::NodeExists(path));
+};
+----
+
+[[errors]]
+[source, rust]
+----
+#[error("node {0} allready exists")]
+NodeExists(String),
+----
+
+[%collapsible]
+.Lua Bindings
+====
+
+[[lua_bindings]]
+[source, rust]
+----
+methods.add_method_mut("create_node", |_, db, props: P| {
+  let id = Uuid::new();
+  match db.create_node(id, &props) {
+    Ok(id) => Ok(id),
+    Err(e) => Err(LuaError::external(e.to_string()))
+  }
+});
+----
+
+====
+
+[[graph_store_functions]]
+[source, rust]
+.Funktionen für Knoten
+----
 fn read_node(&self, id: VertexId) -> Result<NodeData, Error<E>> {
   let path = "nodes/".to_string() + &id.to_key();
 
@@ -722,42 +763,6 @@ fn delete_node(&mut self, id: VertexId) -> Result<VertexId, Error<E>> {
   Ok(id)
 }
 ----
-
-Wenn bereits ein Knoten mit entsprechender ID existiert kann er nicht
-erzeugt werden (höchstens aktualisiert).
-
-[[check_if_node_exists_allready]]
-[source, rust]
-----
-if self.kv.exists(path.as_bytes()).map_err(|e| Error::KV(e))? {
-  return Err(Error::NodeExists(path));
-};
-----
-
-[[errors]]
-[source, rust]
-----
-#[error("node {0} allready exists")]
-NodeExists(String),
-----
-
-[%collapsible]
-.Lua Bindings
-====
-
-[[lua_bindings]]
-[source, rust]
-----
-methods.add_method_mut("create_node", |_, db, props: P| {
-  let id = Uuid::new();
-  match db.create_node(id, &props) {
-    Ok(id) => Ok(id),
-    Err(e) => Err(LuaError::external(e.to_string()))
-  }
-});
-----
-
-====
 
 [[graph_store_functions]]
 [source, rust]
