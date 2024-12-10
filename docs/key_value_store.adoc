@@ -656,12 +656,20 @@ fn create_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Erro
   <<check_if_node_exists_allready>>
 
   <<write_node>>
-  self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
-
-  self.create_idx_backlink(&props_hash, &key, BacklinkType::Node)?;
 
   Ok(id)
 }
+----
+
+[%collapsible]
+====
+
+[[write_node]]
+[source, rust]
+----
+self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
+
+self.create_idx_backlink(&props_hash, &key, BacklinkType::Node)?;
 ----
 
 Wenn bereits ein Knoten mit entsprechender ID existiert kann er nicht
@@ -681,6 +689,8 @@ if self.kv.exists(path.as_bytes()).map_err(|e| Error::KV(e))? {
 #[error("node {0} allready exists")]
 NodeExists(String),
 ----
+
+====
 
 [%collapsible]
 .Lua Bindings
