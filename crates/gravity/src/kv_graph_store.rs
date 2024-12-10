@@ -759,9 +759,30 @@ where
       }
     });
 
+    methods.add_method_mut("update_node", |_, db, (id, props): (VertexId, P)| {
+      match db.update_node(id, &props) {
+        Ok(id) => Ok(id),
+        Err(e) => Err(LuaError::external(e.to_string()))
+      }
+    });
+
+    methods.add_method_mut("delete_node", |_, db, id: VertexId| {
+      match db.delete_node(id) {
+        Ok(id) => Ok(id),
+        Err(e) => Err(LuaError::external(e.to_string()))
+      }
+    });
+
     methods.add_method_mut("create_edge", |_, db, (n1, n2, props): (VertexId, VertexId, P)| {
       match db.create_edge(n1, n2, &props) {
         Ok(id) => Ok(id),
+        Err(e) => Err(LuaError::external(e.to_string()))
+      }
+    });
+
+    methods.add_method_mut("delete_edge", |_, db, id: HashId| {
+      match db.delete_edge(&id) {
+        Ok(_) => Ok(()),
         Err(e) => Err(LuaError::external(e.to_string()))
       }
     });
