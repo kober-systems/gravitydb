@@ -759,6 +759,13 @@ where
       }
     });
 
+    methods.add_method_mut("create_edge", |_, db, (n1, n2, props): (VertexId, VertexId, P)| {
+      match db.create_edge(n1, n2, &props) {
+        Ok(id) => Ok(id),
+        Err(e) => Err(LuaError::external(e.to_string()))
+      }
+    });
+
     methods.add_method_mut("query", |_, db, query: mlua::AnyUserData| {
       let query: BasicQuery = match query.take::<ql::VertexQuery<_,_,_,_,_>>() {
         Ok(q) => q.into(),
