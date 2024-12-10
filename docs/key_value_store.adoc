@@ -741,6 +741,24 @@ if self.kv.exists(path.as_bytes()).map_err(|e| Error::KV(e))? {
 NodeExists(String),
 ----
 
+[%collapsible]
+.Lua Bindings
+====
+
+[[lua_bindings]]
+[source, rust]
+----
+methods.add_method_mut("create_node", |_, db, props: P| {
+  let id = Uuid::new();
+  match db.create_node(id, &props) {
+    Ok(id) => Ok(id),
+    Err(e) => Err(LuaError::external(e.to_string()))
+  }
+});
+----
+
+====
+
 [[graph_store_functions]]
 [source, rust]
 .Funktionen für Verbindungen
@@ -1970,14 +1988,6 @@ where
 {
   fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
     use mlua::prelude::LuaError;
-
-    methods.add_method_mut("create_node", |_, db, props: P| {
-      let id = Uuid::new();
-      match db.create_node(id, &props) {
-        Ok(id) => Ok(id),
-        Err(e) => Err(LuaError::external(e.to_string()))
-      }
-    });
 
     <<lua_bindings|join="\n\n">>
   }
