@@ -39,6 +39,9 @@ impl Uuid {
   }
 }
 
+#[cfg(feature="lua")]
+impl UserData for Uuid {}
+
 type HashId = String;
 
 enum BacklinkType {
@@ -751,7 +754,7 @@ where
     methods.add_method_mut("create_node", |_, db, props: P| {
       let id = Uuid::new();
       match db.create_node(id, &props) {
-        Ok(_) => Ok(()),
+        Ok(id) => Ok(id),
         Err(e) => Err(LuaError::external(e.to_string()))
       }
     });
