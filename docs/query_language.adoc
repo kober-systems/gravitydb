@@ -519,10 +519,10 @@ pub fn ingoing(self) -> VertexQuery<<generic_types>> {
 [[query_lua_functions]]
 [source, rust]
 ----
-methods.add_function("out", |_, q: Self| {
+methods.add_function("outgoing", |_, q: Self| {
   Ok(q.outgoing())
 });
-methods.add_function("in", |_, q: Self| {
+methods.add_function("ingoing", |_, q: Self| {
   Ok(q.ingoing())
 });
 ----

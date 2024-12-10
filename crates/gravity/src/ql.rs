@@ -404,10 +404,10 @@ where
     //  Ok(this.clone().union(q2))
     //});
 
-    methods.add_function("out", |_, q: Self| {
+    methods.add_function("outgoing", |_, q: Self| {
       Ok(q.outgoing())
     });
-    methods.add_function("in", |_, q: Self| {
+    methods.add_function("ingoing", |_, q: Self| {
       Ok(q.ingoing())
     });
     methods.add_function("union", |_, queries: (Self, Self)| {
@@ -435,10 +435,10 @@ where
   EFilter:    Clone + 'static,
 {
   fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-    methods.add_function("out", |_, q: Self| {
+    methods.add_function("outgoing", |_, q: Self| {
       Ok(q.outgoing())
     });
-    methods.add_function("in", |_, q: Self| {
+    methods.add_function("ingoing", |_, q: Self| {
       Ok(q.ingoing())
     });
     methods.add_function("union", |_, queries: (Self, Self)| {
