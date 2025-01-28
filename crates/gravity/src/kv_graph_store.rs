@@ -57,7 +57,7 @@ enum BacklinkType {
 }
 
 pub type BasicQuery = ql::BasicQuery<VertexId, HashId, HashId, ql::ShellFilter, ql::ShellFilter>;
-type QueryResult = ql::QueryResult<VertexId, HashId>;
+type QueryResult = ql::QueryResult<VertexId, HashId, HashId>;
 
 type NodeCtx = HashMap<VertexId, ql::VertexQueryContext<VertexId, HashId>>;
 type EdgeCtx = HashMap<HashId, ql::EdgeQueryContext<VertexId, HashId>>;
@@ -97,11 +97,11 @@ where
   }
 
   pub fn extract_properties(&self, result: &QueryResult) -> Result<Vec<T>, Error<E>> {
-    let nodes_iter = result.vertices.iter().map(|n_id| {
+    let nodes_iter = result.vertices.iter().map(|(n_id, _prop)| {
       let n = self.read_node(*n_id)?;
       self.read_property(&n.properties)
     });
-    let edges_iter = result.edges.iter().map(|e_id| {
+    let edges_iter = result.edges.iter().map(|(e_id, _prop)| {
       let e = self.read_edge(&e_id)?;
       self.read_property(&e.properties)
     });

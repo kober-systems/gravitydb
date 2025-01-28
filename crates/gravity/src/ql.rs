@@ -501,21 +501,27 @@ where
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct QueryResult<VertexId, EdgeId>
+pub struct QueryResult<VertexId, EdgeId, PropertyId>
 where
   VertexId: Hash + Eq,
   EdgeId: Hash + Eq + Clone,
+  PropertyId: Hash + Eq,
 {
   /// All vertices matched by the query
-  pub vertices: HashSet<VertexId>,
+  pub vertices: HashSet<(VertexId, Option<PropertyId>)>,
   /// All edges matched by the query
-  pub edges: HashSet<EdgeId>,
+  pub edges: HashSet<(EdgeId, Option<PropertyId>)>,
   /// All Paths matched by the query
   pub paths: Vec<(Option<EdgeId>, Vec<(VertexId, EdgeId)>, Option<VertexId>)>,
   pub variables: HashMap<String, serde_json::Value>,
 }
 
-impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> QueryResult<VertexId, EdgeId> {
+impl<VertexId, EdgeId, PropertyId> QueryResult<VertexId, EdgeId, PropertyId>
+where
+  VertexId: Hash + Eq,
+  EdgeId: Hash + Eq + Clone,
+  PropertyId: Hash + Eq,
+{
   pub fn new() -> Self {
     QueryResult {
       vertices: HashSet::default(),
@@ -527,13 +533,19 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> QueryResult<VertexId, EdgeI
 }
 
 #[cfg(feature="lua")]
-impl<VertexId, EdgeId> UserData for QueryResult<VertexId, EdgeId>
+impl<VertexId, EdgeId, PropertyId> UserData for QueryResult<VertexId, EdgeId, PropertyId>
 where
-  for<'lua> VertexId: Hash + Eq + Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:   Hash + Eq + Clone + 'lua + FromLua<'lua>,
+  for<'lua> VertexId:   Hash + Eq + Clone + 'lua + FromLua<'lua>,
+  for<'lua> EdgeId:     Hash + Eq + Clone + 'lua + FromLua<'lua>,
+  for<'lua> PropertyId: Hash + Eq + Clone + 'lua + FromLua<'lua>,
 {}
 
-impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>>> for QueryResult<VertexId, EdgeId> {
+impl<VertexId, EdgeId, PropertyId> From<HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>>> for QueryResult<VertexId, EdgeId, PropertyId>
+where
+  VertexId: Hash + Eq,
+  EdgeId: Hash + Eq + Clone,
+  PropertyId: Hash + Eq,
+{
   fn from(mut item: HashMap<VertexId, VertexQueryContext<VertexId, EdgeId>>) -> Self {
     let QueryResult {
       mut vertices,
@@ -543,7 +555,7 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<VertexId, Vert
     } = QueryResult::new();
 
     for (id,ctx) in item.drain() {
-      vertices.insert(id);
+      vertices.insert((id, None));
 
       let VertexQueryContext {
         id,
@@ -554,8 +566,8 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<VertexId, Vert
         e_store,
       } = ctx;
 
-      vertices.extend(v_store);
-      edges.extend(e_store);
+      vertices.extend(v_store.into_iter().map(|v| {(v, None)}));
+      edges.extend(e_store.into_iter().map(|e| {(e, None)}));
       paths.push((start, path, Some(id)));
       variables.extend(ctx_vars.into_iter());
     }
@@ -569,7 +581,12 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<VertexId, Vert
   }
 }
 
-impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>> for QueryResult<VertexId, EdgeId> {
+impl<VertexId, EdgeId, PropertyId> From<HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>> for QueryResult<VertexId, EdgeId, PropertyId>
+where
+  VertexId: Hash + Eq,
+  EdgeId: Hash + Eq + Clone,
+  PropertyId: Hash + Eq,
+{
   fn from(mut item: HashMap<EdgeId, EdgeQueryContext<VertexId, EdgeId>>) -> Self {
     let QueryResult {
       mut vertices,
@@ -579,7 +596,7 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<EdgeId, EdgeQu
     } = QueryResult::new();
 
     for (id,ctx) in item.drain() {
-      edges.insert(id);
+      edges.insert((id, None));
 
       let EdgeQueryContext {
         id: _,
@@ -590,8 +607,8 @@ impl<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> From<HashMap<EdgeId, EdgeQu
         e_store,
       } = ctx;
 
-      vertices.extend(v_store);
-      edges.extend(e_store);
+      vertices.extend(v_store.into_iter().map(|v| {(v, None)}));
+      edges.extend(e_store.into_iter().map(|v| {(v, None)}));
       paths.push((start, path, None));
       variables.extend(ctx_vars.into_iter());
     }

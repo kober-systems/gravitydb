@@ -49,7 +49,7 @@ fn alexander_ingredients() -> Result<(), Error> {
   assert_eq!(result.vertices.len(), 2);
 
   // what is the difference between the variants?
-  let mut vertices: Vec<Uuid> = result.vertices.into_iter().collect();
+  let mut vertices: Vec<Uuid> = result.vertices.into_iter().map(|(id, _prop_id)| id).collect();
   let variant_1 = vertices.pop().unwrap();
   let variant_2 = vertices.pop().unwrap();
 
@@ -233,7 +233,7 @@ fn cocktail_statistic() -> Result<(), Error> {
   let result = graph.query(q_all_cocktails)?;
 
   // Let me see...
-  let ingredients = result.vertices.into_iter().map(|c| {
+  let ingredients = result.vertices.into_iter().map(|(c, _prop_id)| {
     graph.extract_properties(&graph.query(
       ql::VertexQuery::from_ids(vec![c])
         .outgoing()
