@@ -996,7 +996,11 @@ Abfrageergebnisse zusammenfasst.
 [source, rust]
 ----
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct QueryResult<<ctx_generics>> {
+pub struct QueryResult<VertexId, EdgeId>
+where
+  VertexId: Hash + Eq,
+  EdgeId: Hash + Eq + Clone,
+{
   /// All vertices matched by the query
   pub vertices: HashSet<VertexId>,
   /// All edges matched by the query

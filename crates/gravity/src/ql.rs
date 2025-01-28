@@ -501,7 +501,11 @@ where
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct QueryResult<VertexId: Hash + Eq, EdgeId: Hash + Eq + Clone> {
+pub struct QueryResult<VertexId, EdgeId>
+where
+  VertexId: Hash + Eq,
+  EdgeId: Hash + Eq + Clone,
+{
   /// All vertices matched by the query
   pub vertices: HashSet<VertexId>,
   /// All edges matched by the query
