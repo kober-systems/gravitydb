@@ -88,6 +88,8 @@ where
     QueryDb,
     /// lua repl for the database
     Repl,
+    /// run a lua script
+    Script,
     /// get property data for query result
     ResultData,
     /// initialize a new database
@@ -223,6 +225,12 @@ where
     Repl => {
       let db = open::<T>(&opt.db_path)?;
       gravity::kv_graph_store::lua_repl::<T, FsKvStore, _, anyhow::Error>(db, init_fn)?;
+    }
+    Script => {
+      let path = opt.input.expect("script needs an input parameter");
+      let code = std::fs::read_to_string(&path)?;
+      let db = open::<T>(&opt.db_path)?;
+      gravity::kv_graph_store::lua_run::<T, FsKvStore, _, _ , _>(db, init_fn, code, path.to_string_lossy())?;
     }
     ResultData => {
       let data = read_input(opt.input)?;

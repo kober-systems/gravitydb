@@ -773,6 +773,35 @@ werden kann.
 init_fn: fn(&mlua::Lua) -> mlua::Result<()>
 ----
 
+=== script
+Führt ein lua Script zur Manipulation der Datenbank aus.
+
+[[cmd_options]]
+[source, rust]
+----
+/// run a lua script
+Script,
+----
+
+[[run_cli_cmds]]
+[source, rust]
+----
+Script => {
+  let path = opt.input.expect("script needs an input parameter");
+  let code = std::fs::read_to_string(&path)?;
+  let db = open::<T>(&opt.db_path)?;
+  gravity::kv_graph_store::lua_run::<T, FsKvStore, _, _ , _>(db, init_fn, code, path.to_string_lossy())?;
+}
+----
+
+Diese option ist praktisch für batch workloads, wo man viel importieren
+oder exportieren will.
+
+Es ist aber auch nützlich für einen alternativen `repl` workflow. Statt
+Befehl für Befehl einzugeben und die Ergebnisse anzuschauen kann man
+ein ganzes Script eingeben und bei jedem neuen Speichern der Datei
+ausführen. Dadurch hat man die Ergebnisse in einem größeren Kontext.
+
 === result_outer_hull
 Das Ergebnis unserer Abfrage ist eine Liste mit Knoten, Verbindungen und weiteren Variablen. Oft möchten wir das weiter ausweiten, indem wir alle Verbindungen zwischen den Knoten ebenfalls anzeigen möchten.
 
