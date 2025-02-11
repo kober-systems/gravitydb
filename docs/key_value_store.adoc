@@ -127,6 +127,10 @@ impl Uuid {
     Self(uuid::Uuid::new_v4())
   }
 
+  pub fn from_key(key: &str) -> Result<Self, uuid::Error> {
+    Ok(Self(uuid::Uuid::from_str(key)?))
+  }
+
   <<vertexid_functions|join="\n\n">>
 }
 
@@ -154,6 +158,12 @@ pub fn to_key(&self) -> String {
     .encode_lower(&mut uuid::Uuid::encode_buffer())
     .to_string()
 }
+----
+
+[[imports]]
+[source, rust]
+----
+use std::str::FromStr;
 ----
 
 Als Schlüssel betrachten wir hier den zusammengefassten Dateinamen

@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use sha2::Digest;
 use crate::schema::SchemaElement;
 use serde::{Serialize, Deserialize};
@@ -29,6 +30,10 @@ pub struct Uuid(pub uuid::Uuid);
 impl Uuid {
   pub fn new() -> Self {
     Self(uuid::Uuid::new_v4())
+  }
+
+  pub fn from_key(key: &str) -> Result<Self, uuid::Error> {
+    Ok(Self(uuid::Uuid::from_str(key)?))
   }
 
   pub fn to_key(&self) -> String {
