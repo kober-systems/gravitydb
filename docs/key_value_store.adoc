@@ -311,13 +311,13 @@ impl SchemaElement<HashId, SerialisationError> for EdgeData
 }
 ----
 
-`props` ist wieder ein Verweis auf den Eintrag im entsprechenden Store.
+`props` again refers to an entry in the corresponding store.
 
-Die Datenbank lässt nur gerichtete Verbindungen zu.
+The database only allows directed relationships.
 
-`in` bezieht sich auf die uuid vom eingehenden Knoten.
+`in` refers to the uuid of the incoming node.
 
-`out` bezieht sich auf die uuid vom ausgehenden Knoten.
+`out` refers to the uuid of the outgoing node.
 
 === Eigenschaften (properties)
 Im Ordner `properties` können beliebige Daten gespeichert werden. Diese
