@@ -1,19 +1,18 @@
-= Eine Graphstore-Implementierung für Key-Value Stores
+= A Graphstore Implementation for Key-Value Stores
 
-Ein GraphStore kann abstrahiert werden auf einen Store, der auf
-beliebigen Key Value Stores aufbaut. Dadurch kann man verschiedene
-Implementierungen des KV-Stores als Backends entwickeln welche auf
-unterschiedliche Bedürfnisse angepasst werden können.
+A GraphStore can be abstracted to a Store built on top of any Key-Value
+Store. This allows us to develop different implementations of the
+KV-Store as backends that can be adapted to meet various requirements.
 
-== Struktur für die Ablage der Daten
-Zunächst beschäftigen wir uns mit der Strukturierung der Datenablage um
-zu sehen wie unsere Daten aussehen. Anschließend konzentieren wir uns
-auf die Funktionen um diese Dateien zu erzeugen und manipulieren.
+== Storage Data Structure
+Initially, we focus on structuring the data storage to see how our data
+will look like. Subsequently, we concentrate on the functions required
+to create and manipulate these files.
 
-Ich stelle mir folgende Baumstruktur vor:
+It will use the following hierarchical structure:
 
 [source]
-.Dateibaumstruktur der Datenbank
+.Data File Structure of the Database
 ----
 
 db/--+
