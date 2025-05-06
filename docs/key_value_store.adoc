@@ -197,10 +197,14 @@ later on, which would be very beneficial especially in transactions
 use crate::schema::SchemaElement;
 ----
 
-=== Knoten (nodes)
-Der Ordner `nodes` enthält die Knoten (oder Vertices). Diese sind für mich der Einstiegspunkt in die Daten (wenn ich eine Suche beginne ist das in den meisten Fällen mit einem Knoten. Manchmal möchte ich auch eine Property abfragen, doch dafür durchsuche ich entweder den gesamten Store (wenn die Abfrage etwas außergewöhniches ist) oder ich lege einen Index an (und indexe sind wieder Knoten).
+=== Nodes
+The `nodes` directory contains the nodes (or vertices). These are our
+entry point into the data (when you start searching, it's usually with
+a node in most cases. Sometimes you might want to query a property
+instead, but for that, you'll either search the entire store (if the
+request is unusual) or create an index (and indexes are again nodes).
 
-Eine Knoten Datei hat folgendes Schema:
+A node Dataset has the following schema:
 
 [source, json]
 ----
