@@ -1,5 +1,5 @@
 use core::hash::Hash;
-use mlua::{Lua, FromLua, UserData, UserDataMethods, LuaSerdeExt};
+use mlua::{FromLua, IntoLua, IntoLuaMulti, Lua, LuaSerdeExt, UserData, UserDataMethods};
 
 use crate::kv_graph_store::*;
 use crate::{GraphStore, KVStore};
@@ -127,8 +127,19 @@ where
     //  Ok(this.clone().union(q2))
     //});
 
-    methods.add_function("outgoing", |_, q: Self| {
-      Ok(q.outgoing())
+    methods.add_function("outgoing", |lua, q: (Self, Option<mlua::AnyUserData>)| {
+      let (q, filter) = q;
+
+      match filter {
+        Some(filter) => match filter.take::<ql::VertexQuery<_,_,_,_,_>>() {
+          Ok(filter) => q.outgoing().outgoing().intersect(filter).into_lua(lua),
+          Err(_) => match filter.take::<ql::EdgeQuery<_,_,_,_,_>>() {
+            Ok(filter) => q.outgoing().intersect(filter).into_lua(lua),
+            Err(_) => q.outgoing().intersect(filter.take::<ql::PropertyQuery<_>>()?.referencing_edges()).into_lua(lua),
+          }
+        },
+        None => q.outgoing().into_lua(lua)
+      }
     });
     methods.add_function("ingoing", |_, q: Self| {
       Ok(q.ingoing())
@@ -350,7 +361,6 @@ where
     .eval()
 }
 
-#[cfg(feature="lua")]
 fn lua_init<T, Kv, E>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<Lua, mlua::Error>
 where
   for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
