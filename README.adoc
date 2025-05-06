@@ -1,0 +1,25 @@
+The Gravity Database
+====================
+
+Just as gravity connects the universe it now connects data behind the
+scenes, too.
+
+Gravity is a graph database trying to make the traversal as easy as
+possible for complex data. There are several goals it tries to archive:
+
+* provide an elegant way to traverse
+* be scalable
+* can be easily split, distributed, shared and merged
+
+Getting started
+---------------
+There are different ways of using gravitydb in your appliction
+
+* standalone
+* as a library which can be embedded
+
+Using it as a library is the main use case. It is highly customizable.
+
+The program is written in literate programming style, so you can find
+all the documentation in the `docs` folder.
+
