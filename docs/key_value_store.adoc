@@ -74,9 +74,9 @@ Uuid:: A
   non-communicating computers). Data sets that use a `uuid` as a key can
   be modified.
 
-Wie wir später noch sehen werden hat diese Strukturierung Vorteile um
-die Daten gut <<sync, synchronisieren>> und effektiv durchsuchen zu
-können.
+As we are going to see later, this structuring approach has advantages
+that enable effiction and effective data <<sync, synchronization>> and
+search to be accomplished.
 
 [%collapsible]
 ====
