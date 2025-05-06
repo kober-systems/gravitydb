@@ -1,26 +1,14 @@
 {
-    "naersk": {
-        "branch": "master",
-        "description": "Build rust crates in Nix. No configuration, no code generation, no IFD. Sandbox friendly.",
-        "homepage": "",
-        "owner": "nmattia",
-        "repo": "naersk",
-        "rev": "aeb58d5e8faead8980a807c840232697982d47b9",
-        "sha256": "185wg4p67krrjd8dx5h9pc381z7677nfzsdyp54kg3niqcf5wdzx",
-        "type": "tarball",
-        "url": "https://github.com/nmattia/naersk/archive/aeb58d5e8faead8980a807c840232697982d47b9.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
     "niv": {
         "branch": "master",
         "description": "Easy dependency management for Nix projects",
         "homepage": "https://github.com/nmattia/niv",
         "owner": "nmattia",
         "repo": "niv",
-        "rev": "290965abaa02be33b601032d850c588a6bafb1a5",
-        "sha256": "1f75kd0s7ch882camvsp0shkbx0vs0hshn184il0fi6i7k4xs5hy",
+        "rev": "dd678782cae74508d6b4824580d2b0935308011e",
+        "sha256": "0dk8dhh9vla2s409anmrfkva6h3r32xmz3cm8ha09wyk8iyf1f87",
         "type": "tarball",
-        "url": "https://github.com/nmattia/niv/archive/290965abaa02be33b601032d850c588a6bafb1a5.tar.gz",
+        "url": "https://github.com/nmattia/niv/archive/dd678782cae74508d6b4824580d2b0935308011e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -29,10 +17,10 @@
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "93e1c2d08467d1117ebac45689469613a9fe8453",
-        "sha256": "0hp9dfaliypha9mzvfpw21xk71g9y72zsnp630w0fqgz72y86k68",
+        "rev": "ed30f8aba41605e3ab46421e3dcb4510ec560ff8",
+        "sha256": "0mg2wzzzakbb33z1a1qrlslr8q84j1ci9j53p9dj8nggmm2xv0p6",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/93e1c2d08467d1117ebac45689469613a9fe8453.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/ed30f8aba41605e3ab46421e3dcb4510ec560ff8.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "rust-overlay": {
@@ -41,10 +29,10 @@
         "homepage": "",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "b4ae18c03af976549a0b6e396b2b5be56d275f8b",
-        "sha256": "19vrdxfwg48a33b6jar7a0z5063pxrvb5zkcr4f00b7cy1nxj4d7",
+        "rev": "24b00064cdd1d7ba25200c4a8565dc455dc732ba",
+        "sha256": "028ab2bmi7nxdi3ypb1ca98l2y83lbhkx4mwpf3r5w3wyf3si7xf",
         "type": "tarball",
-        "url": "https://github.com/oxalica/rust-overlay/archive/b4ae18c03af976549a0b6e396b2b5be56d275f8b.tar.gz",
+        "url": "https://github.com/oxalica/rust-overlay/archive/24b00064cdd1d7ba25200c4a8565dc455dc732ba.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
