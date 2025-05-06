@@ -56,24 +56,23 @@ files. The filename is there key with which access to the data can be
 made, and the file contents are the value. A key is either a `Hash` or a
 `Uuid` used.
 
-Hash:: Ein
+Hash:: A
   https://en.wikipedia.org/wiki/Cryptographic_hash_function[Hash]
-  ist die eindeutige Zusammenfassung des Inhalts als eine
-  Zahl. Alles was einen `hash` als Schlüssel hat ist somit ein
+  function is a unique summary of the contents as a
+  number. Since all data that uses a `hash` as a key is a
   https://en.wikipedia.org/wiki/Content-addressable_storage[content
-  addressable store] da mit dem Schlüssel der Inhalt fest verbunden ist.
-  Der verwendete Hash Algorithmus kann über die Konfiguration festgelegt
-  werden. Das hat ein paar Vorteile:
-** Die Daten können nur entweder erstellt oder gelöscht werden aber
-   nicht verändert. Daraus ergeben sich eine Menge Möglichkeiten für die
-   Synchronisierung und Prüfung der Datenintegrität.
-Uuid:: Eine
+  addressable store], because the content is tied to the key. The hash
+  algorithm used can be configured through configuration, which has
+  several advantages:
+** The data can only be created or deleted, but not modified. This
+   leads to many possibilities for synchronization and data integrity
+   verification.
+Uuid:: A
   https://en.wikipedia.org/wiki/Universally_unique_identifier[Uuid]
-  ist eine eindeutige Id bei der nicht die Gefahr besteht, das zwei
-  unterschiedliche Prozesse die gleiche id erstellen (nicht mal wenn
-  die Prozesse auf unabhängigen und nicht miteinander kommunizierenden
-  Computern ablaufen). Datensätze welche eine `uuid` als Schlüssel
-  verwenden können modifiziert werden.
+  is a unique identifier that does not risk creating the same ID by
+  two different processes (not even when running on separate and
+  non-communicating computers). Data sets that use a `uuid` as a key can
+  be modified.
 
 Wie wir später noch sehen werden hat diese Strukturierung Vorteile um
 die Daten gut <<sync, synchronisieren>> und effektiv durchsuchen zu
