@@ -255,15 +255,18 @@ impl SchemaElement<String, SerialisationError> for NodeData
 }
 ----
 
-Die `uuid` ist ja der Key und somit im Dateinamen enthalten. Es
-könnte aber interessant sein um Überprüfungen vorzunehmen und so z.B.
-reagieren zu können falls eine Datei umbenannt wurde oder bei einer
-Synchronisierung falsch übertragen wurde.
+The `uuid` is already the key and therefore contains it in the
+filename. However, it could be interesting to perform checks and react
+accordingly, e.g., if a file was renamed or during synchronization, if
+something was incorrectly transferred.
 
-Der Hash bei `props` ist ein Verweis auf den jeweiligen Datensatz im
-entsprechenden store.
+The hash at `props` refers to the corresponding data set in the
+corresponding store.
 
-TODO Eventuell kann durch die Konfiguration ein etwas anderes Schema unterhalb von `edges` festgelegt werden. Das würde helfen sobald man eine Menge Verbindungen zwischen den einzelnen Knoten hätte und hängt somit stark von der Füllung der Datenbank ab, als auch von der Struktur der Daten selbst.
+TODO Perhaps, through configuration, a different schema can be defined
+under `edges`. This would help as soon as there is a lot of connections
+between individual nodes and depends strongly on the filling of the
+database, as well as the structure of the data itself.
 
 === Verbindungen (edges)
 Im Ordner `edges` werden die Verbindungen (oder Edges, Relationships,
