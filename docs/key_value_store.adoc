@@ -319,55 +319,48 @@ The database only allows directed relationships.
 
 `out` refers to the uuid of the outgoing node.
 
-=== Eigenschaften (properties)
-Im Ordner `properties` können beliebige Daten gespeichert werden. Diese
-Dateien enthalten das, was man im Allgemeinen als die eigentlichen
-Nutzdaten betrachten würde.
+=== Properties
+In the `properties` folder, any data can be stored. This folder
+typically contains the actual data that a user interacts with.
 
-In einem herkömmlichen Arbeitsprozess (also ohne Graphendatenbank)
-sind alle Dateien die man erzeugt und bearbeitet mit Properties
-gleichzusetzen. Und in einer SQL Datenbank entspräche der Inhalt aller
-Zeilen, die keine Primary- oder Foreign-Keys enthalten, den Properties.
+In a typical workflow (without graph database), all files created and
+modified are considered equal to properties. And in a SQL database, the
+content of all rows without primary or foreign keys corresponds to the
+properties.
 
-Dementsprechend ist es sinnvoll für jede Anwendung ein eigenes Schema
-(TODO link) für die Properties zu entwerfen und benutzen (ähnlich wie
-man es bei einer SQL Datenbank auch tun würde).
+It is therefore sensible for each application to design its own schema
+(TODO link) for the properties, just like one would do with a SQL
+database.
 
-Daten die man hier verwendet können beliebige Inhalte haben. Es
-wäre aber klug (wenn auch nicht erforderlich) zu versuchen nicht
-deterministische Daten wie Änderungszeitstempel (oder Zeitstempel
-allgemein) vor dem Abspeichern aus den Dateien zu entfernen. Tut man das
-nicht, kann der nicht-Determinismus die Synchronisiation stark belasten.
-Es wäre also gut zu überdenken ob man einen direkten Anwendungsfall für
-die Auswertung solcher veränderlichen Daten hat oder die Daten sich sehr
-selten verändern, bevor man sich entschließt nicht deterministische
-Daten abzuspeichern.
+Data used here can have any contents. It would be smart (although not
+mandatory) to remove non-deterministic data such as creation timestamps
+or time stamps in general from files before saving them. If this is not
+done, the non-determinism can heavily burden synchronization. Therefore,
+it might be worth considering whether there's a direct application
+case for evaluating such changing data or if they rarely change before
+deciding not to store determinist data.
 
-=== Indexe und Garbarge-Collection
-Wenn wir Elemente löschen, ergibt sich die Aufgabe, dass wir eventuell
-verbundene Elemente mitlöschen müssen wenn kein Verweis mehr darauf
-existiert. Dazu legen wir eine zweite Ordnerstruktur (im Ordner
-`indexes` TODO eventuell sollten wir einen Unterordner von `indexes`
-verwenden um weitere unsichtbare Verweistypen zu ermöglichen) an.
-Diese enthält redundante Daten, die aber dafür schnellere Zugriffe
-ermöglichen.
+=== Indices and Garbage Collection
+When elements are deleted, the task arises that we need to delete linked
+elements when no references exist anymore. To achieve this, we create
+another folder structure (in the `indexes` folder TODO possibly a
+subfolder for additional invisible reference types) containing redundant
+data but allowing faster access.
 
-Eine Alternative dazu wäre garbarge-collection als einen eigenen Befehl
-zu implementieren, der manuell aufgerufen werden müsste. Dies hätte
-den Nachteil, dass dafür immer die gesamte Datenbank durchsucht werden
-müsste. Andererseits wären Daten, die oft gelöscht und wieder angelegt
-werden weiter im Cache und dadurch würden einige Schreibaktionen weniger
-Aufwand verursachen.
+An alternative would be to implement garbage collection as an individual
+command to be manually invoked. This would have the drawback that the
+entire database needs to be searched every time. On the other hand,
+data often being deleted and recreated again would remain in the cache,
+reducing some write operations.
 
-Ein Vorteil der automatisch gepflegten Indexe für die
-Garbarge-Collection ist, dass sie gleichzeitig eine deutlich schnellere
-Suche nach Knoten oder Verbindungen deren Eigenschaften (Properties)
-bekannt sind, ermöglichen. Dafür gibt es sehr viele Anwendungsfälle.
+A benefit of automatically maintained indices for garbage collection is
+that they enable a significantly faster search for nodes or connections
+whose properties are known. There are many application cases for this.
 
-==== Struktur des Indexes
-Wir legen alle Properties als Ordner an. In diesen Ordnern befinden
-sich jeweils alle darauf verweisenden Elemente (egal ob Node, Edge oder
-Property) als Links.
+=== Structure of the indexes
+All Properties are created as subfolders. Those folders contain all
+elements referencing (no matter if it's a node, an edge or another
+property) the property.
 
 ----
 indexes/--+
