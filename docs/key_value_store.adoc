@@ -166,33 +166,30 @@ use sha2::Digest;
 
 ====
 
-=== Die einzelnen Datentypen
-Nun wollen wir die Einzelheiten und Schemata der einzelnen Datentypen
-besprechen.
+=== Individual Data Types
+Now we want to discuss the details and schemas of individual data types.
 
-Die Dateiinhalte sind Key-Value Stores welche die Werte das Datensatzes
-enthalten. Man kann dafür z.B. Json, messagepack oder etwas anderes
-verwenden (theoretisch könnte man sogar wieder das Datesystem verwenden,
-da ein Ordner ja auch nichts anderes als ein Key-Value-Store ist). Das
-verwendete Dateiformat kann über die Konfiguration festgelegt werden
-(das Schema dagegen besprechen wir in den folgenden Abschnitten). Zu
-Beginn mag es nützlich sein Json zu verwenden, da es leicht zum Debuggen
-geeignet ist.
+The file contents are Key-Value Stores that contain the values for the
+dataset. You can use formats like JSON, MessagePack, or something else
+(theoretically, you could even reuse the Filesystem, since an folder
+is essentially a Key-Value Store). The data format to be used can be
+configured through configuration (the schema will be discussed in the
+following sections). As a starting point, it might be convenient to use
+JSON because it's easy to use for debugging purposes.
 
-Um uns die Flexibilität zu erhalten verwenden wir zunächst
-https://serde.rs/[serde] zur Serialisierung. Dadurch lässt sich das
-Datenformat für unsere Datentypen leicht austauschen. Natürlich kann man
-als Properties (TODO link) beliebige Dateien und Formate abspeichern.
+To retain flexibility, we use https://serde.rs/[serde] initially for
+serialization. This allows us to easily switch the data format for our
+data types. Of course, you can use any file and format with properties
+(TODO link).
 
-Zu Beginn nutzen wir json als Serialisierungsformat footnote:[Das gilt
-nur für unsere internen Datenstrukturen innerhalb der Datenbank. Jedes
-Schema kann völlig frei seine eigene Serialisierung wählen]. Dazu nutzen
-wir `serde_json`.
+Initially, we use JSON as the serialization format [footnote:[Only for
+our internal data structures within the database. Each schema can choose
+its own serialization freely]]. To this end, we use `serde_json`.
 
-Wir verwenden die Schema Traits (TODO link) von gravity um die
-Datentypen zu definieren. Dadurch haben wir später die Möglichkeit
-zum validieren (TODO link) und optimieren (TODO link), was gerade bei
-Transaktionen (TODO link) von großem Nutzen ist.
+We use the Schema Traits (TODO link) from gravity to define the data
+types. This allows us to validate (TODO link) and optimize (TODO link)
+later on, which would be very beneficial especially in transactions
+(TODO link).
 
 [[imports]]
 [source, rust]
