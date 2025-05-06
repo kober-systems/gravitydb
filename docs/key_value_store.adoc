@@ -32,38 +32,14 @@ db/--+
      +-...
 ----
 
-TODO Implementierung des in memory stores
 
 [%collapsible]
-.Beispiel in-Memory Store
+.Example of an In-Memory Store
 ====
 
-Bei einer neuen Datenbank erzeugen wir zunächst all diese Ordner.
+TODO
 
-[[create_db_directories]]
-[source, rust]
-----
-fs::create_dir_all(&path.join("nodes/"))?;
-fs::create_dir_all(&path.join("edges/"))?;
-fs::create_dir_all(&path.join("props/"))?;
-fs::create_dir_all(&path.join("indexes/"))?;
-----
-
-Wird eine bestehende Datenbank geöffnet muss überprüft werden, ob die
-entsprechenden Ordner vorhanden sind.
-
-[[check_db_directories]]
-[source, rust]
-----
-if !&path.join("nodes/").is_dir() ||
-  !&path.join("edges/").is_dir() ||
-  !&path.join("props/").is_dir() ||
-  !&path.join("indexes/").is_dir() {
-    return Err(Error::MalformedDB);
-}
-----
-
-Falls die Struktur nicht eingehalten wurde geben wir einen Fehler aus.
+If the structure is not adhered to, we will throw an error.
 
 [[errors]]
 [source, rust]
