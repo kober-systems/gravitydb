@@ -50,11 +50,11 @@ MalformedDB(String),
 
 ====
 
-Innerhalb dieser Ordner (oder der meisten dieser Ordner denn z.B. config
-enthält ja nur Beschreibungsdaten) werden die Datensätze als Dateien
-abgelegt. Der Dateiname ist dabei der Schlüssel mit dem man auf die
-Daten zugreift und der Dateiinhalt ist der Wert. Als Schlüssel wird
-entweder ein `Hash` oder eine `Uuid` verwendet.
+Within these directories (or most of these directories, for example,
+`config` contains only descriptive data) are the datasets stored as
+files. The filename is there key with which access to the data can be
+made, and the file contents are the value. A key is either a `Hash` or a
+`Uuid` used.
 
 Hash:: Ein
   https://en.wikipedia.org/wiki/Cryptographic_hash_function[Hash]
