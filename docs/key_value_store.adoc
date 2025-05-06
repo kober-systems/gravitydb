@@ -268,9 +268,9 @@ under `edges`. This would help as soon as there is a lot of connections
 between individual nodes and depends strongly on the filling of the
 database, as well as the structure of the data itself.
 
-=== Verbindungen (edges)
-Im Ordner `edges` werden die Verbindungen (oder Edges, Relationships,
-Links) gespeichert. Sie haben folgendes Schema:
+=== Connections (edges)
+In the folder `edges`, the connections (or edges, relationships, links)
+are stored. They have the following schema:
 
 [source, json]
 ----
