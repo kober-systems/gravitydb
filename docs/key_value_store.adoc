@@ -118,10 +118,9 @@ impl UserData for Uuid {
 }
 ----
 
-Um diese Keys umzusetzen verwenden wir die https://docs.rs/uuid[uuid]
-und https://docs.rs/sha2[sha2] crates. Für sie definieren wir eine
-Hilfsschnittstelle, um die Umwandlung in einen Datenbankschlüssel zu
-erlauben.
+To implement these keys, we use the https://docs.rs/uuid[uuid] and
+https://docs.rs/sha2[sha2] crates. We define a helper interface to allow
+for conversion to a database key.
 
 [[vertexid_functions]]
 [source, rust]
@@ -140,16 +139,15 @@ pub fn to_key(&self) -> String {
 use std::str::FromStr;
 ----
 
-Als Schlüssel betrachten wir hier den zusammengefassten Dateinamen
-aus allen Ordnernamen unterhalb der hier aufgeführten Struktur und
-dem Dateinamen (ohne die Trennzeichen wie z.B `/`). Wie viele Ordner
-verwendet werden sollen und ob die Tiefe dynamisch angepasst werden
-soll hängt von der Konfiguration ab. Dadurch ist es möglich die
-Abfragegeschwindigkeiten zu optimieren je nachdem wie voll die Datenbank
-ist.
+We consider the concatenated file name from all subdirectories under
+this structure and the file name (without separators like `/`) as the
+key. The number of directories to be used and whether the depth should
+be dynamically adjusted depends on the configuration. This allows
+optimizing query performance by adjusting to the level of data in the
+database.
 
-Dateinamen sind im Grunde Strings, weshalb wir unsere Hashes in diesem
-Fall als String definieren können.
+File names are essentially strings, so we can define our hashes as
+strings in this case.
 
 [[structs]]
 [source, rust]
@@ -157,7 +155,7 @@ Fall als String definieren können.
 type HashId = String;
 ----
 
-Als Hash Funktion nutzen wir (vorerst) sha256. Dafür importieren wir die
+We use SHA-256 as the hash function. For this purpose, we import the
 Digest traits.
 
 [[imports]]
