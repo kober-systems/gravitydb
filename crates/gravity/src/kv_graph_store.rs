@@ -960,13 +960,15 @@ where
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct NodeData {
+  /// Unique identifier of the node in the graph.
   pub id: VertexId,
-  // Schlüssel des Datensatzes, welcher die Eigenschaften
-  // des Knotens enthält
+  /// The key of the dataset that represents the properties of the node.
   pub properties: HashId,
-  // Hashes der eingehenden Verbindungen (Edges)
+  /// A set of hashes representing incoming connections (edges) to this
+  /// node.
   pub incoming: BTreeSet<HashId>,
-  // Hashes der ausgehenden Verbindungen (Edges)
+  /// A set of hashes representing outgoing connections (edges) from
+  /// this node.
   pub outgoing: BTreeSet<HashId>,
 }
 
