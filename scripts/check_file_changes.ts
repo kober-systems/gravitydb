@@ -1,10 +1,10 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read --allow-write=.litstate --ext=ts
 
 const LITERATE_SOURCES = {
-  "docs/gravity.adoc": "crates/gravity",
-  "docs/query_language.adoc": "crates/gravity",
-  "docs/schema.adoc": "crates/gravity",
-  "docs/key_value_store.adoc": "crates/gravity",
+  "docs/gravity.adoc": "crates/gravitydb",
+  "docs/query_language.adoc": "crates/gravitydb",
+  "docs/schema.adoc": "crates/gravitydb",
+  "docs/key_value_store.adoc": "crates/gravitydb",
   "docs/backends_filestore.adoc": "crates/backend_filestore",
 };
 
@@ -30,10 +30,10 @@ try {
 const files_modified_before = (await sh("git diff --name-only")).trim().split("\n");
 
 const files_modified_by_lisi = {
-  ...await json_sh("lisi --dry-run ../../docs/gravity.adoc", "crates/gravity", false),
-  ...await json_sh("lisi --dry-run ../../docs/query_language.adoc", "crates/gravity", false),
-  ...await json_sh("lisi --dry-run ../../docs/schema.adoc", "crates/gravity", false),
-  ...await json_sh("lisi --dry-run ../../docs/key_value_store.adoc", "crates/gravity", false),
+  ...await json_sh("lisi --dry-run ../../docs/gravity.adoc", "crates/gravitydb", false),
+  ...await json_sh("lisi --dry-run ../../docs/query_language.adoc", "crates/gravitydb", false),
+  ...await json_sh("lisi --dry-run ../../docs/schema.adoc", "crates/gravitydb", false),
+  ...await json_sh("lisi --dry-run ../../docs/key_value_store.adoc", "crates/gravitydb", false),
   ...await json_sh("lisi --dry-run ../../docs/backends_filestore.adoc", "crates/backend_filestore", false),
 };
 

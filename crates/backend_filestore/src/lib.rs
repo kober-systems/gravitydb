@@ -1,5 +1,5 @@
 use std::fs;
-use gravity::KVStore;
+use gravitydb::KVStore;
 use std::io::Error;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;

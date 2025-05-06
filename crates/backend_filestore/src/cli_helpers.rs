@@ -1,9 +1,9 @@
-use gravity::schema::{SchemaElement, Property};
+use gravitydb::schema::{SchemaElement, Property};
 use crate::{FileStoreError, FsKvStore};
 use anyhow::bail;
 use std::io::{self, Write};
-use gravity::GraphStore;
-use gravity::kv_graph_store::{KvGraphStore, SerialisationError, Uuid};
+use gravitydb::GraphStore;
+use gravitydb::kv_graph_store::{KvGraphStore, SerialisationError, Uuid};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use std::io::Read;
@@ -224,13 +224,13 @@ where
     }
     Repl => {
       let db = open::<T>(&opt.db_path)?;
-      gravity::kv_graph_store::lua_repl::<T, FsKvStore, _, anyhow::Error>(db, init_fn)?;
+      gravitydb::kv_graph_store::lua_repl::<T, FsKvStore, _, anyhow::Error>(db, init_fn)?;
     }
     Script => {
       let path = opt.input.expect("script needs an input parameter");
       let code = std::fs::read_to_string(&path)?;
       let db = open::<T>(&opt.db_path)?;
-      gravity::kv_graph_store::lua_run::<T, FsKvStore, _, _ , _>(db, init_fn, code, path.to_string_lossy())?;
+      gravitydb::kv_graph_store::lua_run::<T, FsKvStore, _, _ , _>(db, init_fn, code, path.to_string_lossy())?;
     }
     ResultData => {
       let data = read_input(opt.input)?;
@@ -266,7 +266,7 @@ where
   Ok(KvGraphStore::from_kv(kv))
 }
 
-type BasicQuery = gravity::kv_graph_store::BasicQuery;
+type BasicQuery = gravitydb::kv_graph_store::BasicQuery;
 
 fn to_query(data: &Vec<u8>) -> Result<BasicQuery, SerialisationError> {
   // TODO Verschiedene Query Sprachen über zweiten Parameter

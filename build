@@ -8,7 +8,7 @@ echo "check for modifications"
 if [[ $should_generate_sources -eq 0 ]]; then
   echo "==========================="
   echo "generate sources"
-  cd crates/gravity/
+  cd crates/gravitydb/
   lisi -o /dev/null ../../docs/gravity.adoc
   lisi -o /dev/null ../../docs/query_language.adoc
   lisi -o /dev/null ../../docs/schema.adoc

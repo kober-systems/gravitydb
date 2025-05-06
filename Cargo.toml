@@ -1,5 +1,5 @@
 [workspace]
 members = [
   "crates/backend_filestore",
-  "crates/gravity",
+  "crates/gravitydb",
 ]

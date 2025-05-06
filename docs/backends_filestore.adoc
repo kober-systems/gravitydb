@@ -191,7 +191,7 @@ fn key_to_path(&self, key: &[u8]) -> PathBuf {
 [[imports]]
 [source, rust]
 ----
-use gravity::KVStore;
+use gravitydb::KVStore;
 use std::io::Error;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
@@ -373,7 +373,7 @@ where
 <<tool_imports>>
 
 fn main() -> Result<()> {
-  cli_helpers::db_cmds::<gravity::schema::GenericProperty>(init_nothing)
+  cli_helpers::db_cmds::<gravitydb::schema::GenericProperty>(init_nothing)
 }
 
 fn init_nothing(_ : &mlua::Lua) -> mlua::Result<()> {
@@ -453,7 +453,7 @@ get_or_create: bool,
 [[util_imports]]
 [source, rust]
 ----
-use gravity::schema::{SchemaElement, Property};
+use gravitydb::schema::{SchemaElement, Property};
 use crate::{FileStoreError, FsKvStore};
 use anyhow::bail;
 ----
@@ -720,7 +720,7 @@ wird].
 [[helper_structs]]
 [source, rust]
 ----
-type BasicQuery = gravity::kv_graph_store::BasicQuery;
+type BasicQuery = gravitydb::kv_graph_store::BasicQuery;
 ----
 
 Wir gehen davon aus, dass die Abfragen als Json codiert übermittelt werden.
@@ -752,14 +752,14 @@ Repl,
 ----
 Repl => {
   let db = open::<T>(&opt.db_path)?;
-  gravity::kv_graph_store::lua_repl::<T, FsKvStore, _, anyhow::Error>(db, init_fn)?;
+  gravitydb::kv_graph_store::lua_repl::<T, FsKvStore, _, anyhow::Error>(db, init_fn)?;
 }
 ----
 
 [[util_imports]]
 [source, rust]
 ----
-use gravity::GraphStore;
+use gravitydb::GraphStore;
 ----
 
 Die konkreten Implementierungen wollen möglicherweise ebenfalls die
@@ -790,7 +790,7 @@ Script => {
   let path = opt.input.expect("script needs an input parameter");
   let code = std::fs::read_to_string(&path)?;
   let db = open::<T>(&opt.db_path)?;
-  gravity::kv_graph_store::lua_run::<T, FsKvStore, _, _ , _>(db, init_fn, code, path.to_string_lossy())?;
+  gravitydb::kv_graph_store::lua_run::<T, FsKvStore, _, _ , _>(db, init_fn, code, path.to_string_lossy())?;
 }
 ----
 
@@ -883,7 +883,7 @@ Natürlich benötigen wir in allen Tools den File Store.
 [[util_imports]]
 [source, rust]
 ----
-use gravity::kv_graph_store::{KvGraphStore, SerialisationError, Uuid};
+use gravitydb::kv_graph_store::{KvGraphStore, SerialisationError, Uuid};
 ----
 
 ==== Allgemeingültige Kommandozeilen Parameter

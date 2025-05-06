@@ -1,5 +1,5 @@
-use gravity::*;
-use gravity::kv_graph_store::Uuid;
+use gravitydb::*;
+use gravitydb::kv_graph_store::Uuid;
 use pretty_assertions::assert_eq;
 use serde::{Serialize, Deserialize};
 
@@ -89,7 +89,7 @@ pub enum BeatlesSchema {
 type Error = kv_graph_store::Error<mem_kv_store::Error>;
 type GStore = kv_graph_store::KvGraphStore::<BeatlesSchema, mem_kv_store::MemoryKvStore, mem_kv_store::Error>;
 
-use gravity::schema::{SchemaElement, Property};
+use gravitydb::schema::{SchemaElement, Property};
 use sha2::Digest;
 
 impl<Error: From<serde_json::Error>> SchemaElement<String, Error> for BeatlesSchema {

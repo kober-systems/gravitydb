@@ -1,5 +1,5 @@
-use gravity::*;
-use gravity::kv_graph_store::Uuid;
+use gravitydb::*;
+use gravitydb::kv_graph_store::Uuid;
 use pretty_assertions::assert_eq;
 use uuid::uuid;
 

@@ -5,7 +5,7 @@ authors = ["Benjamin Kober <benko@kober-systems.com>"]
 edition = "2018"
 
 [dependencies]
-gravity = { path = "../gravity", features = ["lua"] }
+gravitydb = { path = "../gravitydb", features = ["lua"] }
 thiserror = "1.0"
 sha2 = "0.9.5"
 uuid = { version = "1.10", features = ["serde", "v4"] }

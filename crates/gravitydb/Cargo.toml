@@ -1,5 +1,5 @@
 [package]
-name = "gravity"
+name = "gravitydb"
 version = "0.1.0"
 authors = ["Benjamin Kober <benko@kober-systems.com>"]
 edition = "2018"
