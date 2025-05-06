@@ -84,7 +84,7 @@ search to be accomplished.
 [[structs]]
 [source, rust]
 ----
-type VertexId = Uuid;
+pub type VertexId = Uuid;
 ----
 
 [[structs]]
@@ -106,15 +106,6 @@ impl Uuid {
   }
 
   <<vertexid_functions|join="\n\n">>
-}
-
-#[cfg(feature="lua")]
-impl UserData for Uuid {
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-    methods.add_function("key", |_, id: Self| {
-      Ok(id.to_key())
-    });
-  }
 }
 ----
 
@@ -152,7 +143,7 @@ strings in this case.
 [[structs]]
 [source, rust]
 ----
-type HashId = String;
+pub type HashId = String;
 ----
 
 We use SHA-256 as the hash function. For this purpose, we import the
@@ -673,24 +664,6 @@ NodeExists(String),
 
 ====
 
-[%collapsible]
-.Lua Bindings
-====
-
-[[lua_bindings]]
-[source, rust]
-----
-methods.add_method_mut("create_node", |_, db, props: P| {
-  let id = Uuid::new();
-  match db.create_node(id, &props) {
-    Ok(id) => Ok(id),
-    Err(e) => Err(LuaError::external(e.to_string()))
-  }
-});
-----
-
-====
-
 [[graph_store_functions]]
 [source, rust]
 .Funktionen für Knoten
@@ -738,23 +711,6 @@ fn update_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Erro
 }
 ----
 
-[%collapsible]
-.Lua Bindings
-====
-
-[[lua_bindings]]
-[source, rust]
-----
-methods.add_method_mut("update_node", |_, db, (id, props): (VertexId, P)| {
-  match db.update_node(id, &props) {
-    Ok(id) => Ok(id),
-    Err(e) => Err(LuaError::external(e.to_string()))
-  }
-});
-----
-
-====
-
 [[graph_store_functions]]
 [source, rust]
 .Funktionen für Knoten
@@ -779,23 +735,6 @@ fn delete_node(&mut self, id: VertexId) -> Result<VertexId, Error<E>> {
   Ok(id)
 }
 ----
-
-[%collapsible]
-.Lua Bindings
-====
-
-[[lua_bindings]]
-[source, rust]
-----
-methods.add_method_mut("delete_node", |_, db, id: VertexId| {
-  match db.delete_node(id) {
-    Ok(id) => Ok(id),
-    Err(e) => Err(LuaError::external(e.to_string()))
-  }
-});
-----
-
-====
 
 [[graph_store_functions]]
 [source, rust]
@@ -854,23 +793,6 @@ fn create_edge(&mut self, n1: VertexId, n2: VertexId, properties: &P) -> Result<
   Ok(hash)
 }
 ----
-
-[%collapsible]
-.Lua Bindings
-====
-
-[[lua_bindings]]
-[source, rust]
-----
-methods.add_method_mut("create_edge", |_, db, (n1, n2, props): (VertexId, VertexId, P)| {
-  match db.create_edge(n1, n2, &props) {
-    Ok(id) => Ok(id),
-    Err(e) => Err(LuaError::external(e.to_string()))
-  }
-});
-----
-
-====
 
 [[graph_store_functions]]
 [source, rust]
@@ -949,23 +871,6 @@ fn delete_edge(&mut self, id: &HashId) -> Result<(), Error<E>> {
 #[error("json error")]
 Json { #[from] source: serde_json::Error },
 ----
-
-[%collapsible]
-.Lua Bindings
-====
-
-[[lua_bindings]]
-[source, rust]
-----
-methods.add_method_mut("delete_edge", |_, db, id: HashId| {
-  match db.delete_edge(&id) {
-    Ok(_) => Ok(()),
-    Err(e) => Err(LuaError::external(e.to_string()))
-  }
-});
-----
-
-====
 
 [[graph_store_functions]]
 [source, rust]
@@ -1219,31 +1124,6 @@ pub fn query<Q: Into<BasicQuery>>(&self, q: Q) -> Result<QueryResult, Error<E>> 
   Ok(context)
 }
 ----
-
-[%collapsible]
-.Lua Bindings
-====
-
-[[lua_bindings]]
-[source, rust]
-----
-methods.add_method_mut("query", |lua, db, query: mlua::AnyUserData| {
-  let query: BasicQuery = match query.take::<ql::VertexQuery<_,_,_,_,_>>() {
-    Ok(q) => q.into(),
-    Err(_) => match query.take::<ql::EdgeQuery<_,_,_,_,_>>() {
-      Ok(q) => q.into(),
-      Err(_) => query.take::<ql::PropertyQuery<_>>()?.into(),
-    }
-  };
-  match db.query(query) {
-    Ok(result) => Ok(lua.to_value(&result)),
-    Err(e) => Err(LuaError::external(e.to_string()))
-  }
-});
-----
-
-====
-
 
 Nachdem man eine Abfrage gemacht hat, erhält man als Ergebnis ein
 `QueryResult`. Im Grunde genommen kann man das als eine Art Subgraphen
@@ -1992,240 +1872,10 @@ haben um schneller experimentieren zu können. Dazu implementieren wir
 eine Anbindung an lua. Das erlaubt die interaktive Manipulation der
 Datenbank mit einer lua repl.
 
-Der Ablauf ist wie bei jeder anderen repl auch:
-
-* Wir lesen das Script soweit ein, wie möglich
-* Dann für wir das eingelesene Statement des Scripts aus
-** Kommt es zu Fehlern untersuchen wir ob das Script noch nicht
-   vollständig ist, oder ob wir die Verarbeitung abbrechen müssen.
-* Wir formatieren die Ausgabe und geben sie für den Benutzer aus.
-* Und dann kehren wir zum Anfang zurück (lesen das nächste Statement des
-  Scripts ein).
-
-[[run_lua_repl]]
-[source, rust]
-----
-use mlua::{Error, MultiValue};
-use rustyline::{Editor, error::ReadlineError};
-
-let lua = lua_init(db, init_fn)?;
-let mut editor = Editor::<LuaCompleter, rustyline::history::DefaultHistory>::new().expect("Failed to make rustyline editor");
-editor.set_helper(Some(LuaCompleter { lua: &lua }));
-
-loop {
-  let mut prompt = "> ";
-  let mut line = String::new();
-
-  loop {
-    let input = match editor.readline(prompt) {
-      Ok(out) => Ok(out),
-      Err(ReadlineError::Eof) => return Ok(()),
-      Err(e) => Err(e),
-    }?;
-    line.push_str(&input);
-
-    match lua.load(&line).eval::<MultiValue>() {
-      Ok(values) => {
-        editor.add_history_entry(line)?;
-        println!(
-          "{}",
-          values
-            .iter()
-            .map(|value| format!("{:?}", value))
-            .collect::<Vec<_>>()
-            .join("\t")
-        );
-        break;
-      }
-      Err(Error::SyntaxError {
-        incomplete_input: true,
-        ..
-      }) => {
-        // continue reading input and append it to `line`
-        line.push_str("\n"); // separate input lines
-        prompt = ">> ";
-      }
-      Err(e) => {
-        eprintln!("error: {}", e);
-        break;
-      }
-    }
-  }
-}
-----
-
-Damit man mit der Repl auch etwas anfangen kann, muss sie auch
-Funktionen bieten um die Datenbank zu manipulieren. Dazu binden wir den
-`FsStore` Typ in unsere Lua Umgebung ein:
-
-[[interface_implementations]]
-[source, rust]
-----
-#[cfg(feature="lua")]
-impl<P, K, E> UserData for KvGraphStore<P, K, E>
-where
-  for<'lua> P: Property<HashId, SerialisationError> + UserData + std::clone::Clone + 'lua + FromLua<'lua>,
-  K: KVStore<E>,
-  E: Send + Sync + std::fmt::Debug,
-{
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-    use mlua::prelude::LuaError;
-
-    <<lua_bindings|join="\n\n">>
-  }
-}
-----
-
-Und wir benötigen einige Constructor Funktionen um die Datenbank
-verfügbar zu machen.
-
-[[init_lua_environment]]
-[source, rust]
-----
-lua.globals().raw_set("db", db)?;
-----
-
-Zudem laden wir die Funktionen der Abfragesprache Zoe (TODO link) in
-unsere Lua Umgebung.
-
-[[init_lua_environment]]
-[source, rust]
-----
-ql::init_lua::<String, HashId, HashId, String, String>(&lua)?; // <1>
-----
-<1> Die generischen Parameter besetzen wir mit den in der Db
-    hardverdrahteten Id Typen
-
-Die konkreten Implementierungen wollen möglicherweise ebenfalls die
-Lua Umgebung initialisieren (z.B. um Schema spezifische Anpassungen
-vorzunehmen). Deshalb übergeben wir einen Parameter, welche angepasst
-werden kann.
-
-[[customize_params]]
-[source, rust]
-----
-init_fn: fn(&Lua) -> mlua::Result<()>
-----
-
-[[init_lua_environment]]
-[source, rust]
-----
-init_fn(&lua)?;
-----
-
-Um besser mit der Repl arbeiten zu können stellen wir dem User eine
-Autovervollständigung zur Verfügung.
-
-[[lua_repl_completer]]
-[source, rust]
-----
-#[cfg(feature="lua")]
-use rustyline::{completion::Completer, Helper, Hinter, Validator, Highlighter};
-
-#[cfg(feature="lua")]
-#[derive(Helper, Hinter, Validator, Highlighter)]
-struct LuaCompleter<'a> { lua: &'a Lua }
-
-#[cfg(feature="lua")]
-impl Completer for LuaCompleter<'_> {
-  type Candidate = String;
-  fn complete(
-          &self,
-          line: &str,
-          pos: usize,
-          _ctx: &rustyline::Context<'_>
-  ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-    let mut completetions = vec![];
-
-    let line = &line[..pos];
-    let bounderies = [' ', '\t', '(', ')', '[', ']', '{', '}'];
-    let start = line.rfind(&bounderies).unwrap_or(0);
-    let tokens = &line[start..].split(&['.', ':']);
-    let level_cnt = tokens.clone().count();
-
-    use mlua::Value::*;
-
-    tokens.clone().fold((1, Table(self.lua.globals())), |(level, v), t| {
-      let t = t.trim_start_matches(&bounderies);
-      if let Table(ref v) = v {
-        if level == level_cnt {
-          v.for_each(|k: mlua::Value, _v: mlua::Value| {
-              if let Ok(k) = k.to_string() {
-                if k.starts_with(t) {
-                  completetions.push(k[t.len()..].to_string());
-                }
-            };
-
-            Ok(())
-          }).unwrap_or_default();
-        } else {
-          return (level + 1, match v.raw_get(t) {
-            Ok(v) => {
-              v
-            }
-            Err(_) => {
-              Nil
-            }
-          });
-        }
-      }
-
-      (level + 1, v)
-    });
-
-    Ok((pos, completetions))
-  }
-}
-----
-
-[[interface_implementations]]
-[source, rust]
-----
-<<lua_repl_completer>>
-
-#[cfg(feature="lua")]
-pub fn lua_repl<T, Kv, E, OutE>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<(), OutE>
-where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
-  Kv: KVStore<E> + 'static,
-  E: Send + Sync + std::fmt::Debug + 'static,
-  OutE: From<rustyline::error::ReadlineError> + From<mlua::Error>,
-{
-  <<run_lua_repl>>
-}
-
-#[cfg(feature="lua")]
-pub fn lua_run<T, Kv, E, S, S2>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>, code: S, code_name: S2) -> Result<(), mlua::Error>
-where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
-  Kv: KVStore<E> + 'static,
-  E: Send + Sync + std::fmt::Debug + 'static,
-  S: AsRef<str>,
-  S2: AsRef<str>,
-{
-  lua_init(db, init_fn)?.load(code.as_ref())
-    .set_name(code_name.as_ref())
-    .eval()
-}
-
-#[cfg(feature="lua")]
-fn lua_init<T, Kv, E>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<Lua, mlua::Error>
-where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
-  Kv: KVStore<E> + 'static,
-  E: Send + Sync + std::fmt::Debug + 'static,
-{
-  let lua = Lua::new();
-  <<init_lua_environment>>
-
-  Ok(lua)
-}
-----
-
 [[imports]]
 [source, rust]
 ----
 #[cfg(feature="lua")]
-use mlua::{Lua, FromLua, UserData, UserDataMethods, LuaSerdeExt};
+use mlua::FromLua;
 ----
 

@@ -12,14 +12,14 @@ use crate::KVStore;
 use std::marker::PhantomData;
 use thiserror::Error;
 #[cfg(feature="lua")]
-use mlua::{Lua, FromLua, UserData, UserDataMethods, LuaSerdeExt};
+use mlua::FromLua;
 
 pub trait Node<P: Property<HashId, SerialisationError>> {
   fn id(&self) -> VertexId;
   fn properties(&self) -> P;
 }
 
-type VertexId = Uuid;
+pub type VertexId = Uuid;
 
 #[derive(Hash, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
@@ -44,16 +44,7 @@ impl Uuid {
   }
 }
 
-#[cfg(feature="lua")]
-impl UserData for Uuid {
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-    methods.add_function("key", |_, id: Self| {
-      Ok(id.to_key())
-    });
-  }
-}
-
-type HashId = String;
+pub type HashId = String;
 
 enum BacklinkType {
   Node,
@@ -750,212 +741,6 @@ where
     self.delete_edge(&edge.get_key())?;
     Ok(())
   }
-}
-
-#[cfg(feature="lua")]
-impl<P, K, E> UserData for KvGraphStore<P, K, E>
-where
-  for<'lua> P: Property<HashId, SerialisationError> + UserData + std::clone::Clone + 'lua + FromLua<'lua>,
-  K: KVStore<E>,
-  E: Send + Sync + std::fmt::Debug,
-{
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-    use mlua::prelude::LuaError;
-
-    methods.add_method_mut("create_node", |_, db, props: P| {
-      let id = Uuid::new();
-      match db.create_node(id, &props) {
-        Ok(id) => Ok(id),
-        Err(e) => Err(LuaError::external(e.to_string()))
-      }
-    });
-
-    methods.add_method_mut("update_node", |_, db, (id, props): (VertexId, P)| {
-      match db.update_node(id, &props) {
-        Ok(id) => Ok(id),
-        Err(e) => Err(LuaError::external(e.to_string()))
-      }
-    });
-
-    methods.add_method_mut("delete_node", |_, db, id: VertexId| {
-      match db.delete_node(id) {
-        Ok(id) => Ok(id),
-        Err(e) => Err(LuaError::external(e.to_string()))
-      }
-    });
-
-    methods.add_method_mut("create_edge", |_, db, (n1, n2, props): (VertexId, VertexId, P)| {
-      match db.create_edge(n1, n2, &props) {
-        Ok(id) => Ok(id),
-        Err(e) => Err(LuaError::external(e.to_string()))
-      }
-    });
-
-    methods.add_method_mut("delete_edge", |_, db, id: HashId| {
-      match db.delete_edge(&id) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(LuaError::external(e.to_string()))
-      }
-    });
-
-    methods.add_method_mut("query", |lua, db, query: mlua::AnyUserData| {
-      let query: BasicQuery = match query.take::<ql::VertexQuery<_,_,_,_,_>>() {
-        Ok(q) => q.into(),
-        Err(_) => match query.take::<ql::EdgeQuery<_,_,_,_,_>>() {
-          Ok(q) => q.into(),
-          Err(_) => query.take::<ql::PropertyQuery<_>>()?.into(),
-        }
-      };
-      match db.query(query) {
-        Ok(result) => Ok(lua.to_value(&result)),
-        Err(e) => Err(LuaError::external(e.to_string()))
-      }
-    });
-  }
-}
-
-#[cfg(feature="lua")]
-use rustyline::{completion::Completer, Helper, Hinter, Validator, Highlighter};
-
-#[cfg(feature="lua")]
-#[derive(Helper, Hinter, Validator, Highlighter)]
-struct LuaCompleter<'a> { lua: &'a Lua }
-
-#[cfg(feature="lua")]
-impl Completer for LuaCompleter<'_> {
-  type Candidate = String;
-  fn complete(
-          &self,
-          line: &str,
-          pos: usize,
-          _ctx: &rustyline::Context<'_>
-  ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-    let mut completetions = vec![];
-
-    let line = &line[..pos];
-    let bounderies = [' ', '\t', '(', ')', '[', ']', '{', '}'];
-    let start = line.rfind(&bounderies).unwrap_or(0);
-    let tokens = &line[start..].split(&['.', ':']);
-    let level_cnt = tokens.clone().count();
-
-    use mlua::Value::*;
-
-    tokens.clone().fold((1, Table(self.lua.globals())), |(level, v), t| {
-      let t = t.trim_start_matches(&bounderies);
-      if let Table(ref v) = v {
-        if level == level_cnt {
-          v.for_each(|k: mlua::Value, _v: mlua::Value| {
-              if let Ok(k) = k.to_string() {
-                if k.starts_with(t) {
-                  completetions.push(k[t.len()..].to_string());
-                }
-            };
-
-            Ok(())
-          }).unwrap_or_default();
-        } else {
-          return (level + 1, match v.raw_get(t) {
-            Ok(v) => {
-              v
-            }
-            Err(_) => {
-              Nil
-            }
-          });
-        }
-      }
-
-      (level + 1, v)
-    });
-
-    Ok((pos, completetions))
-  }
-}
-
-#[cfg(feature="lua")]
-pub fn lua_repl<T, Kv, E, OutE>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<(), OutE>
-where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
-  Kv: KVStore<E> + 'static,
-  E: Send + Sync + std::fmt::Debug + 'static,
-  OutE: From<rustyline::error::ReadlineError> + From<mlua::Error>,
-{
-  use mlua::{Error, MultiValue};
-  use rustyline::{Editor, error::ReadlineError};
-
-  let lua = lua_init(db, init_fn)?;
-  let mut editor = Editor::<LuaCompleter, rustyline::history::DefaultHistory>::new().expect("Failed to make rustyline editor");
-  editor.set_helper(Some(LuaCompleter { lua: &lua }));
-
-  loop {
-    let mut prompt = "> ";
-    let mut line = String::new();
-
-    loop {
-      let input = match editor.readline(prompt) {
-        Ok(out) => Ok(out),
-        Err(ReadlineError::Eof) => return Ok(()),
-        Err(e) => Err(e),
-      }?;
-      line.push_str(&input);
-
-      match lua.load(&line).eval::<MultiValue>() {
-        Ok(values) => {
-          editor.add_history_entry(line)?;
-          println!(
-            "{}",
-            values
-              .iter()
-              .map(|value| format!("{:?}", value))
-              .collect::<Vec<_>>()
-              .join("\t")
-          );
-          break;
-        }
-        Err(Error::SyntaxError {
-          incomplete_input: true,
-          ..
-        }) => {
-          // continue reading input and append it to `line`
-          line.push_str("\n"); // separate input lines
-          prompt = ">> ";
-        }
-        Err(e) => {
-          eprintln!("error: {}", e);
-          break;
-        }
-      }
-    }
-  }
-}
-
-#[cfg(feature="lua")]
-pub fn lua_run<T, Kv, E, S, S2>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>, code: S, code_name: S2) -> Result<(), mlua::Error>
-where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
-  Kv: KVStore<E> + 'static,
-  E: Send + Sync + std::fmt::Debug + 'static,
-  S: AsRef<str>,
-  S2: AsRef<str>,
-{
-  lua_init(db, init_fn)?.load(code.as_ref())
-    .set_name(code_name.as_ref())
-    .eval()
-}
-
-#[cfg(feature="lua")]
-fn lua_init<T, Kv, E>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<Lua, mlua::Error>
-where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
-  Kv: KVStore<E> + 'static,
-  E: Send + Sync + std::fmt::Debug + 'static,
-{
-  let lua = Lua::new();
-  lua.globals().raw_set("db", db)?;
-  ql::init_lua::<String, HashId, HashId, String, String>(&lua)?;
-  init_fn(&lua)?;
-
-  Ok(lua)
 }
 
 #[derive(Deserialize, Serialize, Debug)]

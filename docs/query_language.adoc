@@ -205,125 +205,6 @@ pub fn from_property(p: PropertyQuery<PropertyId>) -> Self {
 
 ====
 
-[%collapsible]
-.Implementierung der Lua API
-====
-
-[[lua_startpoint_functions_template]]
-[source, rust]
-----
-globals.set("<<function_pfx>>_all", lua.create_function(|_, ()| {
-  Ok(<<Type>>Query::<<generic_types>>::all())
-})?)?;
-globals.set("<<function_pfx>>_from_ids", lua.create_function(|_, ids: Vec<<<Type>>Id>| {
-  Ok(<<Type>>Query::<<generic_types>>::from_ids(ids))
-})?)?;
-globals.set("<<function_pfx>>_from_property", lua.create_function(|_, p: LuaPropertyQuery<<generic_types>>| {
-  Ok(<<Type>>Query::<<generic_types>>::from_property(p.q))
-})?)?;
-----
-
-[[init_lua]]
-[source, rust]
-----
-<<lua_startpoint_functions_template|
-    Type:="Vertex",
-    function_pfx:="vq" >>
-
-<<lua_startpoint_functions_template|
-    Type:="Edge",
-    function_pfx:="eq" >>
-----
-
-TODO Vielleicht ist eine weitere Vorgehensweise mit clousures statt mit
-methoden doch besser. Es muss auf jeden Fall getestet werden, ob bei der
-Vorgensweise mit Methoden Memory Probleme entstehen können.
-
-[[implement_lua_types]]
-[source, rust]
-----
-#[cfg(feature="lua")]
-impl<<generic_types>> UserData for VertexQuery<<generic_types>>
-where
-  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
-  VFilter:    Clone + 'static,
-  EFilter:    Clone + 'static,
-{
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-    //methods.add_method("union", |_, this, q2: VertexQuery<<generic_types>>| {
-    //  Ok(this.clone().union(q2))
-    //});
-
-    <<query_lua_functions>>
-  }
-}
-----
-
-[[implement_lua_types]]
-[source, rust]
-----
-#[cfg(feature="lua")]
-impl<<generic_types>> UserData for EdgeQuery<<generic_types>>
-where
-  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
-  VFilter:    Clone + 'static,
-  EFilter:    Clone + 'static,
-{
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-    <<query_lua_functions>>
-  }
-}
-----
-
-PropertyQueries bringen für die Implementierung in Lua ein besonderes
-Problem mit sich: Sie haben nur einen generischen Parameter. Wenn man
-aber Funktionen implementieren möchte um aus den PropertyQueries Vertex-
-oder EdgeQuery Datensätze zu machen, so benötigt man die generieren
-Parameter dieser Strukturen. Wir umgehen dieses Problem, indem wir eine
-Wrapper Struktur für die Lua API anlegen und dieser mit `PhantomData`
-die zusätzlichen generischen Parameter übergeben.
-
-[[implement_lua_types]]
-[source, rust]
-----
-#[cfg(feature="lua")]
-#[derive(Clone, FromLua)]
-pub struct LuaPropertyQuery<<generic_types>> {
-  q: PropertyQuery<PropertyId>,
-  marker: std::marker::PhantomData<VertexQuery<<generic_types>>>,
-}
-
-#[cfg(feature="lua")]
-impl<<generic_types>> LuaPropertyQuery<<generic_types>> {
-  pub fn from_property_query(q: PropertyQuery<PropertyId>) -> Self {
-    LuaPropertyQuery {
-      q,
-      marker: std::marker::PhantomData,
-    }
-  }
-}
-
-#[cfg(feature="lua")]
-impl<<generic_types>> UserData for LuaPropertyQuery<<generic_types>>
-where
-  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
-  VFilter:    Clone + 'static,
-  EFilter:    Clone + 'static,
-{
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-    <<prop_query_lua_functions>>
-  }
-}
-----
-
-====
-
 PropertyQueries können nur ganz am Anfang verwendet werden um Vertex
 oder Edge Queries zu erzeugen. Entweder
 
@@ -401,42 +282,6 @@ pub fn referencing_edges<
 }
 ----
 
-[%collapsible]
-.Implementierung der Lua API
-====
-
-[[init_lua]]
-[source, rust]
-----
-globals.set("pq_from_id", lua.create_function(|_, id: PropertyId| {
-  Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
-    q: PropertyQuery::from_id(id),
-    marker: std::marker::PhantomData,
-  })
-})?)?;
-----
-
-[[prop_query_lua_functions]]
-[source, rust]
-----
-methods.add_function("referencing_properties", |_, q: Self| {
-  let q = q.q;
-  Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from_property_query(q.referencing_properties()))
-});
-methods.add_function("referenced_properties", |_, q: Self| {
-  let q = q.q;
-  Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from_property_query(q.referenced_properties()))
-});
-methods.add_function("referencing_vertices", |_, q: Self| {
-  Ok(q.q.referencing_vertices::<VertexId, EdgeId, VFilter, EFilter>())
-});
-methods.add_function("referencing_edges", |_, q: Self| {
-  Ok(q.q.referencing_edges::<VertexId, EdgeId, VFilter, EFilter>())
-});
-----
-
-====
-
 === Die Suche ausweiten
 Sobald wir eine Vertex oder Edge Query als Beginn haben können wir uns
 von dort aus Vorwärts hangeln.
@@ -511,23 +356,6 @@ pub fn ingoing(self) -> VertexQuery<<generic_types>> {
   VertexQuery::In(self)
 }
 ----
-
-[%collapsible]
-.Implementierung der Lua API
-====
-
-[[query_lua_functions]]
-[source, rust]
-----
-methods.add_function("outgoing", |_, q: Self| {
-  Ok(q.outgoing())
-});
-methods.add_function("ingoing", |_, q: Self| {
-  Ok(q.ingoing())
-});
-----
-
-====
 
 === Filter
 Neben den <<traversals, Sprüngen von einem Knoten zum nächsten>> wollen
@@ -667,32 +495,6 @@ Substract(Box<EdgeQuery<<generic_types>>>, Box<EdgeQuery<<generic_types>>>),
 /// query context but not in both (side effect).
 DisjunctiveUnion(Box<EdgeQuery<<generic_types>>>, Box<EdgeQuery<<generic_types>>>),
 ----
-
-[%collapsible]
-.Implementierung der Lua API
-====
-
-[[query_lua_functions]]
-[source, rust]
-----
-methods.add_function("union", |_, queries: (Self, Self)| {
-  let (q1, q2) = queries;
-  Ok(q1.union(q2))
-});
-methods.add_function("intersect", |_, queries: (Self, Self)| {
-  let (q1, q2) = queries;
-  Ok(q1.intersect(q2))
-});
-methods.add_function("substract", |_, queries: (Self, Self)| {
-  let (q1, q2) = queries;
-  Ok(q1.substract(q2))
-});
-----
-
-TODO Funktion für DisjunctiveUnion in Lua API aufnehmen.
-TODO Im Metatable mit Funktionen für + - etc verbinden. Dadurch wird eine sehr natürliche und lesbare verwendung in Lua möglich.
-
-====
 
 ==== Filter mit beliebigen Kriterien
 Die vorigen Filter sind sehr nützlich, da sie sich gut optimieren
@@ -942,39 +744,11 @@ doch um es den Benutzern besonders einfach zu machen, stellen wir eine
 Implementierung für die Programmiersprache https://www.lua.org/[lua]
 direkt bereit.
 
-Wir tun dies, indem wir eine Initialisierungsfunktion für die Lua
-Umgebung implementieren. Diese kann dann später benutzt werden, um in
-der Lua-VM alle Funktionen und Typen der Zoe Abfragesprache bereit zu
-stellen.
-
-[[structs]]
-[source, rust]
-----
-#[cfg(feature="lua")]
-pub fn init_lua<<generic_types>>(lua: &Lua) -> mlua::Result<()>
-where
-  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
-  VFilter:    Clone + 'static,
-  EFilter:    Clone + 'static,
-{
-  let globals = lua.globals();
-  <<init_lua>>
-
-  Ok(())
-}
-
-<<implement_lua_types|join="\n\n">>
-----
-
-Wir importieren außerdem die benötigten Typen.
-
 [[imports]]
 [source, rust]
 ----
 #[cfg(feature="lua")]
-use mlua::{Lua, FromLua, UserData, UserDataMethods};
+use mlua::FromLua;
 ----
 
 == Boilerplate-Code
@@ -1027,24 +801,6 @@ where
   }
 }
 ----
-
-[%collapsible]
-.Implementierung der Lua API
-====
-
-[[structs]]
-[source, rust]
-----
-#[cfg(feature="lua")]
-impl<VertexId, EdgeId, PropertyId> UserData for QueryResult<VertexId, EdgeId, PropertyId>
-where
-  for<'lua> VertexId:   Hash + Eq + Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Hash + Eq + Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Hash + Eq + Clone + 'lua + FromLua<'lua>,
-{}
-----
-
-====
 
 === Nützliche Funktionen
 

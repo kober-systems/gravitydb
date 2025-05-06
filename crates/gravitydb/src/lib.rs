@@ -2,6 +2,8 @@ pub mod ql;
 pub mod schema;
 pub mod kv_graph_store;
 pub mod mem_kv_store;
+#[cfg(feature="lua")]
+pub mod lua;
 
 trait GraphFilter<GIN, GOUT>
 {
