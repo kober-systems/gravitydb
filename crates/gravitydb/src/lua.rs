@@ -132,19 +132,22 @@ where
       let q = q.outgoing();
 
       match filter {
-        Some(filter) => match filter.take::<Self>() {
-          Ok(filter) => q.outgoing().intersect(filter).into_lua(lua),
-          Err(_) => match filter.take::<ql::EdgeQuery<_,_,_,_,_>>() {
-            Ok(filter) => q.intersect(filter).into_lua(lua),
-            Err(_) => match filter.take::<PropertyId>() {
-              Ok(prop) => {
-                let filter = PropertyQuery::from_id(prop);
-                q.intersect(filter.referencing_edges()).into_lua(lua)
-              },
-              Err(_) => q.intersect(filter.take::<LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>()?.q.referencing_edges()).into_lua(lua),
-            }
+        Some(filter) => {
+          if let Ok(filter) = filter.take::<Self>() {
+            return q.outgoing().intersect(filter).into_lua(lua);
           }
-        },
+
+          if let Ok(filter) = filter.take::<ql::EdgeQuery<_,_,_,_,_>>() {
+            return q.intersect(filter).into_lua(lua);
+          }
+
+          if let Ok(prop) = filter.take::<PropertyId>() {
+            let filter = PropertyQuery::from_id(prop);
+            return q.intersect(filter.referencing_edges()).into_lua(lua);
+          }
+
+          q.intersect(filter.take::<LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>()?.q.referencing_edges()).into_lua(lua)
+        }
         None => q.into_lua(lua)
       }
     });
