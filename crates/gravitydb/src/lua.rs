@@ -151,8 +151,29 @@ where
         None => q.into_lua(lua)
       }
     });
-    methods.add_function("ingoing", |_, q: Self| {
-      Ok(q.ingoing())
+    methods.add_function("ingoing", |lua, q: (Self, Option<mlua::AnyUserData>)| {
+      let (q, filter) = q;
+      let q = q.ingoing();
+
+      match filter {
+        Some(filter) => {
+          if let Ok(filter) = filter.take::<LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>() {
+            return q.intersect(filter.q.referencing_edges()).into_lua(lua)
+          }
+
+          if let Ok(filter) = filter.take::<ql::EdgeQuery<_,_,_,_,_>>() {
+            return q.intersect(filter).into_lua(lua)
+          }
+
+          if let Ok(prop) = filter.take::<PropertyId>() {
+            let filter = PropertyQuery::from_id(prop);
+            return q.intersect(filter.referencing_edges()).into_lua(lua)
+          }
+
+          q.ingoing().intersect(filter.take::<Self>()?).into_lua(lua)
+        }
+        None => q.into_lua(lua)
+      }
     });
     methods.add_function("union", |_, queries: (Self, Self)| {
       let (q1, q2) = queries;
@@ -178,11 +199,53 @@ where
   EFilter:    Clone + 'static,
 {
   fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-    methods.add_function("outgoing", |_, q: Self| {
-      Ok(q.outgoing())
+    methods.add_function("outgoing", |lua, q: (Self, Option<mlua::AnyUserData>)| {
+      let (q, filter) = q;
+      let q = q.outgoing();
+
+      match filter {
+        Some(filter) => {
+          if let Ok(filter) = filter.take::<LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>() {
+            return q.intersect(filter.q.referencing_vertices()).into_lua(lua)
+          }
+
+          if let Ok(filter) = filter.take::<ql::VertexQuery<_,_,_,_,_>>() {
+            return q.intersect(filter).into_lua(lua)
+          }
+
+          if let Ok(prop) = filter.take::<PropertyId>() {
+            let filter = PropertyQuery::from_id(prop);
+            return q.intersect(filter.referencing_vertices()).into_lua(lua)
+          }
+
+          q.outgoing().intersect(filter.take::<Self>()?).into_lua(lua)
+        }
+        None => q.into_lua(lua)
+      }
     });
-    methods.add_function("ingoing", |_, q: Self| {
-      Ok(q.ingoing())
+    methods.add_function("ingoing", |lua, q: (Self, Option<mlua::AnyUserData>)| {
+      let (q, filter) = q;
+      let q = q.ingoing();
+
+      match filter {
+        Some(filter) => {
+          if let Ok(filter) = filter.take::<LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>() {
+            return q.intersect(filter.q.referencing_vertices()).into_lua(lua)
+          }
+
+          if let Ok(filter) = filter.take::<ql::VertexQuery<_,_,_,_,_>>() {
+            return q.intersect(filter).into_lua(lua)
+          }
+
+          if let Ok(prop) = filter.take::<PropertyId>() {
+            let filter = PropertyQuery::from_id(prop);
+            return q.intersect(filter.referencing_vertices()).into_lua(lua)
+          }
+
+          q.ingoing().intersect(filter.take::<Self>()?).into_lua(lua)
+        }
+        None => q.into_lua(lua)
+      }
     });
     methods.add_function("union", |_, queries: (Self, Self)| {
       let (q1, q2) = queries;
