@@ -1,5 +1,5 @@
 use core::hash::Hash;
-use mlua::{FromLua, IntoLua, IntoLuaMulti, Lua, LuaSerdeExt, UserData, UserDataMethods};
+use mlua::{FromLua, IntoLua, Lua, LuaSerdeExt, UserData, UserDataMethods};
 
 use crate::kv_graph_store::*;
 use crate::{GraphStore, KVStore};
@@ -195,8 +195,8 @@ pub struct LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
   marker: std::marker::PhantomData<VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>>,
 }
 
-impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
-  pub fn from_property_query(q: PropertyQuery<PropertyId>) -> Self {
+impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> From<PropertyQuery<PropertyId>> for LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
+  fn from(q: PropertyQuery<PropertyId>) -> Self {
     LuaPropertyQuery {
       q,
       marker: std::marker::PhantomData,
@@ -215,11 +215,11 @@ where
   fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
     methods.add_function("referencing_properties", |_, q: Self| {
       let q = q.q;
-      Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from_property_query(q.referencing_properties()))
+      Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from(q.referencing_properties()))
     });
     methods.add_function("referenced_properties", |_, q: Self| {
       let q = q.q;
-      Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from_property_query(q.referenced_properties()))
+      Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from(q.referenced_properties()))
     });
     methods.add_function("referencing_vertices", |_, q: Self| {
       Ok(q.q.referencing_vertices::<VertexId, EdgeId, VFilter, EFilter>())
