@@ -132,7 +132,7 @@ where
       let q = q.outgoing();
 
       match filter {
-        Some(filter) => match filter.take::<ql::VertexQuery<_,_,_,_,_>>() {
+        Some(filter) => match filter.take::<Self>() {
           Ok(filter) => q.outgoing().intersect(filter).into_lua(lua),
           Err(_) => match filter.take::<ql::EdgeQuery<_,_,_,_,_>>() {
             Ok(filter) => q.intersect(filter).into_lua(lua),
