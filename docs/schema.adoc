@@ -140,10 +140,16 @@ TODO die Idee der auf Properties verweisenden Properties könnte viele interessa
 [[schema_elements]]
 [source, rust]
 ----
-pub trait Property<K: Sized, E>: Sized + SchemaElement<K, E>
+pub trait NestableProperty: Sized
 {
   fn nested(&self) -> Vec<Self>;
 }
+----
+
+[[schema_elements]]
+[source, rust]
+----
+pub trait Property<K: Sized, E>: Sized + SchemaElement<K, E> + NestableProperty {}
 ----
 
 TODO Es waere schoen Iteratoren verwenden zu koennen `fn nested(&self) -> impl Iterator<Item=Self> + '_;` // Siehe https://blog.katona.me/2019/12/29/Rust-Lifetimes-and-Iterators/ und https://depth-first.com/articles/2020/06/22/returning-rust-iterators/
@@ -299,9 +305,11 @@ impl<E> SchemaElement<String, E> for GenericProperty
   }
 }
 
-impl<E> Property<String, E> for GenericProperty {
+impl NestableProperty for GenericProperty {
   fn nested(&self) -> Vec<Self> { Vec::new() } // <1>
 }
+
+impl<E> Property<String, E> for GenericProperty {}
 
 #[cfg(feature="lua")]
 impl UserData for GenericProperty {}
@@ -329,8 +337,10 @@ impl<E> SchemaElement<String, E> for Vec<u8>
   }
 }
 
-impl<E> Property<String, E> for Vec<u8> {
+impl NestableProperty for Vec<u8> {
   fn nested(&self) -> Vec<Self> { Vec::new() }
 }
+
+impl<E> Property<String, E> for Vec<u8> {}
 ----
 

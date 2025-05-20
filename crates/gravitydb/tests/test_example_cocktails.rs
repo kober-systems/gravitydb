@@ -1,6 +1,7 @@
 use gravitydb::*;
 use gravitydb::kv_graph_store::Uuid;
 use pretty_assertions::assert_eq;
+use schema::NestableProperty;
 use serde::{Serialize, Deserialize};
 
 #[test]
@@ -779,7 +780,7 @@ impl<Error: From<serde_json::Error>> SchemaElement<String, Error> for CocktailSc
   }
 }
 
-impl<Error: From<serde_json::Error>> Property<String, Error> for CocktailSchema {
+impl NestableProperty for CocktailSchema {
   fn nested(&self) -> Vec<Self> {
     use CocktailSchema::*;
 
@@ -794,3 +795,5 @@ impl<Error: From<serde_json::Error>> Property<String, Error> for CocktailSchema 
     }
   }
 }
+
+impl<Error: From<serde_json::Error>> Property<String, Error> for CocktailSchema {}

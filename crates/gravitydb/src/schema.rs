@@ -6,10 +6,12 @@ pub trait SchemaElement<K: Sized, E> {
   fn get_key(&self) -> K;
 }
 
-pub trait Property<K: Sized, E>: Sized + SchemaElement<K, E>
+pub trait NestableProperty: Sized
 {
   fn nested(&self) -> Vec<Self>;
 }
+
+pub trait Property<K: Sized, E>: Sized + SchemaElement<K, E> + NestableProperty {}
 
 pub enum SchemaConstraint<VertexId, EdgeId, PropertyId, VFilter, EFilter> {
   Requiered(ql::BasicQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>),
@@ -68,9 +70,11 @@ impl<E> SchemaElement<String, E> for GenericProperty
   }
 }
 
-impl<E> Property<String, E> for GenericProperty {
+impl NestableProperty for GenericProperty {
   fn nested(&self) -> Vec<Self> { Vec::new() }
 }
+
+impl<E> Property<String, E> for GenericProperty {}
 
 #[cfg(feature="lua")]
 impl UserData for GenericProperty {}
@@ -91,6 +95,8 @@ impl<E> SchemaElement<String, E> for Vec<u8>
   }
 }
 
-impl<E> Property<String, E> for Vec<u8> {
+impl NestableProperty for Vec<u8> {
   fn nested(&self) -> Vec<Self> { Vec::new() }
 }
+
+impl<E> Property<String, E> for Vec<u8> {}

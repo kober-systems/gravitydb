@@ -64,9 +64,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 
     let expanded = quote! {
-      use gravitydb::schema::Property;
+      use gravitydb::schema::NestableProperty;
 
-      impl<Error> Property<String, Error> for #name {
+      impl NestableProperty for #name {
         fn nested(&self) -> Vec<Self> {
           match self {
             #varaints_to_names
