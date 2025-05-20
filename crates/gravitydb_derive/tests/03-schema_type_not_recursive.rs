@@ -1,4 +1,5 @@
-// This test looks for a derive macro with the right name to exist.
+// Make sure that the schema is not endlesly nested. SchemaType should return an empty
+// vec.
 use gravitydb_derive::Schema;
 
 #[derive(Schema)]
