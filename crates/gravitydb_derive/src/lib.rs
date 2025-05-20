@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, Data, DeriveInput, Fields
+    parse_macro_input, Data, DeriveInput, Fields, Variant
 };
 use std::option::Option::Some;
 use std::option::Option::None;
@@ -28,34 +28,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #base_selector(_) => vec![],
             };
           }
-          let base_selector = match &v.fields {
-            Fields::Named(f) => {
-              let ignored_fields = f.named.iter().map(|f| {
-                let name = &f.ident;
-                quote_spanned! {
-                  f.span()=>
-                    #name: _,
-                }
-              });
-              quote_spanned! {
-                v.span()=>
-                  #base_selector{#(#ignored_fields)*}
-              }
-            },
-            Fields::Unnamed(f) => {
-              let ignored_fields = f.unnamed.iter().map(|f| {
-                quote_spanned! {
-                  f.span()=>
-                    _,
-                }
-              });
-              quote_spanned! {
-                v.span()=>
-                  #base_selector(#(#ignored_fields)*)
-              }
-            }
-            Fields::Unit => base_selector,
-          };
+          let base_selector = get_base_selector_for_field(v, base_selector);
           quote_spanned! {
             v.span()=>
               #base_selector => vec![#name::SchemaType(#v_name_str.to_string())],
@@ -84,3 +57,33 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     TokenStream::from(expanded).into()
 }
 
+fn get_base_selector_for_field(v: &Variant, base: TokenStream) -> TokenStream {
+  match &v.fields {
+    Fields::Named(f) => {
+      let ignored_fields = f.named.iter().map(|f| {
+        let name = &f.ident;
+        quote_spanned! {
+          f.span()=>
+            #name: _,
+        }
+      });
+      quote_spanned! {
+        v.span()=>
+          #base{#(#ignored_fields)*}
+      }
+    },
+    Fields::Unnamed(f) => {
+      let ignored_fields = f.unnamed.iter().map(|f| {
+        quote_spanned! {
+          f.span()=>
+            _,
+        }
+      });
+      quote_spanned! {
+        v.span()=>
+          #base(#(#ignored_fields)*)
+      }
+    }
+    Fields::Unit => base,
+  }
+}
