@@ -1,0 +1,22 @@
+[package]
+name = "gravitydb_derive"
+version = "0.1.0"
+autotests = false
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[[test]]
+name = "tests"
+path = "tests/progress.rs"
+
+[dev-dependencies]
+trybuild = { version = "1.0.49", features = ["diff"] }
+gravitydb = { path = "../gravitydb" }
+
+[dependencies]
+proc-macro2 = "1"
+syn = "2"
+quote = "1"
+
