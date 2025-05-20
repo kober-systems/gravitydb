@@ -2,12 +2,12 @@ use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, Data, DeriveInput, Fields, Variant
+    parse_macro_input, Data, DeriveInput, Fields, Ident, Variant
 };
 use std::option::Option::Some;
 use std::option::Option::None;
 
-#[proc_macro_derive(Schema)]
+#[proc_macro_derive(Schema, attributes(schema))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -29,9 +29,38 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             };
           }
           let base_selector = get_base_selector_for_field(v, base_selector);
+          let mut additional_types: Vec<_> = v.attrs.iter().map(|attr| {
+            use syn::Meta::*;
+
+            match &attr.meta {
+              List(v) => {
+                let kv = v.tokens.to_string();
+                let (attr_name, value) = kv.split_once("=").unwrap();
+                if attr_name.trim() == "additional_types" {
+                  let types: Vec<_> = value.split(",").into_iter().map(|v| {
+                    let t_name = v.trim();
+                    quote_spanned! {
+                      v.span()=>
+                        #name::SchemaType(#t_name.to_string()),
+                    }
+                  }).collect();
+                  quote_spanned! {
+                    v.span()=>
+                      #(#types)*
+                  }
+                } else { unimplemented!("{}", name) }
+              },
+              _ => unimplemented!()
+            }
+
+          }).collect();
+          additional_types.insert(0, quote_spanned! {
+            v.span()=>
+              #name::SchemaType(#v_name_str.to_string()),
+          });
           quote_spanned! {
             v.span()=>
-              #base_selector => vec![#name::SchemaType(#v_name_str.to_string())],
+              #base_selector => vec![#(#additional_types)*],
           }
         });
         quote! {

@@ -5,11 +5,11 @@ use gravitydb_derive::Schema;
 #[derive(Debug, PartialEq)]
 pub enum BasicPimSchema {
   Person{ name: String, surname: String},
-  #[schema(additional_types = ("Person", "Vertex"))]
+  #[schema(additional_types = Person, Vertex)]
   Manager,
   Organisation(String),
   // edge types
-  #[schema(additional_types = "Connection")]
+  #[schema(additional_types = Connection)]
   BelongsTo,
   SchemaType(String),
 }
