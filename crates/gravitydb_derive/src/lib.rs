@@ -23,7 +23,19 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
               #name::#v_name
           };
           let base_selector = match &v.fields {
-            Fields::Named(_) => unimplemented!(),
+            Fields::Named(f) => {
+              let ignored_fields = f.named.iter().map(|f| {
+                let name = &f.ident;
+                quote_spanned! {
+                  f.span()=>
+                    #name: _,
+                }
+              });
+              quote_spanned! {
+                v.span()=>
+                  #base_selector{#(#ignored_fields)*}
+              }
+            },
             Fields::Unnamed(f) => {
               let ignored_fields = f.unnamed.iter().map(|f| {
                 quote_spanned! {
