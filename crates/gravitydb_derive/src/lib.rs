@@ -22,6 +22,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             v.span()=>
               #name::#v_name
           };
+          if &v_name_str == "SchemaType" {
+            return quote_spanned! {
+              v.span()=>
+                #base_selector(_) => vec![],
+            };
+          }
           let base_selector = match &v.fields {
             Fields::Named(f) => {
               let ignored_fields = f.named.iter().map(|f| {
