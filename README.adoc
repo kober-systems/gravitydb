@@ -8,7 +8,8 @@ Gravity is a graph database trying to make the traversal as easy as
 possible for complex data. There are several goals it tries to archive:
 
 * provide an elegant way to traverse
-* be scalable
+* be scalable (not just in scaling up, but also in scaling down to the
+  footprint of mobile phones)
 * can be easily split, distributed, shared and merged
 
 Getting started
