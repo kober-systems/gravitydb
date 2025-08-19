@@ -33,40 +33,36 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
               #name::SchemaType(#v_name_str.to_string()),
           };
 
-          let attrs = get_attrs(&v);
-          if attrs.len() > 1 {
+          let (additional_types, custom): (Vec<_>, Vec<_>) = get_attrs(&v)
+            .into_iter().partition(|(attr_name, _, _)| match attr_name.as_str() {
+              "additional_types" => true,
+              "custom" => false,
+              _ => unimplemented!("attribute '{}' not supported", attr_name),
+            });
+          let mut additional_types: Vec<_> = additional_types.iter().map(|(_attr_name, value, _meta)| {
+            extract_additional_schema_types(&value, &name)
+          }).flatten().collect();
+          let custom: Vec<_> = custom.iter().map(|(_attr_name, value, meta)| {
+              extract_custom_schema_type_function(&value, &v, meta)
+          }).collect();
+
+          let base_selector = if custom.len() > 0 {
+            base_selector_with_fields(v, base_selector)
+          } else {
+            base_selector_ignore_fields(v, base_selector)
+          };
+
+          if let Some(custom_call) = custom.first() {
             return quote_spanned! {
               v.span() =>
-                compile_error!("Having more than one attribute is not supported");
-            }
-          }
-          if let Some((attr_name, value, meta)) = attrs.first() {
-            match attr_name.as_str() {
-              "additional_types" => {
-                let mut types = extract_additional_schema_types(&value, &name);
-                types.insert(0, base_variant_type);
-                let base_selector = base_selector_ignore_fields(v, base_selector);
-                return quote_spanned! {
-                  meta.span()=>
-                    #base_selector => vec![#(#types)*],
-                }
-              }
-              "custom" => {
-                let custom_call = extract_custom_schema_type_function(&value, &v, meta);
-                let base_selector = base_selector_with_fields(v, base_selector);
-                return quote_spanned! {
-                  meta.span() =>
-                    #base_selector => #custom_call,
-                }
-              }
-              _ => unimplemented!("attribute '{}' not supported", attr_name)
+                #base_selector => #custom_call,
             }
           }
 
-          let base_selector = base_selector_ignore_fields(v, base_selector);
+          additional_types.insert(0, base_variant_type);
           quote_spanned! {
             v.span()=>
-              #base_selector => vec![#base_variant_type],
+              #base_selector => vec![#(#additional_types)*],
           }
         });
         quote! {
