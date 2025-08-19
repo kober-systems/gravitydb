@@ -43,13 +43,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
           if let Some((attr_name, value, meta)) = attrs.first() {
             match attr_name.as_str() {
               "additional_types" => {
-                let mut types: Vec<_> = value.split(",").into_iter().map(|v| {
-                  let t_name = v.trim();
-                  quote_spanned! {
-                    v.span()=>
-                      #name::SchemaType(#t_name.to_string()),
-                  }
-                }).collect();
+                let mut types = extract_additional_schema_types(&value, &name);
                 types.insert(0, base_variant_type);
                 let base_selector = base_selector_ignore_fields(v, base_selector);
                 return quote_spanned! {
@@ -58,18 +52,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
               }
               "custom" => {
-                let value = Ident::new(value, Span::call_site());
-                let args: Vec<_> = v.fields.iter().map(|field| {
-                  let name = field.ident.clone();
-                  quote_spanned! {
-                    field.span() =>
-                      &#name
-                  }
-                }).collect();
+                let custom_call = extract_custom_schema_type_function(&value, &v, meta);
                 let base_selector = base_selector_with_fields(v, base_selector);
                 return quote_spanned! {
                   meta.span() =>
-                    #base_selector => #value(#(#args,)*),
+                    #base_selector => #custom_call,
                 }
               }
               _ => unimplemented!("attribute '{}' not supported", attr_name)
@@ -103,6 +90,31 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
 
     TokenStream::from(expanded).into()
+}
+
+fn extract_additional_schema_types(value: &str, name: &Ident) -> Vec<TokenStream> {
+  value.split(",").into_iter().map(|v| {
+    let t_name = v.trim();
+    quote_spanned! {
+      v.span()=>
+        #name::SchemaType(#t_name.to_string()),
+    }
+  }).collect()
+}
+
+fn extract_custom_schema_type_function(value: &str, variant: &Variant, meta: &MetaList) -> TokenStream {
+  let value = Ident::new(value, Span::call_site());
+  let args: Vec<_> = variant.fields.iter().map(|field| {
+    let name = field.ident.clone();
+    quote_spanned! {
+      field.span() =>
+        &#name
+    }
+  }).collect();
+  quote_spanned! {
+    meta.span() =>
+      #value(#(#args,)*)
+  }
 }
 
 fn get_attrs(v: &Variant) -> Vec<(String, String, &MetaList)> {
