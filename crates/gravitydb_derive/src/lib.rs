@@ -51,7 +51,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         #(#types)*
                     }
                   }
-                  _ => unimplemented!("{}", attr_name)
+                  _ => unimplemented!("attribute '{}' not supported", attr_name)
                 }
               },
               _ => unimplemented!()
