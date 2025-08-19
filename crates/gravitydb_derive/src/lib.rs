@@ -34,6 +34,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
           };
 
           let attrs = get_attrs(&v);
+          if attrs.len() > 1 {
+            return quote_spanned! {
+              v.span() =>
+                compile_error!("Having more than one attribute is not supported");
+            }
+          }
           if let Some((attr_name, value, meta)) = attrs.first() {
             match attr_name.as_str() {
               "additional_types" => {
