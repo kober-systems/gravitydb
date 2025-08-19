@@ -2,7 +2,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{
-    parse_macro_input, Data, DeriveInput, Fields, Ident, Variant
+    parse_macro_input, Data, DeriveInput, Fields, Ident, MetaList, Variant
 };
 use std::option::Option::Some;
 use std::option::Option::None;
@@ -33,22 +33,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
               #name::SchemaType(#v_name_str.to_string()),
           };
 
-          let attrs: Vec<_> = v.attrs.iter().map(|attr| {
-            use syn::Meta::*;
-
-            match &attr.meta {
-              List(meta) => {
-                let kv = meta.tokens.to_string();
-                let (attr_name, value) = kv.split_once("=").unwrap();
-                (attr_name.trim().to_string(), value.trim().to_string(), meta)
-              },
-              _ => unimplemented!()
-            }
-
-          }).collect();
-          additional_types.insert(0, quote_spanned! {
-            v.span()=>
-              #name::SchemaType(#v_name_str.to_string()),
+          let attrs = get_attrs(&v);
           if let Some((attr_name, value, meta)) = attrs.first() {
             match attr_name.as_str() {
               "additional_types" => {
@@ -75,7 +60,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                       &#name
                   }
                 }).collect();
-          let base_selector = base_selector_with_fields(v, base_selector);
+                let base_selector = base_selector_with_fields(v, base_selector);
                 return quote_spanned! {
                   meta.span() =>
                     #base_selector => #value(#(#args,)*),
@@ -112,6 +97,22 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
 
     TokenStream::from(expanded).into()
+}
+
+fn get_attrs(v: &Variant) -> Vec<(String, String, &MetaList)> {
+  v.attrs.iter().map(|attr| {
+    use syn::Meta::*;
+
+    match &attr.meta {
+      List(meta) => {
+        let kv = meta.tokens.to_string();
+        let (attr_name, value) = kv.split_once("=").unwrap();
+        (attr_name.trim().to_string(), value.trim().to_string(), meta)
+      },
+      _ => unimplemented!()
+    }
+
+  }).collect()
 }
 
 fn base_selector_ignore_fields(v: &Variant, base: TokenStream) -> TokenStream {
