@@ -13,15 +13,12 @@ pub enum BasicPimSchema {
 }
 
 fn get_person_schema_type(_name: &String, _surname: &String, is_male: &bool) -> Vec<BasicPimSchema> {
-  let person = BasicPimSchema::SchemaType("Person".to_string());
-
-  let gender = if *is_male {
-    BasicPimSchema::SchemaType("Male".to_string())
-  } else {
-    BasicPimSchema::SchemaType("Female".to_string())
-  };
-
-  vec![person, gender]
+  vec![BasicPimSchema::SchemaType(if *is_male {
+      "Male"
+    } else {
+      "Female"
+    }.to_string()
+  )]
 }
 
 fn main() {

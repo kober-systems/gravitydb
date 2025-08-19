@@ -42,27 +42,32 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
           let mut additional_types: Vec<_> = additional_types.iter().map(|(_attr_name, value, _meta)| {
             extract_additional_schema_types(&value, &name)
           }).flatten().collect();
+          additional_types.insert(0, base_variant_type);
+          let all_static_schema_types = quote_spanned! {
+            v.span()=>
+              vec![#(#additional_types)*]
+          };
+
           let custom: Vec<_> = custom.iter().map(|(_attr_name, value, meta)| {
               extract_custom_schema_type_function(&value, &v, meta)
           }).collect();
 
-          let base_selector = if custom.len() > 0 {
-            base_selector_with_fields(v, base_selector)
-          } else {
-            base_selector_ignore_fields(v, base_selector)
-          };
-
-          if let Some(custom_call) = custom.first() {
-            return quote_spanned! {
+          if custom.len() > 0 {
+            let base_selector = base_selector_with_fields(v, base_selector);
+            quote_spanned! {
               v.span() =>
-                #base_selector => #custom_call,
+                #base_selector => {
+                  let mut v = #all_static_schema_types;
+                  v #(.append(&mut #custom))*;
+                  v
+                },
             }
-          }
-
-          additional_types.insert(0, base_variant_type);
-          quote_spanned! {
-            v.span()=>
-              #base_selector => vec![#(#additional_types)*],
+          } else {
+            let base_selector = base_selector_ignore_fields(v, base_selector);
+            quote_spanned! {
+              v.span()=>
+                #base_selector => #all_static_schema_types,
+            }
           }
         });
         quote! {
