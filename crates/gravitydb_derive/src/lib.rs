@@ -36,19 +36,23 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
               List(v) => {
                 let kv = v.tokens.to_string();
                 let (attr_name, value) = kv.split_once("=").unwrap();
-                if attr_name.trim() == "additional_types" {
-                  let types: Vec<_> = value.split(",").into_iter().map(|v| {
-                    let t_name = v.trim();
+                let attr_name = attr_name.trim();
+                match attr_name {
+                  "additional_types" => {
+                    let types: Vec<_> = value.split(",").into_iter().map(|v| {
+                      let t_name = v.trim();
+                      quote_spanned! {
+                        v.span()=>
+                          #name::SchemaType(#t_name.to_string()),
+                      }
+                    }).collect();
                     quote_spanned! {
                       v.span()=>
-                        #name::SchemaType(#t_name.to_string()),
+                        #(#types)*
                     }
-                  }).collect();
-                  quote_spanned! {
-                    v.span()=>
-                      #(#types)*
                   }
-                } else { unimplemented!("{}", name) }
+                  _ => unimplemented!("{}", attr_name)
+                }
               },
               _ => unimplemented!()
             }
