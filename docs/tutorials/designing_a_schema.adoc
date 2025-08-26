@@ -160,3 +160,52 @@ Prohibited(SchemaType("Connection")
 )
 ----
 
+== Spoilt for Choice: It's a game of tradeoffs
+The schema we have is still relativly simple. However there are already
+a lot of things we could have done differently. For example instead
+of adding the location as another node type we could have modified
+the workshop type to something like `Workshop{ name: String, adress:
+String }`. Both options have pros and cons that will be connected with
+the use cases that arise. Searching for a location or for a shop could
+become easier when both are seperate entities. On the other hand having
+everything split up into the most basic enties can become too flexible
+so that things become harder to control and understand.
+
+Don't chase for the perfect schema. It's impossible. Things will always
+need to be adapted once your understanding of the domain and it's use
+cases grows. And the domain itself will change.
+
+Instead learn to evolve and adapt your schemas once your understanding
+of the domain deepens (btw the best way to get to a really good schema
+soon is not thinking hard, but putting your current schema into real
+use. Playing with it. And then improving it).
+
+Learning to evolve schemas is hard. Here are a few things to keep in
+mind.
+
+=== Not all of the data is under your control
+Once your application becomes useful, people will use it to store data
+in it. When you evolve your schema, maybe it's not compatible with the
+data already stored in the database.
+
+As a rule of thumb you should NEVER break the data of your users. The
+reason why they are using your application is that very data. It's what
+makes it precious to them.
+
+Instead version your data schemas (and your data, so that you can find
+out which schema version it is compatible with). Then write a migration
+for every version to the next one and test those migrations very
+carefully.
+
+Especially when the amount of data in your db grows and the db is used
+24/7 not all of your data on disk will be of the same version. Make
+sure that you can work with both versions while a migration is running.
+A similar situation arises when there are multiple installations of
+a database (e.g. with open source applications, or when you have
+installations for different customers). You can never know which version
+the data on disk will have, so be prepared to start a migration if
+needed.
+
+TODO Tutorial example of how to write a schema migration for data on disk
+
+
