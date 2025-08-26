@@ -1,0 +1,126 @@
+= Tutorial: Designing a Schema
+Imagine you want to make an app for shared makerspaces (shared workshops
+where everybody can build it's own ideas). How to shape the data for
+that application? Lets find out in this tutorial.
+
+== Properties: The basic building blocks
+Lets think about what you basically want to do: A portal where people
+can connect and find and offer places and instruments.
+
+So you definitly need this entities (we call them nodes or vertices):
+
+* Person
+* Workshop
+* Tool
+
+And you need properties to define how these nodes can be related (or
+connected) to each other:
+
+* belongs to (e.g an tool could belong to a workshop or a person)
+* is staff member (e.g. a person could be a staff member of a workshop)
+
+To define this in our schema we could write it like this
+
+[[basic_schema]]
+[source, rust]
+----
+#[derive(Schema)]
+#[derive(Debug, PartialEq)]
+pub enum BasicPimSchema {
+  Person{ name: String, surname: String},
+  Workshop{ name: String },
+  Tool(String),
+
+  // connections
+  #[schema(additional_types = Connection)]
+  BelongsTo,
+  #[schema(additional_types = Connection)]
+  IsStaffMember,
+
+  // A special type used later for queries
+  SchemaType(String),
+}
+----
+
+With this you can already play and create usefull data.
+
+=== People start using it
+Here is Nick. A nice woodworker who would like to share his workshop
+and skills to educate others.
+
+He installs you app and adds his workshop to the database.
+
+[source, rust]
+----
+let nick = db.add_node(Person{ name: "Nick", surname: "Nice" });
+let wshop = db.add_node(Workshop{ name: "Nick's Workspace" });
+db.create_connection(wshop, nick, BelongsTo);
+
+let t1 = db.add_node(Tool("Table Saw"));
+db.create_connection(t1, whop, BelongsTo);
+let t2 = db.add_node(Tool("Miter Saw"));
+db.create_connection(t2, whop, BelongsTo);
+----
+
+Then there is Allice. She would like to create a new DIY table but she
+is missing the tools and the space. So she starts searching who has a
+table saw and finds Nick's Workspace.
+
+[source, rust]
+----
+let query = Tool("Table Saw").start()
+  .referencing_vertices()
+  .outgoing()
+  .intersect(BelongsTo.start().referencing_edges())
+  .outgoing()
+----
+
+== Something is missing: Evolving the Schema
+However there is a problem. Allice now knows that there is a table saw
+available in Nick's Workspace but she does not know where it is located.
+
+[NOTE]
+====
+This is something common once you start using your applications. You
+will find use cases that you had not forseen at the beginning. This is
+the reason why the ability to evolve schemas is so important.
+====
+
+Just add an additional property `Location` and a connection type
+`LocatedAt` to your schema.
+
+[[enhanced_schema]]
+[source, rust, highlight=7,14..15]
+----
+#[derive(Schema)]
+#[derive(Debug, PartialEq)]
+pub enum BasicPimSchema {
+  Person{ name: String, surname: String},
+  Workshop{ name: String },
+  Tool(String),
+  Location{ address: String },
+
+  // connections
+  #[schema(additional_types = Connection)]
+  BelongsTo,
+  #[schema(additional_types = Connection)]
+  IsStaffMember,
+  #[schema(additional_types = Connection)]
+  LocatedAt,
+
+  // A special type used later for queries
+  SchemaType(String),
+}
+----
+
+Now Nick can add the location to his workshop and Allice can find where
+it is actually located.
+
+=== It's your turn
+Now it's your turn. Play with the schema and add some more useful
+features to it. For example it would be nice to see opening hours for a
+workshop, contact information, timeslots for tool usage, categories what
+kind of work a workshop supports etc.
+
+The possibilities of what you can do with the data are endless.
+
