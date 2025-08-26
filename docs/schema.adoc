@@ -1,25 +1,25 @@
-Daten Schema
-============
+Data Schema
+===========
 
-In unseren Graphen-Speichern kann man beliebige Informationen speichern.
-Abgesehen von der Aufteilung in Knoten, Verbindungen und Eigenschaften
-haben wir keinerlei Vorgaben in Bezug auf die Strukturierung der Daten.
+In our graph storage, you can store any kind of information. Apart
+from the division into nodes, connections, and properties, we have no
+preconceptions about the structuring of the data.
 
-Daraus ergibt sich eine hohe Flexibilität aber in einem konkreten Fall
-ermöglichenen uns konkretere Vorgaben in Bezug auf die Datentypen (was
-ja in gewisser Hinsicht mit Einschränkungen einhergeht), die Daten
-leichter zu interpretieren und verarbeiten. Mit anderen Worten: Die
-Abfragen werden *effizienter*. Als weiteren Vorteil können wir Aussagen
-über die inhaltliche *Korrektheit* eines oder mehrerer Datensätze
-machen.
+This leads to a high flexibility, but in a concrete case, more
+constraints enable us to make more specific demands on the data types
+(what yes, goes hand in hand with restrictions), which makes the
+data easier to interpret and process. In other words: The queries
+become *more efficient*. As an additional advantage, we can also make
+statements about the *contentual correctness* of one or several data
+sets.
 
-Ein https://en.wikipedia.org/wiki/Data_model[Daten Model] durch ein
-solches Schema zu erarbeiten, ist eine wesentliche Hilfe die Daten und
-die Domain zu verstehen.
+Creating a https://en.wikipedia.org/wiki/Data_model[data model] through
+such a schema is a significant help in understanding both the data and
+the domain.
 
-Aus diesen Gründen möchten wir es ermöglichen ein
-https://de.wikipedia.org/wiki/Schema_(Informatik)[Schema] in unseren
-Datenbanken zu definieren.
+That's why we want to allow defining a
+https://de.wikipedia.org/wiki/Schema_(Informatik)[schema] in our
+databases.
 
 == Übersicht
 Ein Schema besteht aus zwei Teilen:
