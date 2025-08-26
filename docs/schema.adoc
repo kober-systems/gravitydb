@@ -37,15 +37,15 @@ pub struct Schema {
 
 We'll now go through these aspects.
 
-== Mögliche Datenformate für Eigenschaften
-Eigenschaften (Properties) sind die zentralen Elemente um festzulegen,
-wie die Daten aussehen dürfen. Mit ihnen legen wir fest, welche
-Bausteine uns in unserem Graphen zur Verfügung stehen.
+== Possible Data Formats for Properties
+Properties are the central elements to define how the data should be
+shaped. With them, we determine which building blocks are available in
+our graph.
 
-Als Analogie könnte man sich die Atome vorstellen (ausgehend von dem
-alten Gedanken, das Atome die unteilbaren Grundbausteine aller Stoffe
-sind). Wir können aus ihnen neue Materialien zusammensetzen aber sie
-selber sind erst einmal gegeben und unveränderlich.
+As an analogy, one could imagine atoms (based on the idea that atoms
+are the indivisible fundamental building blocks of all matter). We can
+combine them to form new materials, but they themselves are initially
+given and unchangeable.
 
 [[schema_elements]]
 [source, rust]
@@ -55,13 +55,13 @@ pub trait SchemaElement<K: Sized, E> {
 }
 ----
 
-Generell sind alle Datentypen als Array von Bytes serialisierbar
-(Das ist die allgemeinste Form in der Daten auf heutigen Computern
-gespeichert werden. Man kann also jeden Datensatz in einer Datei auf dem
-Computer ablegen).
+In general, all data types can be serialized as an array of bytes (this
+is the most generic form in which data is stored on current computers.
+Therefore, whatever can be stored in a file on a computer, could also be
+serialized as an array of bytes).
 
-Bei unserem Schema legen wir fest, wie aus einer Datei eine Struktur
-wird, die wir später leichter verarbeiten können.
+When defining our schema, we determine how to deserialize raw data
+arrays into data structures so that it can be easily processed later.
 
 [[schema_element_functions]]
 [source, rust]
@@ -69,11 +69,10 @@ wird, die wir später leichter verarbeiten können.
 fn deserialize(data: &[u8]) -> Result<Self,E> where Self: Sized;
 ----
 
-Umgekehrt wollen wir aber auch unsere Struktur wieder in ein Byte Array
-(eine Datei) umwandeln können footnote:[Dabei ist es wichtig, dass eine
-Struktur, die in eine Datei umgewandelt wird, wenn man diese Datei
-wieder mit `deserialize` in eine Struktur umwandelt, wieder die gleiche
-Struktur ergibt].
+Conversely, we also want to be able to convert our structure back again
+into a byte array (a file) footnote:[It's important that when you
+serialize a structure with `deserialize`, it produces the same original
+input structure].
 
 [[schema_element_functions]]
 [source, rust]
@@ -81,9 +80,8 @@ Struktur ergibt].
 fn serialize(&self) -> Result<Vec<u8>,E>;
 ----
 
-Zugleich benötigen wir eine Funktion, welche uns den Schlüssel auf ein
-Element gibt. Damit haben wir später die Möglichkeit, das entsprechende
-Element aus der Datenbank auszulesen.
+We also need a function to give us the key of an element. This allows us
+later to easily retrieve the corresponding element from the database.
 
 [[schema_element_functions]]
 [source, rust]
@@ -91,8 +89,7 @@ Element aus der Datenbank auszulesen.
 fn get_key(&self) -> K;
 ----
 
-Sobald das gegeben ist, können wir sicherstellen, dass wir leicht Daten
-abfragen und grundlegend überprüfen können.
+With this, we can ensure that we can easily query and verify data.
 
 === Schema Schnittstellen für Knoten, Verbindungen und Eigenschaften
 Unsere Datenbank erlaubt es ein Schema zu definieren. Damit das möglich
