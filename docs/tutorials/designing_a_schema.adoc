@@ -124,3 +124,39 @@ kind of work a workshop supports etc.
 
 The possibilities of what you can do with the data are endless.
 
+== Beyond properties: Adding constraints on relations
+Currently you can connect your nodes in any form. But not all
+connections would make sense. By constraining what makes sense your
+application becomes more robust.
+
+For example while a tool could belong to a person or a workshop, it
+would not make sense the other way round or for a tool to belong to a
+location. You can prevent this by adding the following constraint.
+
+[source, rust]
+----
+Prohibited(SchemaType("Tool")
+  .start()
+  .referencing_properties()
+  .referencing_vertices()
+  .ingoing()
+  .intersect(BelongsTo
+    .start()
+    .referencing_edges()
+  )
+)
+----
+
+And of course it would make no sense add nodes of type `BelongsTo` and
+connect them via edges of type e.g. `Tool`. Connections should only be
+used for connections and nodes for nodes.
+
+[source, rust]
+----
+Prohibited(SchemaType("Connection")
+  .start()
+  .referencing_properties()
+  .referencing_vertices()
+)
+----
+
