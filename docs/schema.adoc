@@ -91,9 +91,9 @@ fn get_key(&self) -> K;
 
 With this, we can ensure that we can easily query and verify data.
 
-=== Schema Schnittstellen für Knoten, Verbindungen und Eigenschaften
-Unsere Datenbank erlaubt es ein Schema zu definieren. Damit das möglich
-ist müssen die einzelnen Elemente Schnittstellen bereitstellen.
+=== Schema Interfaces for Nodes, Connections and Properties
+Our database allows us to define a schema. For this to be possible, the
+individual elements must provide interfaces.
 
 [[traits]]
 [source, rust]
@@ -104,33 +104,30 @@ pub trait Node<P: Property> {
 }
 ----
 
-Da wir unsere Properties (also die Eigenschaften von Knoten und
-Verbindungen) nicht mit den Knoten und Verbindungen abspeichern, sondern
-separat benutzen wir auch hier eine eigene Schnittstelle. Daraus ergibt
-sich die Möglichkeit Eigenschaften zwischen mehreren Elementen zu
-teilen.
+Since we store properties separately from the nodes and connections
+themselves, we also define a separate interface for them. This allows us
+to share properties between multiple elements.
 
-Eine Besonderheit unserer Properties ist, das sie als Baum auf andere
-Properties verweisen können.
+A unique feature of our properties is that they can reference other
+properties as a tree structure.
 
-Es ist möglich mit Pfaden auf andere Dateien zu verweisen und diese
-eventuell mit zu Synchronisieren. Das kann in einigen Anwendungsfällen
-sehr nützlich und angenehm sein, da so z.B. direkt auf Bilder, Videos
-etc mit einem normalen Dateieditor zugegriffen werden kann aber die
-Datenbank dennoch direkt darauf verweist. Allerdings birgt es auch seine
-Gefahren, da eine Veränderung der verlinkten Dateien keine Veränderung
-des Property Datensatzes zur Folge hätte und es somit zu unsichtbaren
-Konflikten bei der Synchronisierung kommen könnte. Eine Alternative
-wäre die Daten als Blob innerhalb des Property Datensates abzulegen und
-über ein fuse-Dateisystem (TODO interner Link) bereitzustellen. Das
-wäre sicherer aber könnte mitunter zu Performanceverlusten führen. Eine
-weitere Möglichkeit wäre einen Mechanismus bereitzustellen, in dem die
-Properties wiederum auf andere Properties im Store verwesen (über den
-Hash) und diese Properties wiederum Dateien über ein Fuse Dateisystem
-zur Verfügung stellen. Hier könnte die Performance ebenfalls ein Problem
-werden (vielleicht ein lösbares) aber die Daten in den Properties
-würden seltener wechseln. Was am besten ist hängt stark vom jeweiligen
-Anwendungsfall ab.
+It is possible to reference files using paths and potentially
+synchronize these references. In certain use cases, this can be
+very useful and convenient, allowing direct access to images,
+videos, etc. using a normal file editor while still maintaining
+direct access to the data in the database. However, this also
+carries risks, as changes to linked files would not affect the
+Property data record, leading to potential invisible conflicts
+during synchronization. An alternative would be to store the data
+as a blob within the Property data record and provide it through a
+https://en.wikipedia.org/wiki/Filesystem_in_Userspace[fuse file system].
+This would be safer but might lead to performance issues. Another
+possibility would be to establish a mechanism where Properties reference
+other Properties in the Store (via hash) and provide these Properties
+with files through a Fuse file system. Here, performance could also
+become an issue (possibly resolvable), but the data in the Properties
+would change less often. What is best will depend heavily on the
+specific application case.
 
 TODO die Idee der auf Properties verweisenden Properties könnte viele interessante und nützliche Anwendungen haben.
 
