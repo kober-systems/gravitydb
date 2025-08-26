@@ -208,4 +208,42 @@ needed.
 
 TODO Tutorial example of how to write a schema migration for data on disk
 
+=== Not all of your APIs will evolve a the same pace
+Imagine your db becomes so useful, other people want to use it on their
+own to support their workflows.
+
+When you change your schema now you could break their workflows because
+some of their queries would not work anymore (and you won't have control
+over their queries). But when you don't change your schema you are stuck
+yourself.
+
+To adress this version the schema of your queries (and version it
+separately from the schema on disk). When a user uses some old version
+of the schema transform it on the fly into the current version.
+
+TODO tutorial example how to write a query transform
+
+This technique can even be useful when you don't have public APIs
+because it allows you to have greater modularity in your code.
+
+== Playing with keys to improve performance
+By default all keys are
+https://en.wikipedia.org/wiki/Universally_unique_identifier[uuids].
+This is great because it makes syncing easier. But when you deal with
+absolutly sorted data (like e.g. timestamps) you can improve performance
+massively by modifying your keys.
+
+TODO tutorial showing how to apply this to time and space search
+
+=== Bringing this to an extreme: Enter the vector space
+
+[NOTE]
+====
+I don't know if vector databases really work that way. But I am pretty
+sure they have some conceptional similaries. +
+Definitly you could use this for similar use cases.
+====
+
+TODO Tutorial showing how to use semanitc scales in keys combined with
+embeddings, to search for similar images, text or files.
 
