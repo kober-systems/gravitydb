@@ -7,3 +7,6 @@ fn tests() {
     t.pass("tests/04-additional-schema-types.rs");
     t.pass("tests/05-customize-schema-types.rs");
 }
+
+include!("tutorial_designing_a_schema.rs");
+

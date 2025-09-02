@@ -326,8 +326,12 @@ name = "gravitydb_derive"
 version = "0.1.0"
 dependencies = [
  "gravitydb",
+ "pretty_assertions",
  "proc-macro2",
  "quote",
+ "serde",
+ "serde_json",
+ "sha2",
  "syn 2.0.106",
  "trybuild",
 ]

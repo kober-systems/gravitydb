@@ -1,4 +1,5 @@
 = Tutorial: Designing a Schema
+
 Imagine you want to make an app for shared makerspaces (shared workshops
 where everybody can build it's own ideas). How to shape the data for
 that application? Lets find out in this tutorial.
@@ -26,7 +27,7 @@ To define this in our schema we could write it like this
 ----
 #[derive(Schema)]
 #[derive(Debug, PartialEq)]
-pub enum BasicPimSchema {
+pub enum OpenWorkShopsSchema {
   Person{ name: String, surname: String},
   Workshop{ name: String },
   Tool(String),
@@ -52,14 +53,14 @@ He installs you app and adds his workshop to the database.
 
 [source, rust]
 ----
-let nick = db.add_node(Person{ name: "Nick", surname: "Nice" });
-let wshop = db.add_node(Workshop{ name: "Nick's Workspace" });
-db.create_connection(wshop, nick, BelongsTo);
+let nick = db.create_node(Person{ name: "Nick".to_string(), surname: "Nice".to_string() });
+let wshop = db.create_node(Workshop{ name: "Nick's Workspace".to_string() });
+db.create_edge(wshop, nick, BelongsTo);
 
-let t1 = db.add_node(Tool("Table Saw"));
-db.create_connection(t1, whop, BelongsTo);
-let t2 = db.add_node(Tool("Miter Saw"));
-db.create_connection(t2, whop, BelongsTo);
+let t1 = db.create_node(Tool("Table Saw".to_string()));
+db.create_edge(t1, wshop, &BelongsTo);
+let t2 = db.create_node(Tool("Miter Saw".to_string()));
+db.create_edge(t2, wshop, &BelongsTo);
 ----
 
 Then there is Allice. She would like to create a new DIY table but she
@@ -68,11 +69,11 @@ table saw and finds Nick's Workspace.
 
 [source, rust]
 ----
-let query = Tool("Table Saw").start()
+let result = db.query(Tool("Table Saw").start()
   .referencing_vertices()
   .outgoing()
   .intersect(BelongsTo.start().referencing_edges())
-  .outgoing()
+  .outgoing());
 ----
 
 == Something is missing: Evolving the Schema
