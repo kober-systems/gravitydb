@@ -332,9 +332,9 @@ where
     &self,
     q: ql::PropertyQuery<HashId>
   ) -> Result<NodeCtx, Error<E>> {
-    let mut result = HashMap::default();
+    let result = HashMap::default();
 
-    let properties = self.query_properties(q)?;
+    let _properties = self.query_properties(q)?;
     // TODO Wie bei ReferencedProperties properties aber Verweise auf Knoten herausfiltern
 
     Ok(result)
@@ -371,7 +371,7 @@ where
           }
         }
       }
-      ReferencedProperties(q) => {
+      ReferencedProperties(_q) => {
         // TODO Hier benötigen wir das Schema
       }
     };
