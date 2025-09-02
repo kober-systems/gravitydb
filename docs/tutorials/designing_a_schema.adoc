@@ -27,6 +27,7 @@ To define this in our schema we could write it like this
 ----
 #[derive(Schema)]
 #[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize)]
 pub enum OpenWorkShopsSchema {
   Person{ name: String, surname: String},
   Workshop{ name: String },
@@ -51,29 +52,38 @@ and skills to educate others.
 
 He installs you app and adds his workshop to the database.
 
+[[basic_schema_add_data]]
 [source, rust]
 ----
-let nick = db.create_node(Person{ name: "Nick".to_string(), surname: "Nice".to_string() });
-let wshop = db.create_node(Workshop{ name: "Nick's Workspace".to_string() });
-db.create_edge(wshop, nick, BelongsTo);
+let nick = db.create_node(Uuid::new(), &Person{ name: "Nick".to_string(), surname: "Nice".to_string() }).unwrap();
+let wshop = db.create_node(Uuid::new(), &Workshop{ name: "Nick's Workspace".to_string() }).unwrap();
+db.create_edge(wshop, nick, &BelongsTo).unwrap();
 
-let t1 = db.create_node(Tool("Table Saw".to_string()));
-db.create_edge(t1, wshop, &BelongsTo);
-let t2 = db.create_node(Tool("Miter Saw".to_string()));
-db.create_edge(t2, wshop, &BelongsTo);
+let t1 = db.create_node(Uuid::new(), &Tool("Table Saw".to_string())).unwrap();
+db.create_edge(t1, wshop, &BelongsTo).unwrap();
+let t2 = db.create_node(Uuid::new(), &Tool("Miter Saw".to_string())).unwrap();
+db.create_edge(t2, wshop, &BelongsTo).unwrap();
 ----
 
 Then there is Allice. She would like to create a new DIY table but she
 is missing the tools and the space. So she starts searching who has a
 table saw and finds Nick's Workspace.
 
+[[basic_schema_query]]
 [source, rust]
 ----
-let result = db.query(Tool("Table Saw").start()
+let result = db.query(Tool("Table Saw".to_string()).start()
   .referencing_vertices()
   .outgoing()
   .intersect(BelongsTo.start().referencing_edges())
-  .outgoing());
+  .outgoing()).unwrap();
+----
+
+[[basic_schema_result]]
+[source, rust]
+.Here is what she finds
+----
+assert_eq!(result, [Workshop { name: "Nick's Workspace".to_string() }])
 ----
 
 == Something is missing: Evolving the Schema
@@ -247,4 +257,58 @@ Definitly you could use this for similar use cases.
 
 TODO Tutorial showing how to use semanitc scales in keys combined with
 embeddings, to search for similar images, text or files.
+
+== Appendix
+This is not part of the tutorial. It's technical details of how this is
+tested.
+
+=== Generating Tests
+To check the contents of this tutorial, we are generating tests from the
+docs.
+
+[source, rust, save]
+.tests/tutorial_designing_a_schema.rs
+----
+use gravitydb::*;
+use gravitydb::kv_graph_store::Uuid;
+use gravitydb_derive::Schema;
+use pretty_assertions::assert_eq;
+use serde::{Serialize, Deserialize};
+
+#[test]
+fn t01_basic_schema() {
+  <<basic_schema>>
+
+  <<schema_utils>>
+
+  <<basic_schema_add_data>>
+
+  <<basic_schema_query>>
+  let result = db.extract_properties(&result).unwrap();
+  <<basic_schema_result>>
+}
+----
+
+There are some helpers that help make the usage of the schema nicer
+but don't really help to understand the process of designing a schema
+better. We add them as a snippet in every test.
+
+[[schema_utils]]
+[source, rust]
+----
+impl OpenWorkShopsSchema {
+  /// get a starting point for queries
+  pub fn start(&self) -> ql::PropertyQuery<String> {
+    use gravitydb::schema::SchemaElement;
+
+    let key = SchemaElement::<String, serde_json::Error>::get_key(self);
+    ql::PropertyQuery::from_id(key)
+  }
+}
+
+let kv = mem_kv_store::MemoryKvStore::default();
+let mut db = kv_graph_store::KvGraphStore::from_kv(kv);
+
+use OpenWorkShopsSchema::*;
+----
 

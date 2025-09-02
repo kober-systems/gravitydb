@@ -17,6 +17,9 @@ if [[ $should_generate_sources -eq 0 ]]; then
   cd crates/backend_filestore/
   lisi -o /dev/null ../../docs/backends_filestore.adoc
   cd ../..
+  cd crates/gravitydb_derive/
+  lisi -o /dev/null ../../docs/tutorials/designing_a_schema.adoc
+  cd ../..
 fi
 
 echo "==========================="
