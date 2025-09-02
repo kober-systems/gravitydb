@@ -81,13 +81,16 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let expanded = quote! {
       use gravitydb::schema::NestableProperty;
 
-      impl NestableProperty for #name {
+      impl gravitydb::schema::NestableProperty for #name {
         fn nested(&self) -> Vec<Self> {
           match self {
             #varaints_to_names
           }
         }
       }
+
+      use gravitydb::schema::JsonSchemaProperty;
+      impl JsonSchemaProperty for #name {}
     };
 
     TokenStream::from(expanded).into()

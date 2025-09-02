@@ -24,17 +24,13 @@ fn t01_basic_schema() {
     SchemaType(String),
   }
 
-  use gravitydb::schema::{JsonSchemaProperty, SchemaElement};
-  impl JsonSchemaProperty for OpenWorkShopsSchema {}
-
   impl OpenWorkShopsSchema {
-    pub fn id(&self) -> String {
-      SchemaElement::<String, serde_json::Error>::get_key(self)
-    }
-
     /// get a starting point for queries
     pub fn start(&self) -> ql::PropertyQuery<String> {
-      ql::PropertyQuery::from_id(self.id())
+      use gravitydb::schema::SchemaElement;
+
+      let key = SchemaElement::<String, serde_json::Error>::get_key(self);
+      ql::PropertyQuery::from_id(key)
     }
   }
 
