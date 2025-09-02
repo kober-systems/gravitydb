@@ -45,7 +45,28 @@ where
   _err_type: std::marker::PhantomData<E>,
 }
 
+/// Trait to mark the the automatic implementation should be used
+pub trait JsonSchemaProperty {}
 use sha2::Digest;
+
+impl<T: JsonSchemaProperty + serde::Serialize + for<'a> serde::Deserialize<'a>, Error: From<serde_json::Error>> SchemaElement<String, Error> for T {
+  fn get_key(&self) -> String {
+    let data = serde_json::to_vec(&self).unwrap();
+    format!("{:X}", sha2::Sha256::digest(&data))
+  }
+
+  fn serialize(&self) -> Result<Vec<u8>, Error> {
+    Ok(serde_json::to_vec(self)?)
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, Error>
+  where
+    Self: Sized,
+  {
+    Ok(serde_json::from_slice::<T>(data)?)
+  }
+}
+
 #[cfg(feature="lua")]
 use mlua::{FromLua, UserData};
 

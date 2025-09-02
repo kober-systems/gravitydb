@@ -468,7 +468,7 @@ where
       outgoing: BTreeSet::new(),
     };
     let key = node.get_key();
-    let node = SchemaElement::serialize(&node)?;
+    let node = node.serialize()?;
 
     let path = "nodes/".to_string() + &key;
 
@@ -487,7 +487,7 @@ where
     let path = "nodes/".to_string() + &id.to_key();
 
     let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
-    let node: NodeData = SchemaElement::deserialize(&data)?;
+    let node: NodeData = NodeData::deserialize(&data)?;
     Ok(node)
   }
 
@@ -507,7 +507,7 @@ where
       outgoing,
     };
     let key = id.to_key();
-    let node = SchemaElement::serialize(&node)?;
+    let node = node.serialize()?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     self.create_idx_backlink(&props_hash, &key, BacklinkType::Node)?;
@@ -551,7 +551,7 @@ where
     let hash = edge.get_key();
     let path = "edges/".to_string() + &hash;
 
-    let edge = SchemaElement::serialize(&edge)?;
+    let edge = edge.serialize()?;
     self.kv.store_record(&path.as_bytes(), &edge).map_err(|e| Error::KV(e))?;
 
     self.create_idx_backlink(&props_hash, &hash, BacklinkType::Edge)?;
@@ -570,7 +570,7 @@ where
       incoming,
       outgoing,
     };
-    let node = SchemaElement::serialize(&node)?;
+    let node = node.serialize()?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     let path = "nodes/".to_string() + &n2.to_key();
@@ -587,7 +587,7 @@ where
       incoming,
       outgoing,
     };
-    let node = SchemaElement::serialize(&node)?;
+    let node = node.serialize()?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     Ok(hash)
@@ -597,7 +597,7 @@ where
     let path = "edges/".to_string() + id;
 
     let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
-    let edge = SchemaElement::deserialize(&data)?;
+    let edge = EdgeData::deserialize(&data)?;
     Ok(edge)
   }
 
@@ -626,7 +626,7 @@ where
       incoming,
       outgoing,
     };
-    let node = SchemaElement::serialize(&node)?;
+    let node = node.serialize()?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     let path = "nodes/".to_string() + &n2.to_key();
@@ -643,7 +643,7 @@ where
       incoming,
       outgoing,
     };
-    let node = SchemaElement::serialize(&node)?;
+    let node = node.serialize()?;
     self.kv.store_record(&path.as_bytes(), &node).map_err(|e| Error::KV(e))?;
 
     let last_reference = self.delete_property_backlink(&props_hash, &id, BacklinkType::Edge)?;
@@ -757,7 +757,7 @@ pub struct NodeData {
   pub outgoing: BTreeSet<HashId>,
 }
 
-impl SchemaElement<String, SerialisationError> for NodeData
+impl NodeData
 {
   fn get_key(&self) -> String {
     self.id.to_key()
@@ -782,7 +782,7 @@ pub struct EdgeData {
   pub n2: VertexId,
 }
 
-impl SchemaElement<HashId, SerialisationError> for EdgeData
+impl EdgeData
 {
   fn get_key(&self) -> HashId {
     let data = serde_json::to_vec(self).unwrap();

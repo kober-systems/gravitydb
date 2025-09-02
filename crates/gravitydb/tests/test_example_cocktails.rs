@@ -745,6 +745,9 @@ pub enum CocktailSchema {
   SchemaType(String),
 }
 
+use gravitydb::schema::{JsonSchemaProperty, SchemaElement};
+impl JsonSchemaProperty for CocktailSchema {}
+
 impl CocktailSchema {
   pub fn id(&self) -> String {
     SchemaElement::<String, serde_json::Error>::get_key(self)
@@ -758,27 +761,6 @@ impl CocktailSchema {
 
 type Error = kv_graph_store::Error<mem_kv_store::Error>;
 type GStore = kv_graph_store::KvGraphStore::<CocktailSchema, mem_kv_store::MemoryKvStore, mem_kv_store::Error>;
-
-use gravitydb::schema::SchemaElement;
-use sha2::Digest;
-
-impl<Error: From<serde_json::Error>> SchemaElement<String, Error> for CocktailSchema {
-  fn get_key(&self) -> String {
-    let data = serde_json::to_vec(&self).unwrap();
-    format!("{:X}", sha2::Sha256::digest(&data))
-  }
-
-  fn serialize(&self) -> Result<Vec<u8>, Error> {
-    Ok(serde_json::to_vec(self)?)
-  }
-
-  fn deserialize(data: &[u8]) -> Result<Self, Error>
-  where
-    Self: Sized,
-  {
-    Ok(serde_json::from_slice::<CocktailSchema>(data)?)
-  }
-}
 
 impl NestableProperty for CocktailSchema {
   fn nested(&self) -> Vec<Self> {

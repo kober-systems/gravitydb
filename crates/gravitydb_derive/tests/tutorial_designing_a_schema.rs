@@ -24,6 +24,9 @@ fn t01_basic_schema() {
     SchemaType(String),
   }
 
+  use gravitydb::schema::{JsonSchemaProperty, SchemaElement};
+  impl JsonSchemaProperty for OpenWorkShopsSchema {}
+
   impl OpenWorkShopsSchema {
     pub fn id(&self) -> String {
       SchemaElement::<String, serde_json::Error>::get_key(self)
@@ -32,27 +35,6 @@ fn t01_basic_schema() {
     /// get a starting point for queries
     pub fn start(&self) -> ql::PropertyQuery<String> {
       ql::PropertyQuery::from_id(self.id())
-    }
-  }
-
-  use gravitydb::schema::SchemaElement;
-  use sha2::Digest;
-
-  impl<Error: From<serde_json::Error>> SchemaElement<String, Error> for OpenWorkShopsSchema {
-    fn get_key(&self) -> String {
-      let data = serde_json::to_vec(&self).unwrap();
-      format!("{:X}", sha2::Sha256::digest(&data))
-    }
-
-    fn serialize(&self) -> Result<Vec<u8>, Error> {
-      Ok(serde_json::to_vec(self)?)
-    }
-
-    fn deserialize(data: &[u8]) -> Result<Self, Error>
-    where
-      Self: Sized,
-    {
-      Ok(serde_json::from_slice::<OpenWorkShopsSchema>(data)?)
     }
   }
 
