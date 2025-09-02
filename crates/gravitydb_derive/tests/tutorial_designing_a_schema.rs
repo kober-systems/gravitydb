@@ -35,7 +35,7 @@ fn t01_basic_schema() {
     }
   }
 
-  use gravitydb::schema::{SchemaElement, Property};
+  use gravitydb::schema::SchemaElement;
   use sha2::Digest;
 
   impl<Error: From<serde_json::Error>> SchemaElement<String, Error> for OpenWorkShopsSchema {
@@ -55,7 +55,6 @@ fn t01_basic_schema() {
       Ok(serde_json::from_slice::<OpenWorkShopsSchema>(data)?)
     }
   }
-  impl<Error: From<serde_json::Error>> Property<String, Error> for OpenWorkShopsSchema {}
 
   let kv = mem_kv_store::MemoryKvStore::default();
   let mut db = kv_graph_store::KvGraphStore::from_kv(kv);

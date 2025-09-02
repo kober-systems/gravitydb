@@ -759,7 +759,7 @@ impl CocktailSchema {
 type Error = kv_graph_store::Error<mem_kv_store::Error>;
 type GStore = kv_graph_store::KvGraphStore::<CocktailSchema, mem_kv_store::MemoryKvStore, mem_kv_store::Error>;
 
-use gravitydb::schema::{SchemaElement, Property};
+use gravitydb::schema::SchemaElement;
 use sha2::Digest;
 
 impl<Error: From<serde_json::Error>> SchemaElement<String, Error> for CocktailSchema {
@@ -795,5 +795,3 @@ impl NestableProperty for CocktailSchema {
     }
   }
 }
-
-impl<Error: From<serde_json::Error>> Property<String, Error> for CocktailSchema {}
