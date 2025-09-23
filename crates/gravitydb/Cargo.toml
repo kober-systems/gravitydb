@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A graph database"
 authors = ["Benjamin Kober <benko@kober-systems.com>"]
 homepage = "https://github.com/kober-systems/gravitydb"
-edition = "2018"
+edition = "2021"
 license = "MIT"
 keywords = [
     "database",
