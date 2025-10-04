@@ -17,7 +17,7 @@ categories = ["database-implementations"]
 gravitydb_derive = { optional = true, path = "../gravitydb_derive" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-typetag = "0.1"
+typetag = "0.2"
 
 sha2 = "0.10.0"
 uuid = { version = "1.10", features = ["serde", "v4"] }
