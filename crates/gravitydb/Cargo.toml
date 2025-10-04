@@ -21,7 +21,7 @@ typetag = "0.2"
 
 sha2 = "0.10.0"
 uuid = { version = "1.10", features = ["serde", "v4"] }
-thiserror = "1.0"
+thiserror = "2.0"
 mlua = { version = "0.9", features = ["luau", "serialize", "macros"], optional = true }
 rustyline = { version = "17", features = ["derive"], optional = true }
 
