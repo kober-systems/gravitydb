@@ -3,7 +3,7 @@ name = "gravitydb-filestore"
 version = "0.1.0"
 description = "A filestore backend for the gravity database"
 authors = ["Benjamin Kober <benko@kober-systems.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 
 [dependencies]
