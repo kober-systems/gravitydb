@@ -18,7 +18,7 @@ gravitydb = { path = "../gravitydb" }
 pretty_assertions = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sha2 = "0.9.5"
+sha2 = "0.10.0"
 
 [dependencies]
 proc-macro2 = "1"
