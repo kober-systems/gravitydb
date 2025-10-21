@@ -8,7 +8,7 @@ use crate::ql::{VertexQuery, EdgeQuery, PropertyQuery, QueryResult};
 use crate::schema::Property;
 
 impl UserData for Uuid {
-  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
+  fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
     methods.add_function("key", |_, id: Self| {
       Ok(id.to_key())
     });
@@ -17,11 +17,11 @@ impl UserData for Uuid {
 
 impl<P, K, E> UserData for KvGraphStore<P, K, E>
 where
-  for<'lua> P: Property<HashId, SerialisationError> + UserData + std::clone::Clone + 'lua + FromLua,
+  P: Property<HashId, SerialisationError> + UserData + std::clone::Clone + FromLua,
   K: KVStore<E>,
   E: Send + Sync + std::fmt::Debug,
 {
-  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
+  fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
     use mlua::prelude::LuaError;
 
     methods.add_method_mut("create_node", |_, db, props: P| {
@@ -122,7 +122,7 @@ where
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
+  fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
     //methods.add_method("union", |_, this, q2: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>| {
     //  Ok(this.clone().union(q2))
     //});
@@ -198,7 +198,7 @@ where
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
+  fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
     methods.add_function("outgoing", |lua, q: (Self, Option<mlua::AnyUserData>)| {
       let (q, filter) = q;
       let q = q.outgoing();
@@ -285,7 +285,7 @@ where
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
+  fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
     methods.add_function("referencing_properties", |_, q: Self| {
       let q = q.q;
       Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from(q.referencing_properties()))
