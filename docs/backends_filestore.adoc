@@ -400,7 +400,7 @@ möchte.
 [[create_node_args]]
 [source, rust]
 ----
-#[structopt(long)]
+#[clap(long)]
 id: Option<uuid::Uuid>,
 ----
 
@@ -412,7 +412,7 @@ Flag [[create_node_params]]`create_id`.
 [[create_node_args]]
 [source, rust]
 ----
-#[structopt(long)]
+#[clap(long)]
 create_id: bool,
 ----
 
@@ -425,7 +425,7 @@ Wenn man einen bestehenden Knoten aktualisieren will muss man das flag
 [[create_node_args]]
 [source, rust]
 ----
-#[structopt(short, long)]
+#[clap(short, long)]
 update: bool,
 ----
 
@@ -446,7 +446,7 @@ Verfügung.
 [[create_node_args]]
 [source, rust]
 ----
-#[structopt(short, long)]
+#[clap(short, long)]
 get_or_create: bool,
 ----
 
@@ -561,7 +561,7 @@ Dazu übergeben wir die uuid des Knotens.
 [[delete_node_args]]
 [source, rust]
 ----
-#[structopt(long)]
+#[clap(long)]
 id: uuid::Uuid,
 ----
 
@@ -592,9 +592,9 @@ Alle Verbindungen sind immer gerichtet. Wir übergeben die id der Knoten `--in` 
 [[create_edge_args]]
 [source, rust]
 ----
-#[structopt(long="in")]
+#[clap(long="in")]
 n1: uuid::Uuid,
-#[structopt(long="out")]
+#[clap(long="out")]
 n2: uuid::Uuid,
 ----
 
@@ -888,33 +888,33 @@ use gravitydb::kv_graph_store::{KvGraphStore, SerialisationError, Uuid};
 
 ==== Allgemeingültige Kommandozeilen Parameter
 Einige Kommandozeilenparameter sind für alle tools nützlich. Wir
-verwenden den https://docs.rs/structopt/[structopt] crate als basis um
+verwenden den https://docs.rs/clap/[clap] crate als basis um
 die Eingabe zu parsen.
 
 [[util_imports]]
 [source, rust]
 ----
 use std::path::{Path, PathBuf};
-use structopt::StructOpt;
+use clap::Parser;
 ----
 
 [[cli_parse_cmd_options]]
 [source, rust]
 ----
-#[derive(StructOpt)]
+#[derive(Parser)]
 pub struct Opt {
   <<basic_tool_args>>
-  #[structopt(subcommand)]
+  #[clap(subcommand)]
   cmd: CmdOpts,
 }
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 pub enum CmdOpts {
   <<cmd_options>>
 }
 
-let opt = Opt::from_args();
-simple_logger::init_with_level(opt.verbosity)?;
+let opt = Opt::parse();
+simple_logger::init_with_level(log_level(opt.verbosity))?;
 ----
 
 Es muss immer angegeben werden, wo sich die Datenbank überhaupt
@@ -924,8 +924,8 @@ im Unterordner `db` des aktuellen Ordners befindet.
 [[basic_tool_args]]
 [source, rust]
 ----
-#[structopt(parse(from_os_str), long)]
-#[structopt(default_value = "./db")]
+#[clap(long)]
+#[clap(default_value = "./db")]
 db_path: PathBuf,
 ----
 
@@ -936,7 +936,7 @@ eingelesen werden.
 [[basic_tool_args]]
 [source, rust]
 ----
-#[structopt(parse(from_os_str), long, short)]
+#[clap(long, short)]
 input: Option<PathBuf>,
 ----
 
@@ -946,7 +946,7 @@ Genauso ist es mit der Ausgabedatei. Wird sie nicht angegeben, wird auf
 [[basic_tool_args]]
 [source, rust]
 ----
-#[structopt(parse(from_os_str), long, short)]
+#[clap(long, short)]
 output: Option<PathBuf>,
 ----
 
@@ -985,14 +985,14 @@ Wir wollen logging Informationen über die Kommandozeile anfordern. Je
 [[basic_tool_args]]
 [source, rust]
 ----
-#[structopt(parse(from_occurrences = log_level), short)]
-verbosity: log::Level,
+#[clap(action = clap::ArgAction::Count, short)]
+verbosity: u8,
 ----
 
 [[tool_helper_functions]]
 [source, rust]
 ----
-pub fn log_level(level: u64) -> log::Level {
+pub fn log_level(level: u8) -> log::Level {
   use log::Level::*;
   match level {
     0 => Warn,

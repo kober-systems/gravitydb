@@ -5,7 +5,7 @@ use std::io::{self, Write};
 use gravitydb::GraphStore;
 use gravitydb::kv_graph_store::{KvGraphStore, SerialisationError, Uuid};
 use std::path::{Path, PathBuf};
-use structopt::StructOpt;
+use clap::Parser;
 use std::io::Read;
 use anyhow::Result;
 
@@ -23,7 +23,7 @@ pub fn read_input(input: Option<PathBuf>) -> Result<Vec<u8>> {
   Ok(data)
 }
 
-pub fn log_level(level: u64) -> log::Level {
+pub fn log_level(level: u8) -> log::Level {
   use log::Level::*;
   match level {
     0 => Warn,
@@ -40,44 +40,44 @@ pub fn db_cmds<T>(init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
 where
   for<'lua> T: Prop + 'lua + mlua::FromLua,
 {
-  #[derive(StructOpt)]
+  #[derive(Parser)]
   pub struct Opt {
-    #[structopt(parse(from_os_str), long)]
-    #[structopt(default_value = "./db")]
+    #[clap(long)]
+    #[clap(default_value = "./db")]
     db_path: PathBuf,
-    #[structopt(parse(from_os_str), long, short)]
+    #[clap(long, short)]
     input: Option<PathBuf>,
-    #[structopt(parse(from_os_str), long, short)]
+    #[clap(long, short)]
     output: Option<PathBuf>,
-    #[structopt(parse(from_occurrences = log_level), short)]
-    verbosity: log::Level,
-    #[structopt(subcommand)]
+    #[clap(action = clap::ArgAction::Count, short)]
+    verbosity: u8,
+    #[clap(subcommand)]
     cmd: CmdOpts,
   }
 
-  #[derive(StructOpt)]
+  #[derive(Parser)]
   pub enum CmdOpts {
     /// create a new node
     CreateNode {
-      #[structopt(long)]
+      #[clap(long)]
       id: Option<uuid::Uuid>,
-      #[structopt(long)]
+      #[clap(long)]
       create_id: bool,
-      #[structopt(short, long)]
+      #[clap(short, long)]
       update: bool,
-      #[structopt(short, long)]
+      #[clap(short, long)]
       get_or_create: bool,
     },
     /// delete a node
     DeleteNode {
-      #[structopt(long)]
+      #[clap(long)]
       id: uuid::Uuid,
     },
     /// create a new edge
     CreateEdge {
-      #[structopt(long="in")]
+      #[clap(long="in")]
       n1: uuid::Uuid,
-      #[structopt(long="out")]
+      #[clap(long="out")]
       n2: uuid::Uuid,
     },
     /// calculate property id from content
@@ -96,8 +96,8 @@ where
     Init,
   }
 
-  let opt = Opt::from_args();
-  simple_logger::init_with_level(opt.verbosity)?;
+  let opt = Opt::parse();
+  simple_logger::init_with_level(log_level(opt.verbosity))?;
 
   use CmdOpts::*;
   match opt.cmd {
