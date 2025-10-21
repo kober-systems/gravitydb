@@ -338,7 +338,7 @@ Wir stellen dabei ein Programm-Template bereit, welches alle wichtigen db Funkti
 ----
 pub fn db_cmds<T>(<<customize_params|join=", ">>) -> Result<()>
 where
-  for<'lua> T: Prop + 'lua + mlua::FromLua<'lua>,
+  for<'lua> T: Prop + 'lua + mlua::FromLua,
 {
   <<cli_parse_cmd_options>>
 

@@ -8,7 +8,7 @@ use crate::ql::{VertexQuery, EdgeQuery, PropertyQuery, QueryResult};
 use crate::schema::Property;
 
 impl UserData for Uuid {
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
     methods.add_function("key", |_, id: Self| {
       Ok(id.to_key())
     });
@@ -17,11 +17,11 @@ impl UserData for Uuid {
 
 impl<P, K, E> UserData for KvGraphStore<P, K, E>
 where
-  for<'lua> P: Property<HashId, SerialisationError> + UserData + std::clone::Clone + 'lua + FromLua<'lua>,
+  for<'lua> P: Property<HashId, SerialisationError> + UserData + std::clone::Clone + 'lua + FromLua,
   K: KVStore<E>,
   E: Send + Sync + std::fmt::Debug,
 {
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
     use mlua::prelude::LuaError;
 
     methods.add_method_mut("create_node", |_, db, props: P| {
@@ -78,9 +78,9 @@ where
 
 pub fn init_lua<VertexId, EdgeId, PropertyId, VFilter, EFilter>(lua: &Lua) -> mlua::Result<()>
 where
-  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua,
+  for<'lua> PropertyId: Clone + 'lua + FromLua,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
@@ -116,13 +116,13 @@ where
 
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> UserData for VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
-  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua,
+  for<'lua> PropertyId: Clone + 'lua + FromLua,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
     //methods.add_method("union", |_, this, q2: VertexQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>| {
     //  Ok(this.clone().union(q2))
     //});
@@ -192,13 +192,13 @@ where
 
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> UserData for EdgeQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
-  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua,
+  for<'lua> PropertyId: Clone + 'lua + FromLua,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
     methods.add_function("outgoing", |lua, q: (Self, Option<mlua::AnyUserData>)| {
       let (q, filter) = q;
       let q = q.outgoing();
@@ -279,13 +279,13 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> From<PropertyQuery<Property
 
 impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> UserData for LuaPropertyQuery<VertexId, EdgeId, PropertyId, VFilter, EFilter>
 where
-  for<'lua> VertexId:   Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Clone + 'lua + FromLua<'lua>,
+  for<'lua> VertexId:   Clone + 'lua + FromLua,
+  for<'lua> EdgeId:     Clone + 'lua + FromLua,
+  for<'lua> PropertyId: Clone + 'lua + FromLua,
   VFilter:    Clone + 'static,
   EFilter:    Clone + 'static,
 {
-  fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+  fn add_methods<'lua, M: UserDataMethods<Self>>(methods: &mut M) {
     methods.add_function("referencing_properties", |_, q: Self| {
       let q = q.q;
       Ok(LuaPropertyQuery::<VertexId, EdgeId, PropertyId, VFilter, EFilter>::from(q.referencing_properties()))
@@ -305,9 +305,9 @@ where
 
 impl<VertexId, EdgeId, PropertyId> UserData for QueryResult<VertexId, EdgeId, PropertyId>
 where
-  for<'lua> VertexId:   Hash + Eq + Clone + 'lua + FromLua<'lua>,
-  for<'lua> EdgeId:     Hash + Eq + Clone + 'lua + FromLua<'lua>,
-  for<'lua> PropertyId: Hash + Eq + Clone + 'lua + FromLua<'lua>,
+  for<'lua> VertexId:   Hash + Eq + Clone + 'lua + FromLua,
+  for<'lua> EdgeId:     Hash + Eq + Clone + 'lua + FromLua,
+  for<'lua> PropertyId: Hash + Eq + Clone + 'lua + FromLua,
 {}
 
 use rustyline::{completion::Completer, Helper, Hinter, Validator, Highlighter};
@@ -367,7 +367,7 @@ impl Completer for LuaCompleter<'_> {
 
 pub fn lua_repl<T, Kv, E, OutE>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<(), OutE>
 where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
+  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua + UserData + Clone,
   Kv: KVStore<E> + 'static,
   E: Send + Sync + std::fmt::Debug + 'static,
   OutE: From<rustyline::error::ReadlineError> + From<mlua::Error>,
@@ -423,7 +423,7 @@ where
 
 pub fn lua_run<T, Kv, E, S, S2>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>, code: S, code_name: S2) -> Result<(), mlua::Error>
 where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
+  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua + UserData + Clone,
   Kv: KVStore<E> + 'static,
   E: Send + Sync + std::fmt::Debug + 'static,
   S: AsRef<str>,
@@ -436,7 +436,7 @@ where
 
 fn lua_init<T, Kv, E>(db: KvGraphStore<T, Kv, E>, init_fn: fn(&Lua) -> mlua::Result<()>) -> Result<Lua, mlua::Error>
 where
-  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua<'lua> + UserData + Clone,
+  for<'lua> T: Property<HashId, SerialisationError> + 'lua + FromLua + UserData + Clone,
   Kv: KVStore<E> + 'static,
   E: Send + Sync + std::fmt::Debug + 'static,
 {

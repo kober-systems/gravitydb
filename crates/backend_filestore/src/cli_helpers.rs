@@ -38,7 +38,7 @@ impl <T: Property<HashId, SerialisationError> + 'static + std::clone::Clone + ml
 
 pub fn db_cmds<T>(init_fn: fn(&mlua::Lua) -> mlua::Result<()>) -> Result<()>
 where
-  for<'lua> T: Prop + 'lua + mlua::FromLua<'lua>,
+  for<'lua> T: Prop + 'lua + mlua::FromLua,
 {
   #[derive(StructOpt)]
   pub struct Opt {
