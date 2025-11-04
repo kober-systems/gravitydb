@@ -24,16 +24,6 @@ fn t01_basic_schema() {
     SchemaType(String),
   }
 
-  impl OpenWorkShopsSchema {
-    /// get a starting point for queries
-    pub fn start(&self) -> ql::PropertyQuery<String> {
-      use gravitydb::schema::SchemaElement;
-
-      let key = SchemaElement::<String, serde_json::Error>::get_key(self);
-      ql::PropertyQuery::from_id(key)
-    }
-  }
-
   let kv = mem_kv_store::MemoryKvStore::default();
   let mut db = kv_graph_store::KvGraphStore::from_kv(kv);
 

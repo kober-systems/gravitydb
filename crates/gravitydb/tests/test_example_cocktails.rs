@@ -745,19 +745,8 @@ pub enum CocktailSchema {
   SchemaType(String),
 }
 
-use gravitydb::schema::{JsonSchemaProperty, SchemaElement};
+use gravitydb::schema::{JsonSchemaProperty, KeyAdressableElement};
 impl JsonSchemaProperty for CocktailSchema {}
-
-impl CocktailSchema {
-  pub fn id(&self) -> String {
-    SchemaElement::<String, serde_json::Error>::get_key(self)
-  }
-
-  /// get a starting point for queries
-  pub fn start(&self) -> ql::PropertyQuery<String> {
-    ql::PropertyQuery::from_id(self.id())
-  }
-}
 
 type Error = kv_graph_store::Error<mem_kv_store::Error>;
 type GStore = kv_graph_store::KvGraphStore::<CocktailSchema, mem_kv_store::MemoryKvStore, mem_kv_store::Error>;

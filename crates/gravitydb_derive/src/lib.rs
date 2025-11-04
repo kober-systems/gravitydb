@@ -79,7 +79,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 
     let expanded = quote! {
-      use gravitydb::schema::NestableProperty;
+      use gravitydb::schema::{KeyAdressableElement, NestableProperty};
 
       impl gravitydb::schema::NestableProperty for #name {
         fn nested(&self) -> Vec<Self> {
