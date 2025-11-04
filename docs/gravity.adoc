@@ -323,17 +323,14 @@ pub trait GraphBuilder<N, P, E> {
 ----
 
 TODO What about a Graph Store with more constrained Types?
-TODO Refactor filestore into a trait that works generic on all kinds of kv-Stores
 
 [[traits]]
 [source, rust]
 ----
-pub enum BacklinkType {
-  Node,
-  Edge,
-  Property,
-}
-
+/// A Key-Value Store Backend Interface.
+///
+/// Any Type that implements this interface can be used to run a graph
+/// database.
 pub trait KVStore<E> {
   /// creates a new bucket
   fn create_bucket(&mut self, key: &[u8]) -> Result<(), E>;
@@ -349,6 +346,7 @@ pub trait KVStore<E> {
   fn exists(&self, key: &[u8]) -> Result<bool, E>;
 }
 
+/// The Interface for a Graph DB
 pub trait GraphStore<NodeK, Node, EdgeKey, Edge, PropKey, T, E> {
   // CRUD functions
   fn create_node(&mut self, id: NodeK, properties: &T) -> Result<NodeK, E>;

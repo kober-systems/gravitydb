@@ -4,6 +4,10 @@ use thiserror::Error;
 
 type HashId = String;
 
+/// A Backend for the graph database running in memory only.
+///
+/// Use this for testing purposes or if your data does not need to be
+/// persisted permanently.
 #[derive(Debug, Default)]
 pub struct MemoryKvStore {
   data: BTreeMap<HashId, Vec<u8>>,

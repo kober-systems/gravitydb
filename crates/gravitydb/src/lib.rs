@@ -71,12 +71,10 @@ pub trait GraphBuilder<N, P, E> {
   fn remove_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
 }
 
-pub enum BacklinkType {
-  Node,
-  Edge,
-  Property,
-}
-
+/// A Key-Value Store Backend Interface.
+///
+/// Any Type that implements this interface can be used to run a graph
+/// database.
 pub trait KVStore<E> {
   /// creates a new bucket
   fn create_bucket(&mut self, key: &[u8]) -> Result<(), E>;
@@ -92,6 +90,7 @@ pub trait KVStore<E> {
   fn exists(&self, key: &[u8]) -> Result<bool, E>;
 }
 
+/// The Interface for a Graph DB
 pub trait GraphStore<NodeK, Node, EdgeKey, Edge, PropKey, T, E> {
   // CRUD functions
   fn create_node(&mut self, id: NodeK, properties: &T) -> Result<NodeK, E>;
