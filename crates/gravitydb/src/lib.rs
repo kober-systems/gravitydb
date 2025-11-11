@@ -4,6 +4,8 @@ pub mod kv_graph_store;
 pub mod mem_kv_store;
 #[cfg(feature="lua")]
 pub mod lua;
+#[cfg(feature="derive")]
+pub use gravitydb_derive::Schema;
 
 trait GraphFilter<GIN, GOUT>
 {
