@@ -1,6 +1,6 @@
 [package]
 name = "gravitydb"
-version = "0.2.0"
+version = "0.2.1"
 description = "A graph database"
 authors = ["Benjamin Kober <benko@kober-systems.com>"]
 homepage = "https://github.com/kober-systems/gravitydb"
@@ -28,6 +28,7 @@ rustyline = { version = "17", features = ["derive"], optional = true }
 [features]
 lua = ["mlua", "rustyline" ]
 js = [ "uuid/js"]
+derive = ["gravitydb_derive" ]
 
 [dev-dependencies]
 pretty_assertions = "1"
