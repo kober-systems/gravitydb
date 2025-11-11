@@ -1,5 +1,7 @@
 [workspace]
+resolver = "2"
 members = [
   "crates/backend_filestore",
   "crates/gravitydb",
+  "crates/gravitydb_derive",
 ]

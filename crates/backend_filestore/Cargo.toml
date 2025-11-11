@@ -1,13 +1,13 @@
 [package]
 name = "gravitydb-filestore"
-version = "0.1.0"
+version = "0.2.0"
 description = "A filestore backend for the gravity database"
 authors = ["Benjamin Kober <benko@kober-systems.com>"]
 edition = "2021"
 license = "MIT"
 
 [dependencies]
-gravitydb = { version = "0.1.0", path = "../gravitydb", features = ["lua"] }
+gravitydb = { version = "0.2.0", path = "../gravitydb", features = ["lua"] }
 thiserror = "2.0"
 sha2 = "0.10.0"
 uuid = { version = "1.10", features = ["serde", "v4"] }

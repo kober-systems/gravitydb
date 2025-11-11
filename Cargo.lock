@@ -335,7 +335,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gravitydb"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "gravitydb_derive",
  "mlua",
@@ -351,7 +351,7 @@ dependencies = [
 
 [[package]]
 name = "gravitydb-filestore"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -368,7 +368,7 @@ dependencies = [
 
 [[package]]
 name = "gravitydb_derive"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "gravitydb",
  "pretty_assertions",
