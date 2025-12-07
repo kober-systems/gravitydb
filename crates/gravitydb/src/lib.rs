@@ -18,7 +18,9 @@ pub trait Graph<'a, N: 'a, E> {
   type EdgeIterator: Iterator<Item=(&'a N, &'a N)>;
 
   /// Returns true if there are no nodes, or false otherwise.
-  fn is_empty(&self) -> bool;
+  fn is_empty(&self) -> bool {
+    self.order() == 0
+  }
 
   /// Returns the number of nodes in this graph.
   fn order(&self) -> usize;
