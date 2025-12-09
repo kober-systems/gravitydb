@@ -374,7 +374,7 @@ where
   PropertyId: Hash + Eq,
 {
   pub fn new() -> Self {
-    QueryResult {
+    Self {
       vertices: HashSet::default(),
       edges: HashSet::default(),
       paths: Vec::new(),

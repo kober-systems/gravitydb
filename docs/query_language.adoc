@@ -762,6 +762,7 @@ use serde::{Serialize, Deserialize};
 <<structs|join="\n\n">>
 ----
 
+=== Query Results
 Für Module, die die Verwendung dieser Sprache implementieren (z.B.
 Graphstores) ist es sehr nützlich einen Datentyp zu haben, welcher die
 Abfrageergebnisse zusammenfasst.
@@ -792,7 +793,7 @@ where
   PropertyId: Hash + Eq,
 {
   pub fn new() -> Self {
-    QueryResult {
+    Self {
       vertices: HashSet::default(),
       edges: HashSet::default(),
       paths: Vec::new(),
