@@ -173,9 +173,9 @@ serialization. This allows us to easily switch the data format for our
 data types. Of course, you can use any file and format with properties
 (TODO link).
 
-Initially, we use JSON as the serialization format [footnote:[Only for
+Initially, we use JSON as the serialization format footnote:[Only for
 our internal data structures within the database. Each schema can choose
-its own serialization freely]]. To this end, we use `serde_json`.
+its own serialization freely]. To this end, we use `serde_json`.
 
 We use the Schema Traits (TODO link) from gravity to define the data
 types. This allows us to validate (TODO link) and optimize (TODO link)
