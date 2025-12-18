@@ -398,6 +398,7 @@ where
     }
   }
 
+  /// Get all the keys of a graph element type depending on a filter
   fn filter_by_property(&self, prefix: &str, filter: PropertyFilter<HashId>) -> Result<impl Iterator<Item=HashId>, Error<E>> {
     use PropertyFilter::*;
 
