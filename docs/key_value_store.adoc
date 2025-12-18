@@ -203,13 +203,6 @@ A node Dataset has the following schema:
 }
 ----
 
-[[imports]]
-[source, rust]
-----
-use serde::{Serialize, Deserialize};
-use std::collections::{BTreeSet, HashMap, HashSet};
-----
-
 [[schema_structs]]
 [source, rust]
 ----
@@ -226,7 +219,22 @@ pub struct NodeData {
   /// this node.
   pub outgoing: BTreeSet<HashId>,
 }
+----
 
+[%collapsible]
+.Details on serialisation
+====
+
+[[imports]]
+[source, rust]
+----
+use serde::{Serialize, Deserialize};
+use std::collections::{BTreeSet, HashMap, HashSet};
+----
+
+[[schema_structs]]
+[source, rust]
+----
 impl NodeData
 {
   fn get_key(&self) -> String {
@@ -245,6 +253,8 @@ impl NodeData
   }
 }
 ----
+
+====
 
 The `uuid` is already the key and therefore contains it in the
 filename. However, it could be interesting to perform checks and react
@@ -281,7 +291,15 @@ pub struct EdgeData {
   pub n1: VertexId,
   pub n2: VertexId,
 }
+----
 
+[%collapsible]
+.Details on serialisation
+====
+
+[[schema_structs]]
+[source, rust]
+----
 impl EdgeData
 {
   fn get_key(&self) -> HashId {
@@ -301,6 +319,8 @@ impl EdgeData
   }
 }
 ----
+
+====
 
 `props` again refers to an entry in the corresponding store.
 
