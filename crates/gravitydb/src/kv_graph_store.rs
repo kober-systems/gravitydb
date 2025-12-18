@@ -3,6 +3,7 @@ use sha2::Digest;
 use crate::schema::SchemaElement;
 use serde::{Serialize, Deserialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
+use crate::{PropertyGraphReader, PropertyFilter};
 use crate::GraphStore;
 use crate::GraphBuilder;
 use crate::schema::Property;
@@ -143,15 +144,9 @@ where
 
     let result = match q {
       All => {
-        self.kv.list_records("nodes/".as_bytes())
-          .map_err(|e| Error::KV(e))?
-          .into_iter()
-          .map(|entry| {
-            let id = String::from_utf8(entry)?;
-            let id = Uuid(uuid::Uuid::parse_str(&id)?);
-            Ok((id, ql::VertexQueryContext::new(id)))
-        })
-        .collect::<Result<HashMap<_,_>, Error<E>>>()?
+        self.nodes(PropertyFilter::All)?
+          .map(|id| Ok((id, ql::VertexQueryContext::new(id))))
+          .collect::<Result<HashMap<_,_>, Error<E>>>()?
       }
       Specific(ids) => {
         ids.into_iter()
@@ -162,16 +157,8 @@ where
         let mut result = HashMap::default();
 
         for prop_id in self.query_properties(q)? {
-          let index_path = "indexes/".to_string() + &prop_id + "/";
-          for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
-            let reference = String::from_utf8(entry)?;
-            let (prefix, reference) = reference
-              .split_once("_")
-              .ok_or(Error::MalformedDB(format!("could not split {} (prefix : {})", reference, index_path)))?;
-            if prefix == "nodes" {
-              let id = Uuid(uuid::Uuid::parse_str(reference)?);
-              result.insert(id, ql::VertexQueryContext::new(id));
-            }
+          for id in self.nodes(PropertyFilter::Only(prop_id))? {
+            result.insert(id, ql::VertexQueryContext::new(id));
           }
         }
 
@@ -232,15 +219,12 @@ where
 
     let result = match q {
       All => {
-        self.kv.list_records("edges/".as_bytes())
-          .map_err(|e| Error::KV(e))?
-          .into_iter()
-          .map(|entry| {
-            let id = String::from_utf8(entry)?;
+        self.edges(PropertyFilter::All)?
+          .map(|id| {
             let key = id.clone();
             Ok((id, ql::EdgeQueryContext::new(key)))
-        })
-        .collect::<Result<HashMap<_,_>, Error<E>>>()?
+          })
+          .collect::<Result<HashMap<_,_>, Error<E>>>()?
       }
       Specific(ids) => {
         ids.into_iter()
@@ -251,17 +235,9 @@ where
         let mut result = HashMap::default();
 
         for prop_id in self.query_properties(q)? {
-          let index_path = "indexes/".to_string() + &prop_id + "/";
-          for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
-            let reference = String::from_utf8(entry)?;
-            let (prefix, reference) = reference
-              .split_once("_")
-              .ok_or(Error::MalformedDB(format!("could not split {} (prefix : {})", reference, index_path)))?;
-            if prefix == "edges" {
-              let id = reference.to_string();
-              let key = id.clone();
-              result.insert(id, ql::EdgeQueryContext::new(key));
-            }
+          for id in self.edges(PropertyFilter::Only(prop_id))? {
+            let key = id.clone();
+            result.insert(id, ql::EdgeQueryContext::new(key));
           }
         }
 
@@ -359,15 +335,8 @@ where
       }
       ReferencingProperties(q) => {
         for prop_id in self.query_properties(*q)? {
-          let index_path = "indexes/".to_string() + &prop_id + "/";
-          for entry in self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))? {
-            let reference = String::from_utf8(entry)?;
-            let (prefix, reference) = reference
-              .split_once("_")
-              .ok_or(Error::MalformedDB(format!("could not split {} (prefix : {})", reference, index_path)))?;
-            if prefix == "props" {
-              result.insert(reference.to_string());
-            }
+          for id in self.properties(PropertyFilter::Only(prop_id))? {
+            result.insert(id);
           }
         }
       }
@@ -390,6 +359,7 @@ where
   pub fn into_kv(self) -> K {
     self.kv
   }
+
   /// props_hash: the hash_id of the property that holds the index
   /// id:         the id of the node, edge or property that references
   ///             the property and needs a backling
@@ -427,6 +397,48 @@ where
       Ok(false)
     }
   }
+
+  fn filter_by_property(&self, prefix: &str, filter: PropertyFilter<HashId>) -> Result<impl Iterator<Item=HashId>, Error<E>> {
+    use PropertyFilter::*;
+
+    let iter = match &filter {
+      Only(prop_id) => {
+        self.kv.list_records(format!("indexes/{prop_id}/{prefix}_").as_bytes())
+      },
+      FromTo(_from, _to) => {
+        self.kv.list_records("indexes/".as_bytes())
+      },
+      All => {
+        self.kv.list_records(format!("{prefix}/").as_bytes())
+      },
+    };
+    let iter = iter
+      .map_err(|e| Error::KV(e))?
+      .into_iter()
+      .map(|entry| Ok(String::from_utf8(entry)?));
+
+    let iter = match filter {
+      FromTo(from, to) => {
+        iter
+          .filter_map(|entry: Result<_, Error<E>>| {
+            Some(match entry.ok()?.split_once(&format!("/{prefix}_")) {
+              Some((prop_id, node_id)) => {
+                if *prop_id < *from || *prop_id > *to {
+                  return None;
+                }
+                Ok(node_id.to_string())
+              },
+              None => { return None; },
+            })
+          })
+          .collect::<Result<Vec<_>, Error<E>>>()?.into_iter()
+      }
+      All | Only(_) => iter
+        .collect::<Result<Vec<_>, Error<E>>>()?.into_iter()
+    };
+
+    Ok(iter)
+  }
 }
 
 #[derive(Error, Debug)]
@@ -451,6 +463,30 @@ pub enum Error<E: Send> {
 pub enum SerialisationError {
   #[error("json error")]
   Json { #[from] source: serde_json::Error },
+}
+
+impl<P, K, E> PropertyGraphReader<VertexId, HashId, HashId, P, Error<E>> for KvGraphStore<P, K, E>
+where
+  P: Property<HashId, SerialisationError>,
+  K: KVStore<E>,
+  E: Send,
+{
+  /// List nodes
+  fn nodes(&self, filter: PropertyFilter<HashId>) -> Result<impl Iterator<Item=VertexId>, Error<E>> {
+    Ok(self.filter_by_property("nodes", filter)?
+        .map(|id| Ok(Uuid(uuid::Uuid::parse_str(&id)?)))
+        .collect::<Result<Vec<_>, Error<E>>>()?.into_iter())
+  }
+
+  /// List edges
+  fn edges(&self, filter: PropertyFilter<HashId>) -> Result<impl Iterator<Item=HashId>, Error<E>> {
+    self.filter_by_property("edges", filter)
+  }
+
+  /// List properties
+  fn properties(&self, filter: PropertyFilter<HashId>) -> Result<impl Iterator<Item=HashId>, Error<E>> {
+    self.filter_by_property("props", filter)
+  }
 }
 
 impl<P, K, E> GraphStore<VertexId, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>

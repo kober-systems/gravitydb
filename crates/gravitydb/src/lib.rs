@@ -75,23 +75,25 @@ pub trait GraphBuilder<N, P, E> {
   fn remove_edge(&mut self, n1: &N, n2: &N, p: &P) -> Result<(), E>;
 }
 
-/// A Key-Value Store Backend Interface.
-///
-/// Any Type that implements this interface can be used to run a graph
-/// database.
-pub trait KVStore<E> {
-  /// creates a new bucket
-  fn create_bucket(&mut self, key: &[u8]) -> Result<(), E>;
-  /// delete a data record (could also be a bucket)
-  fn delete_record(&mut self, key: &[u8]) -> Result<(), E>;
-  /// list all records and buckets inside a bucket
-  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, E>;
-  /// store a data record
-  fn store_record(&mut self, key: &[u8], value: &[u8]) -> Result<(), E>;
-  /// fetch a data record
-  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, E>;
-  /// check if an entry exists in the database
-  fn exists(&self, key: &[u8]) -> Result<bool, E>;
+/// Filter an iterator depending on the connected properties
+pub enum PropertyFilter<PropKey> {
+  /// Get only the elements connected with this property
+  Only(PropKey),
+  /// Get all the elements connected with any property in between (and
+  /// including) the start and end properties
+  FromTo(PropKey, PropKey),
+  /// Get all elements (don't filter by property)
+  All,
+}
+
+/// Low level reading and traversing interface for a graph
+pub trait PropertyGraphReader<NodeK, EdgeKey, PropKey, T, E> {
+  /// List nodes
+  fn nodes(&self, filter: PropertyFilter<PropKey>) -> Result<impl Iterator<Item=NodeK>, E>;
+  /// List edges
+  fn edges(&self, filter: PropertyFilter<PropKey>) -> Result<impl Iterator<Item=EdgeKey>, E>;
+  /// List properties
+  fn properties(&self, filter: PropertyFilter<PropKey>) -> Result<impl Iterator<Item=PropKey>, E>;
 }
 
 /// The Interface for a Graph DB
@@ -111,4 +113,23 @@ pub trait GraphStore<NodeK, Node, EdgeKey, Edge, PropKey, T, E> {
   // Query functions
   //       TODO these functions should have a default implementation
   //fn query(&self, q: BasicQuery) -> Result<QueryResult, E>;
+}
+
+/// A Key-Value Store Backend Interface.
+///
+/// Any Type that implements this interface can be used to run a graph
+/// database.
+pub trait KVStore<E> {
+  /// creates a new bucket
+  fn create_bucket(&mut self, key: &[u8]) -> Result<(), E>;
+  /// delete a data record (could also be a bucket)
+  fn delete_record(&mut self, key: &[u8]) -> Result<(), E>;
+  /// list all records and buckets inside a bucket
+  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, E>;
+  /// store a data record
+  fn store_record(&mut self, key: &[u8], value: &[u8]) -> Result<(), E>;
+  /// fetch a data record
+  fn fetch_record(&self, key: &[u8]) -> Result<Vec<u8>, E>;
+  /// check if an entry exists in the database
+  fn exists(&self, key: &[u8]) -> Result<bool, E>;
 }
