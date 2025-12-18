@@ -192,7 +192,6 @@ fn key_to_path(&self, key: &[u8]) -> PathBuf {
 [source, rust]
 ----
 use gravitydb::KVStore;
-use std::io::Error;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 ----

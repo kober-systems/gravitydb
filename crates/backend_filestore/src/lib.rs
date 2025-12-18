@@ -1,6 +1,5 @@
 use std::fs;
 use gravitydb::KVStore;
-use std::io::Error;
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
