@@ -466,7 +466,7 @@ pub enum SerialisationError {
   Json { #[from] source: serde_json::Error },
 }
 
-impl<P, K, E> PropertyGraphReader<VertexId, HashId, HashId, P, Error<E>> for KvGraphStore<P, K, E>
+impl<P, K, E> PropertyGraphReader<VertexId, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
 where
   P: Property<HashId, SerialisationError>,
   K: KVStore<E>,
@@ -488,9 +488,33 @@ where
   fn properties(&self, filter: PropertyFilter<HashId>) -> Result<impl Iterator<Item=HashId>, Error<E>> {
     self.filter_by_property("props", filter)
   }
+
+  fn read_node(&self, id: VertexId) -> Result<NodeData, Error<E>> {
+    let path = "nodes/".to_string() + &id.to_key();
+
+    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
+    let node: NodeData = NodeData::deserialize(&data)?;
+    Ok(node)
+  }
+
+  fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error<E>> {
+    let path = "edges/".to_string() + id;
+
+    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
+    let edge = EdgeData::deserialize(&data)?;
+    Ok(edge)
+  }
+
+  fn read_property(&self, id: &HashId) -> Result<P, Error<E>> {
+    let path = "props/".to_string() + id;
+
+    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
+    let property = SchemaElement::deserialize(&data)?;
+    Ok(property)
+  }
 }
 
-impl<P, K, E> GraphStore<VertexId, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
+impl<P, K, E> GraphStore<VertexId, HashId, HashId, P, Error<E>> for KvGraphStore<P, K, E>
 where
   P: Property<HashId, SerialisationError>,
   K: KVStore<E>,
@@ -518,14 +542,6 @@ where
     self.create_idx_backlink(&props_hash, &key, BacklinkType::Node)?;
 
     Ok(id)
-  }
-
-  fn read_node(&self, id: VertexId) -> Result<NodeData, Error<E>> {
-    let path = "nodes/".to_string() + &id.to_key();
-
-    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
-    let node: NodeData = NodeData::deserialize(&data)?;
-    Ok(node)
   }
 
   fn update_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Error<E>> {
@@ -630,14 +646,6 @@ where
     Ok(hash)
   }
 
-  fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error<E>> {
-    let path = "edges/".to_string() + id;
-
-    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
-    let edge = EdgeData::deserialize(&data)?;
-    Ok(edge)
-  }
-
   fn delete_edge(&mut self, id: &HashId) -> Result<(), Error<E>> {
     let EdgeData {
       properties: props_hash,
@@ -715,14 +723,6 @@ where
     })?;
 
     Ok(hash)
-  }
-
-  fn read_property(&self, id: &HashId) -> Result<P, Error<E>> {
-    let path = "props/".to_string() + id;
-
-    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
-    let property = SchemaElement::deserialize(&data)?;
-    Ok(property)
   }
 
   fn delete_property(&mut self, id: &HashId) -> Result<(), Error<E>> {

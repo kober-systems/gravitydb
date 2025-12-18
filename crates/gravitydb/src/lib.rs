@@ -87,32 +87,36 @@ pub enum PropertyFilter<PropKey> {
 }
 
 /// Low level reading and traversing interface for a graph
-pub trait PropertyGraphReader<NodeK, EdgeKey, PropKey, T, E> {
+pub trait PropertyGraphReader<NodeKey, Node, EdgeKey, Edge, PropKey, Prop, E> {
   /// List nodes
-  fn nodes(&self, filter: PropertyFilter<PropKey>) -> Result<impl Iterator<Item=NodeK>, E>;
+  fn nodes(&self, filter: PropertyFilter<PropKey>) -> Result<impl Iterator<Item=NodeKey>, E>;
   /// List edges
   fn edges(&self, filter: PropertyFilter<PropKey>) -> Result<impl Iterator<Item=EdgeKey>, E>;
   /// List properties
   fn properties(&self, filter: PropertyFilter<PropKey>) -> Result<impl Iterator<Item=PropKey>, E>;
-}
 
-/// The Interface for a Graph DB
-pub trait GraphStore<NodeK, Node, EdgeKey, Edge, PropKey, T, E> {
-  // CRUD functions
-  fn create_node(&mut self, id: NodeK, properties: &T) -> Result<NodeK, E>;
-  fn read_node(&self, id: NodeK) -> Result<Node, E>;
-  fn update_node(&mut self, id: NodeK, properties: &T) -> Result<NodeK, E>;
-  fn delete_node(&mut self, id: NodeK) -> Result<NodeK, E>;
-  fn create_edge(&mut self, n1: NodeK, n2: NodeK, properties: &T) -> Result<EdgeKey, E>;
+  /// Get a node by its key
+  fn read_node(&self, id: NodeKey) -> Result<Node, E>;
+  /// Get an edge by its key
   fn read_edge(&self, id: &EdgeKey) -> Result<Edge, E>;
-  fn delete_edge(&mut self, id: &EdgeKey) -> Result<(), E>;
-  fn create_property(&mut self, properties: &T) -> Result<PropKey, E>;
-  fn read_property(&self, id: &PropKey) -> Result<T, E>;
-  fn delete_property(&mut self, id: &PropKey) -> Result<(), E>;
+  /// Get a property by its key
+  fn read_property(&self, id: &PropKey) -> Result<Prop, E>;
 
   // Query functions
   //       TODO these functions should have a default implementation
   //fn query(&self, q: BasicQuery) -> Result<QueryResult, E>;
+}
+
+/// The Interface for a Graph DB
+pub trait GraphStore<NodeKey, EdgeKey, PropKey, Prop, E> {
+  // CRUD functions
+  fn create_node(&mut self, id: NodeKey, properties: &Prop) -> Result<NodeKey, E>;
+  fn update_node(&mut self, id: NodeKey, properties: &Prop) -> Result<NodeKey, E>;
+  fn delete_node(&mut self, id: NodeKey) -> Result<NodeKey, E>;
+  fn create_edge(&mut self, n1: NodeKey, n2: NodeKey, properties: &Prop) -> Result<EdgeKey, E>;
+  fn delete_edge(&mut self, id: &EdgeKey) -> Result<(), E>;
+  fn create_property(&mut self, properties: &Prop) -> Result<PropKey, E>;
+  fn delete_property(&mut self, id: &PropKey) -> Result<(), E>;
 }
 
 /// A Key-Value Store Backend Interface.

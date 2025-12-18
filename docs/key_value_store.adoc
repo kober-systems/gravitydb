@@ -668,19 +668,6 @@ NodeExists(String),
 [source, rust]
 .Funktionen für Knoten
 ----
-fn read_node(&self, id: VertexId) -> Result<NodeData, Error<E>> {
-  let path = "nodes/".to_string() + &id.to_key();
-
-  let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
-  let node: NodeData = NodeData::deserialize(&data)?;
-  Ok(node)
-}
-----
-
-[[graph_store_functions]]
-[source, rust]
-.Funktionen für Knoten
-----
 fn update_node(&mut self, id: VertexId, properties: &P) -> Result<VertexId, Error<E>> {
   <<create_new_property>>
   let props_hash = self.create_property(properties)?;
@@ -798,19 +785,6 @@ fn create_edge(&mut self, n1: VertexId, n2: VertexId, properties: &P) -> Result<
 [source, rust]
 .Funktionen für Verbindungen
 ----
-fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error<E>> {
-  let path = "edges/".to_string() + id;
-
-  let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
-  let edge = EdgeData::deserialize(&data)?;
-  Ok(edge)
-}
-----
-
-[[graph_store_functions]]
-[source, rust]
-.Funktionen für Verbindungen
-----
 fn delete_edge(&mut self, id: &HashId) -> Result<(), Error<E>> {
   let EdgeData {
     properties: props_hash,
@@ -918,19 +892,6 @@ properties.nested().iter().try_for_each(|nested| {
 
 [[graph_store_functions]]
 [source, rust]
-.Eigenschaften auslesen
-----
-fn read_property(&self, id: &HashId) -> Result<P, Error<E>> {
-  let path = "props/".to_string() + id;
-
-  let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
-  let property = SchemaElement::deserialize(&data)?;
-  Ok(property)
-}
-----
-
-[[graph_store_functions]]
-[source, rust]
 .Eigenschaften aus der Datenbank löschen
 ----
 fn delete_property(&mut self, id: &HashId) -> Result<(), Error<E>> {
@@ -977,7 +938,7 @@ use crate::{PropertyGraphReader, PropertyFilter};
 [[interface_implementations]]
 [source, rust]
 ----
-impl<P, K, E> PropertyGraphReader<VertexId, HashId, HashId, P, Error<E>> for KvGraphStore<P, K, E>
+impl<P, K, E> PropertyGraphReader<VertexId, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
 where
   P: Property<HashId, SerialisationError>,
   K: KVStore<E>,
@@ -998,6 +959,30 @@ where
   /// List properties
   fn properties(&self, filter: PropertyFilter<HashId>) -> Result<impl Iterator<Item=HashId>, Error<E>> {
     self.filter_by_property("props", filter)
+  }
+
+  fn read_node(&self, id: VertexId) -> Result<NodeData, Error<E>> {
+    let path = "nodes/".to_string() + &id.to_key();
+
+    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
+    let node: NodeData = NodeData::deserialize(&data)?;
+    Ok(node)
+  }
+
+  fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error<E>> {
+    let path = "edges/".to_string() + id;
+
+    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
+    let edge = EdgeData::deserialize(&data)?;
+    Ok(edge)
+  }
+
+  fn read_property(&self, id: &HashId) -> Result<P, Error<E>> {
+    let path = "props/".to_string() + id;
+
+    let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
+    let property = SchemaElement::deserialize(&data)?;
+    Ok(property)
   }
 }
 ----
@@ -1070,7 +1055,7 @@ use crate::GraphStore;
 [[interface_implementations]]
 [source, rust]
 ----
-impl<P, K, E> GraphStore<VertexId, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
+impl<P, K, E> GraphStore<VertexId, HashId, HashId, P, Error<E>> for KvGraphStore<P, K, E>
 where
   P: Property<HashId, SerialisationError>,
   K: KVStore<E>,
