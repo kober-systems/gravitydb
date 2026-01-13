@@ -390,8 +390,10 @@ pub trait KVStore<E> {
   fn create_bucket(&mut self, key: &[u8]) -> Result<(), E>;
   /// delete a data record (could also be a bucket)
   fn delete_record(&mut self, key: &[u8]) -> Result<(), E>;
-  /// list all records and buckets inside a bucket
-  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, E>;
+  /// list all records in between `from` and `to`
+  ///
+  /// if `to` is empty it searches everything till the first change of `from`
+  fn list_records(&self, from: &[u8], to: &[u8]) -> Result<Vec<Vec<u8>>, E>;
   /// store a data record
   fn store_record(&mut self, key: &[u8], value: &[u8]) -> Result<(), E>;
   /// fetch a data record

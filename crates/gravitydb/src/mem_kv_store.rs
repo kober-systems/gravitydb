@@ -1,6 +1,7 @@
 use crate::KVStore;
 use std::{collections::BTreeMap, str::Utf8Error};
 use thiserror::Error;
+use std::ops::Bound::Included;
 
 type HashId = String;
 
@@ -41,18 +42,19 @@ impl KVStore<Error> for MemoryKvStore
     Ok(out.to_vec())
   }
 
-  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, Error> {
-    let key = key_to_string(key)?;
-    let iter: Vec<Vec<u8>> = self.data.iter()
-      .into_iter()
-      .filter_map(|(k, _v)| {
-        if k.starts_with(&key) {
-          let (_, k) = k.split_at(key.len());
-          Some(k.as_bytes().to_vec())
-        } else {
-          None
-        }
-      }).collect();
+  fn list_records(&self, from: &[u8], to: &[u8]) -> Result<Vec<Vec<u8>>, Error> {
+    let to = if to.len() != 0 {
+      key_to_string(to)?
+    } else {
+      let mut to: Vec<u8> = from.to_vec();
+      *to.last_mut().unwrap() += 1;
+      key_to_string(&to)?
+    };
+    let from = key_to_string(from)?;
+    let iter: Vec<Vec<u8>>  = self.data
+      .range((Included(from), Included(to)))
+      .map(|(k, _v)| k.as_bytes().to_vec())
+      .collect();
     Ok(iter)
   }
 

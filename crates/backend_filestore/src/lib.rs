@@ -28,14 +28,23 @@ impl KVStore<FileStoreError> for FsKvStore
     Ok(std::fs::read(self.key_to_path(key))?)
   }
 
-  fn list_records(&self, key: &[u8]) -> Result<Vec<Vec<u8>>, FileStoreError> {
-    let iter: Vec<Vec<u8>> = fs::read_dir(self.key_to_path(key))?.into_iter().filter_map(|entry| {
-      match entry {
-        Ok(entry) => Some(entry.file_name().into_encoded_bytes()),
-        Err(_) => None,
-      }
-    }).collect();
-    Ok(iter)
+  fn list_records(&self, from: &[u8], to: &[u8]) -> Result<Vec<Vec<u8>>, FileStoreError> {
+    let to_path = if to.len() != 0 {
+      self.key_to_path(to)
+    } else {
+      let mut to: Vec<u8> = from.to_vec();
+      *to.last_mut().unwrap() += 1;
+      self.key_to_path(&to)
+    };
+    let from_path = self.key_to_path(from);
+    let base = match longest_shared_path(&from_path, &to_path) {
+      Some(base) => base,
+      None => { return Err(FileStoreError::InvalidParameters); },
+    };
+    Ok(list_files(&base)?
+      .into_iter()
+      .filter(|key| **key < *from || **key > *to)
+      .collect())
   }
 
   fn exists(&self, key: &[u8]) -> Result<bool, FileStoreError> {
@@ -91,5 +100,44 @@ pub enum FileStoreError {
   MalformedDB,
   #[error("io error")]
   Io { #[from] source: std::io::Error },
+  #[error("invalid input parameters")]
+  InvalidParameters,
 }
 
+fn list_files(dir: &Path) -> std::io::Result<Vec<Vec<u8>>> {
+  let mut result = vec![];
+
+  if dir.is_dir() {
+    for entry in fs::read_dir(dir)? {
+      let entry = entry?;
+      let path = entry.path();
+      if path.is_dir() {
+        result.append(&mut list_files(&path)?);
+      } else {
+        result.push(path.to_string_lossy().as_bytes().to_vec());
+      }
+    }
+  }
+  Ok(result)
+}
+
+fn longest_shared_path(path1: &Path, path2: &Path) -> Option<PathBuf> {
+  let components1: Vec<&str> = path1.components().filter_map(|c| c.as_os_str().to_str()).collect();
+  let components2: Vec<&str> = path2.components().filter_map(|c| c.as_os_str().to_str()).collect();
+
+  let mut shared_components = Vec::new();
+
+  for (c1, c2) in components1.iter().zip(components2.iter()) {
+    if c1 == c2 {
+      shared_components.push(*c1);
+    } else {
+      break;
+    }
+  }
+
+  if !shared_components.is_empty() {
+    Some(shared_components.iter().collect::<PathBuf>())
+  } else {
+    None
+  }
+}

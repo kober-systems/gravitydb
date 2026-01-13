@@ -391,7 +391,7 @@ where
     let backlink_path = index_path.clone() + prefix + "_" + id;
     self.kv.delete_record(backlink_path.as_bytes()).map_err(|e| Error::KV(e))?;
 
-    if self.kv.list_records(index_path.as_bytes()).map_err(|e| Error::KV(e))?.is_empty() {
+    if self.kv.list_records(index_path.as_bytes(), b"").map_err(|e| Error::KV(e))?.is_empty() {
       Ok(true)
     } else {
       Ok(false)
@@ -402,21 +402,24 @@ where
   fn filter_by_property(&self, prefix: &str, filter: PropertyFilter<HashId>) -> Result<impl Iterator<Item=HashId>, Error<E>> {
     use PropertyFilter::*;
 
-    let iter = match &filter {
+    let pfx = match &filter {
       Only(prop_id) => {
-        self.kv.list_records(format!("indexes/{prop_id}/{prefix}_").as_bytes())
+        format!("indexes/{prop_id}/{prefix}_").as_bytes().to_vec()
       },
       FromTo(_from, _to) => {
-        self.kv.list_records("indexes/".as_bytes())
+        b"indexes".to_vec()
       },
       All => {
-        self.kv.list_records(format!("{prefix}/").as_bytes())
+        format!("{prefix}/").as_bytes().to_vec()
       },
     };
-    let iter = iter
+    let iter = self.kv.list_records(&pfx, b"")
       .map_err(|e| Error::KV(e))?
       .into_iter()
-      .map(|entry| Ok(String::from_utf8(entry)?));
+      .map(|entry| {
+        let (_, entry) = entry.split_at(pfx.len());
+        Ok(String::from_utf8(entry.to_vec())?)
+      });
 
     let iter = match filter {
       FromTo(from, to) => {
