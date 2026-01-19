@@ -10,6 +10,7 @@ license = "MIT"
 gravitydb = { version = "0.2.0", path = "../gravitydb", features = ["lua"] }
 thiserror = "2.0"
 sha2 = "0.10.0"
+vfs = "0.12.2"
 uuid = { version = "1.10", features = ["serde", "v4"] }
 serde = { version = "1.0", features = ["derive"] }
 # maybe we use a more compact serialisation format later for production
@@ -21,3 +22,5 @@ log = "0.4.8"
 simple_logger = "5.0.0"
 anyhow = "1.0"
 
+[dev-dependencies]
+pretty_assertions = "1"
