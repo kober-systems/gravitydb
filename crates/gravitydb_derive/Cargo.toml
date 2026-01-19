@@ -1,6 +1,6 @@
 [package]
 name = "gravitydb_derive"
-version = "0.2.0"
+version = "0.3.0"
 description = "Derive macros for the gravity graph database"
 authors = ["Benjamin Kober <benko@kober-systems.com>"]
 license = "MIT"
