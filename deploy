@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -e
+
+git pull --rebase
+
+# check literate state
+if [ "sync" != "$(cat .litstate)" ]; then
+  echo "literate state must be sync"
+  exit 1
+fi
+
+cargo semver-checks
+
+# cargo publish
+cargo login
+cargo publish --package gravitydb-test-utils
+cargo publish --package gravitydb_derive
+cargo publish --package gravitydb
+cargo publish --package gravitydb-filestore
+cargo logout
+
+# TODO git version
+git push --tags
+
+

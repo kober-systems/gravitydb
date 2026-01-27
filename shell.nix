@@ -7,6 +7,7 @@ pkgs.mkShell {
   buildInputs = [
     rust
     pkgs.cargo-expand
+    pkgs.cargo-semver-checks
     pkgs.deno
 
     # keep this line if you use bash
