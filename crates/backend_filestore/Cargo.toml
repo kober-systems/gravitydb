@@ -1,6 +1,6 @@
 [package]
 name = "gravitydb-filestore"
-version = "0.3.0"
+version = "0.3.1"
 description = "A filestore backend for the gravity database"
 authors = ["Benjamin Kober <benko@kober-systems.com>"]
 edition = "2021"

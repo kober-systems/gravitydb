@@ -1,6 +1,6 @@
 [package]
 name = "gravitydb"
-version = "0.3.0"
+version = "0.3.1"
 description = "A graph database"
 authors = ["Benjamin Kober <benko@kober-systems.com>"]
 homepage = "https://github.com/kober-systems/gravitydb"
