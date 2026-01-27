@@ -1,0 +1,12 @@
+[package]
+name = "gravitydb-test-utils"
+description = "shared test utils for gravitydb backends"
+version = "0.1.0"
+license = "MIT"
+edition = "2024"
+
+[dependencies]
+gravitydb = { version = "0.3.0", path = "../gravitydb" }
+serde = { version = "1.0", features = ["derive"] }
+pretty_assertions = "1"
+

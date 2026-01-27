@@ -32,3 +32,4 @@ derive = ["gravitydb_derive" ]
 
 [dev-dependencies]
 pretty_assertions = "1"
+gravitydb-test-utils = { path = "../gravitydb-test-utils" }

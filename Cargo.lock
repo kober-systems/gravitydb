@@ -349,6 +349,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 name = "gravitydb"
 version = "0.3.0"
 dependencies = [
+ "gravitydb-test-utils",
  "gravitydb_derive",
  "mlua",
  "pretty_assertions",
@@ -378,6 +379,15 @@ dependencies = [
  "thiserror",
  "uuid",
  "vfs",
+]
+
+[[package]]
+name = "gravitydb-test-utils"
+version = "0.1.0"
+dependencies = [
+ "gravitydb",
+ "pretty_assertions",
+ "serde",
 ]
 
 [[package]]
