@@ -369,6 +369,7 @@ dependencies = [
  "anyhow",
  "clap",
  "gravitydb",
+ "gravitydb-test-utils",
  "log",
  "mlua",
  "pretty_assertions",

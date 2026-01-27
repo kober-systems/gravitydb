@@ -225,7 +225,12 @@ fn list_files(dir: &VfsPath) -> VfsResult<Vec<Vec<u8>>> {
       if path.is_dir()? {
         result.append(&mut list_files(&path)?);
       } else {
-        result.push(path.as_str().as_bytes().to_vec());
+        let path = path.as_str();
+        let path = match path.strip_prefix("/") {
+          Some(path) => path,
+          None => path,
+        };
+        result.push(path.as_bytes().to_vec());
       }
     }
   }

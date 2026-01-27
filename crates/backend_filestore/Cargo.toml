@@ -24,3 +24,4 @@ anyhow = "1.0"
 
 [dev-dependencies]
 pretty_assertions = "1"
+gravitydb-test-utils = { path = "../gravitydb-test-utils" }
