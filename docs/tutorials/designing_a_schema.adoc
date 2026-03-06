@@ -244,7 +244,128 @@ This is great because it makes syncing easier. But when you deal with
 absolutly sorted data (like e.g. timestamps) you can improve performance
 massively by modifying your keys.
 
-TODO tutorial showing how to apply this to time and space search
+When you think back to the example where Allice is searching for a
+workshop with a table saw. Normally she is not interested in the
+workshops all over the world. She searches for one near by. To let the
+database support her use case, lets add some more fields to it that
+support to connect a workshop with a lattitude and longitude of its
+location.
+
+[[optimized_schema]]
+[source, rust, highlight=8..9]
+----
+#[derive(Schema)]
+#[derive(Debug, PartialEq)]
+#[derive(Serialize, Deserialize)]
+pub enum OpenWorkShopsSchema {
+  Person{ name: String, surname: String},
+  Workshop{ name: String },
+  Tool(String),
+  Location{ address: String },
+  Lattitude(u32),
+  Longitude(u32),
+
+  // connections
+  #[schema(additional_types = Connection)]
+  BelongsTo,
+  #[schema(additional_types = Connection)]
+  IsStaffMember,
+  #[schema(additional_types = Connection)]
+  LocatedAt,
+
+  // A special type used later for queries
+  SchemaType(String),
+}
+----
+
+Now, instead of just searching for the address she could also get the
+geological position and filter out everything that is to far away from
+her own.
+
+TODO code snippet showing how to filter
+
+However this could take a long time when the database grows, because it
+has to search throug all the positions available in the database. What
+if she could limit the search directly to the positions close to her?
+Actually thats possible with a change of the key implementation.
+
+[[optimized_key_implemention]]
+[source, rust]
+----
+impl KeyAdressableElement<String> for OpenWorkShopsSchema {
+  fn get_key(&self) -> String {
+    match self {
+      Lattitude(value) => {
+        format!("la_{value}")
+      }
+      Longitude(value) => {
+        format!("lo_{value}")
+      }
+      _ => {
+        let data = serde_json::to_vec(&self).unwrap();
+        format!("{:X}", sha2::Sha256::digest(&data))
+      }
+    }
+  }
+}
+----
+
+[%collapsible]
+====
+And we have to bring in the default serialisation.
+
+[[optimized_key_implemention]]
+[source, rust]
+----
+impl<Error: From<serde_json::Error>> SchemaElement<Error> for OpenWorkShopsSchema {
+  fn serialize(&self) -> Result<Vec<u8>, Error> {
+    Ok(serde_json::to_vec(self)?)
+  }
+
+  fn deserialize(data: &[u8]) -> Result<Self, Error>
+  where
+    Self: Sized,
+  {
+    Ok(serde_json::from_slice::<OpenWorkShopsSchema>(data)?)
+  }
+}
+----
+
+We need to import `Digest` for hashing.
+
+[[optimized_key_implemention]]
+[source, rust]
+----
+use sha2::Digest;
+----
+
+====
+
+Now it becommes possible to assign a location with coordinates to the
+workshop.
+
+[[optimized_schema_add_position_data]]
+[source, rust]
+----
+let pos_la = db.create_node(Uuid::new(), &Lattitude(42)).unwrap();
+db.create_edge(wshop, pos_la, &LocatedAt).unwrap();
+let pos_lo = db.create_node(Uuid::new(), &Longitude(42)).unwrap();
+db.create_edge(wshop, pos_lo, &LocatedAt).unwrap();
+----
+
+When searching for a workshop this can be leveraged to search for a
+workshop located in a specific area.
+
+[[optimized_schema_query]]
+[source, rust]
+----
+let result = db.query(Lattitude(30).from_to(&Lattitude(50))
+  .referencing_vertices()
+  .ingoing()
+  .intersect(LocatedAt.start().referencing_edges())
+  .ingoing()
+).unwrap();
+----
 
 === Bringing this to an extreme: Enter the vector space
 
@@ -271,6 +392,7 @@ docs.
 ----
 use gravitydb::*;
 use gravitydb::kv_graph_store::Uuid;
+use gravitydb::schema::SchemaElement;
 use gravitydb_derive::Schema;
 use pretty_assertions::assert_eq;
 use serde::{Serialize, Deserialize};
@@ -279,6 +401,8 @@ use serde::{Serialize, Deserialize};
 fn t01_basic_schema() {
   <<basic_schema>>
 
+  impl gravitydb::schema::JsonSchemaProperty for OpenWorkShopsSchema {}
+
   <<schema_utils>>
 
   <<basic_schema_add_data>>
@@ -286,6 +410,26 @@ fn t01_basic_schema() {
   <<basic_schema_query>>
   let result = db.extract_properties(&result).unwrap();
   <<basic_schema_result>>
+}
+
+#[test]
+fn t02_optimized_schema() {
+  <<optimized_schema>>
+
+  <<optimized_key_implemention|join="\n\n">>
+
+  <<schema_utils>>
+
+  <<basic_schema_add_data>>
+  <<optimized_schema_add_position_data>>
+
+  <<basic_schema_query>>
+  let result = db.extract_properties(&result).unwrap();
+  <<basic_schema_result>>;
+
+  <<optimized_schema_query>>
+  let result = db.extract_properties(&result).unwrap();
+  <<basic_schema_result>>;
 }
 ----
 
