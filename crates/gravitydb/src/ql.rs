@@ -175,6 +175,8 @@ impl<VertexId, EdgeId, PropertyId, VFilter, EFilter> EdgeQuery<VertexId, EdgeId,
 pub enum PropertyQuery<PropertyId> {
   /// Query a specific property
   Specific(PropertyId),
+  /// All properties in between the two property ids
+  FromTo(PropertyId, PropertyId),
   /// All properties that use this property
   ReferencingProperties(Box<PropertyQuery<PropertyId>>),
   /// All properties that are used by this property
@@ -186,12 +188,16 @@ impl<PropertyId> PropertyQuery<PropertyId> {
     PropertyQuery::Specific(id)
   }
 
-  /// Properties, die diese Property verwenden
+  pub fn from_to(id1: PropertyId, id2: PropertyId) -> Self {
+    PropertyQuery::FromTo(id1, id2)
+  }
+
+  /// All properties that use this property
   pub fn referencing_properties(self) -> Self {
     PropertyQuery::ReferencingProperties(Box::new(self))
   }
 
-  /// Properties, auf die diese Property verweist
+  /// All properties that are used by this property
   pub fn referenced_properties(self) -> Self {
     PropertyQuery::ReferencedProperties(Box::new(self))
   }

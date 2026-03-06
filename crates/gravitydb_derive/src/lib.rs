@@ -88,9 +88,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
           }
         }
       }
-
-      use gravitydb::schema::JsonSchemaProperty;
-      impl JsonSchemaProperty for #name {}
     };
 
     TokenStream::from(expanded).into()

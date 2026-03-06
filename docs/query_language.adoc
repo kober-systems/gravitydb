@@ -225,6 +225,24 @@ pub fn from_id(id: PropertyId) -> Self {
 }
 ----
 
+* you have a property which values could be ordered on a scale. So you
+  could search all properties in a range defined on that scale
++
+[[property_query_fields]]
+[source, rust]
+----
+/// All properties in between the two property ids
+FromTo(PropertyId, PropertyId),
+----
++
+[[property_query_functions]]
+[source, rust]
+----
+pub fn from_to(id1: PropertyId, id2: PropertyId) -> Self {
+  PropertyQuery::FromTo(id1, id2)
+}
+----
+
 * oder man sucht die Eigenschaften die auf die andere Eigenschaften
   verlinken bzw auf die eine andere Eigenschaft verlinkt.
 +
@@ -240,12 +258,12 @@ ReferencedProperties(Box<PropertyQuery<PropertyId>>),
 [[property_query_functions]]
 [source, rust]
 ----
-/// Properties, die diese Property verwenden
+/// All properties that use this property
 pub fn referencing_properties(self) -> Self {
   PropertyQuery::ReferencingProperties(Box::new(self))
 }
 
-/// Properties, auf die diese Property verweist
+/// All properties that are used by this property
 pub fn referenced_properties(self) -> Self {
   PropertyQuery::ReferencedProperties(Box::new(self))
 }

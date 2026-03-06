@@ -12,6 +12,11 @@ pub trait KeyAdressableElement<K: Sized> {
   fn start(&self) -> crate::ql::PropertyQuery<K> {
     crate::ql::PropertyQuery::from_id(self.get_key())
   }
+
+  /// A starting point for a range of properties on an ordered scale
+  fn from_to(&self, to: &Self) -> crate::ql::PropertyQuery<K> {
+    crate::ql::PropertyQuery::from_to(self.get_key(), to.get_key())
+  }
 }
 
 pub trait NestableProperty: Sized

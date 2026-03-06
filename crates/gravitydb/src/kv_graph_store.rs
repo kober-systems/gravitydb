@@ -333,6 +333,11 @@ where
           result.insert(id);
         }
       }
+      FromTo(id1, id2) => {
+        for id in self.properties(PropertyFilter::FromTo(id1, id2))? {
+          result.insert(id);
+        }
+      }
       ReferencingProperties(q) => {
         for prop_id in self.query_properties(*q)? {
           for id in self.properties(PropertyFilter::Only(prop_id))? {
@@ -426,11 +431,11 @@ where
         iter
           .filter_map(|entry: Result<_, Error<E>>| {
             Some(match entry.ok()?.split_once(&format!("/{prefix}_")) {
-              Some((prop_id, node_id)) => {
+              Some((_node_id, prop_id)) => {
                 if *prop_id < *from || *prop_id > *to {
                   return None;
                 }
-                Ok(node_id.to_string())
+                Ok(prop_id.to_string())
               },
               None => { return None; },
             })
