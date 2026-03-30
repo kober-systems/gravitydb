@@ -6,6 +6,7 @@ pub mod mem_kv_store;
 pub mod lua;
 #[cfg(feature="derive")]
 pub use gravitydb_derive::Schema;
+pub mod import;
 
 trait GraphFilter<GIN, GOUT>
 {

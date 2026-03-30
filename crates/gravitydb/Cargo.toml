@@ -25,6 +25,8 @@ thiserror = "2.0"
 mlua = { version = "0.11", features = ["luau", "serialize", "macros"], optional = true }
 rustyline = { version = "17", features = ["derive"], optional = true }
 
+quick-xml = { version = "0.39", features = ["serialize"] }
+
 [features]
 lua = ["mlua", "rustyline" ]
 js = [ "uuid/js"]
@@ -33,3 +35,4 @@ derive = ["gravitydb_derive" ]
 [dev-dependencies]
 pretty_assertions = "1"
 gravitydb-test-utils = { path = "../gravitydb-test-utils" }
+gravitydb_derive = { path = "../gravitydb_derive" }
