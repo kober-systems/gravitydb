@@ -93,7 +93,7 @@ TODO What about other graph variations like directed graphs etc. Do we have to i
 [[traits]]
 [source, rust]
 ----
-trait GraphFilter<GIN, GOUT>
+pub trait GraphFilter<GIN, GOUT>
 {
   fn filter(&mut self, graph: GIN) -> GOUT;
 }

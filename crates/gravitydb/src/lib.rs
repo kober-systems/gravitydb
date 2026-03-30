@@ -8,7 +8,7 @@ pub mod lua;
 pub use gravitydb_derive::Schema;
 pub mod import;
 
-trait GraphFilter<GIN, GOUT>
+pub trait GraphFilter<GIN, GOUT>
 {
   fn filter(&mut self, graph: GIN) -> GOUT;
 }
