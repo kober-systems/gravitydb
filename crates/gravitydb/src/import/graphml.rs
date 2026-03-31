@@ -1,4 +1,4 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::{collections::HashMap, marker::PhantomData, str::Utf8Error};
 use thiserror::Error;
 use quick_xml::{encoding::EncodingError, events::Event};
 use crate::{GraphStore, kv_graph_store::Uuid};
@@ -23,7 +23,7 @@ where
         match e.name().local_name().as_ref() {
           b"node"|b"edge" => Some(e.clone().into_owned()),
           b"graph" => continue,
-          other => Err(XMLError::UnexpectedElement(other.to_owned()))?,
+          other => Err(XMLError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
         }
       },
       Ok(Event::Text(e)) => {
@@ -36,10 +36,11 @@ where
       Ok(Event::End(ref e)) => {
         match e.name().local_name().as_ref() {
           b"graph" => None,
-          other => Err(XMLError::UnexpectedElement(other.to_owned()))?,
+          other => Err(XMLError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
         }
       }
       Ok(Event::Eof) => break,
+      Ok(Event::Decl(_)) => None,
       Ok(evt) => todo!("{:?}", evt),
       Err(e) => Err(e)?,
     };
@@ -79,7 +80,7 @@ where
           let properties = prop_mapper(&text);
           graph.create_edge(source_key, target_key, &properties).map_err(|e| XMLError::GraphDB(e))?;
         }
-        other => Err(XMLError::UnexpectedElement(other.to_owned()))?,
+        other => Err(XMLError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
       };
     }
   }
@@ -175,7 +176,9 @@ pub enum XMLError<E>
   Decode(#[from] EncodingError),
   #[error(transparent)]
   GraphDB(E),
+  #[error(transparent)]
+  Utf8(#[from] Utf8Error),
   MissingAttr(&'static str),
-  UnexpectedElement(Vec<u8>),
+  UnexpectedElement(String),
 }
 
