@@ -22,7 +22,7 @@ where
       Ok(Event::Start(ref e)) => {
         match e.name().local_name().as_ref() {
           b"node"|b"edge" => Some(e.clone().into_owned()),
-          b"graph" => continue,
+          b"graph"|b"graphml" => None,
           other => Err(XMLError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
         }
       },
@@ -35,7 +35,7 @@ where
       },
       Ok(Event::End(ref e)) => {
         match e.name().local_name().as_ref() {
-          b"graph" => None,
+          b"graph"|b"graphml" => None,
           other => Err(XMLError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
         }
       }
