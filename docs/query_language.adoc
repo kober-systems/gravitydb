@@ -1017,4 +1017,10 @@ https://tinkerpop.apache.org/gremlin.html[gremlin]:: Ist eine sowohl
   bin ich nicht sicher, ob sie eine einheitliche Form der Serialisierung
   hat. Die hier beschriebene Sprache orientiert sich im Funktionumfang
   und Aufbau stark an Gremlin.
+https://en.wikipedia.org/wiki/Prolog[Prolog]:: This is a logic
+  programming language. While coming from a different background, it
+  is amasing how many similarities are between prolog and graph query
+  languages. It can definitly serve as a source of inspiration for both
+  implementation strategies as well as what could be done when using zoe
+  as a general-purpose programming language.
 
