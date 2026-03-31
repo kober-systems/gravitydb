@@ -1,32 +1,10 @@
-Zoe - Eine Abfrage Sprache
-==========================
-TODO Als Name könnte man Q (für Question) oder Zoe verwenden.
+Zoe - A Query Language
+======================
+To get data out of the database we need some way to interact with it.
+Gravitydb provides such means in the form of a query language named zoe.
 
-Es gibt einige Graph-Abfrage Sprachen aber keine große Standardisierung footnote:[Und dem will ich hier Abhilfe schaffen, durch eine weitere Sprache :)]. Manche Sprachen haben eine größere Bedeutung erlangt und/oder es wäre interessant sie näher anzuschauen (TODO Vielleicht sollte man das in einen Anhang mit dem Titel "Prior Art" verschieben).
-
-https://neo4j.com/developer/cypher/[cypher]:: Ist die Abfrage Sprache
-  der Neo4j Datenbank. Sie hat den interessanten Ansatz Abfragen als
-  ASCII-Art zu codieren. Das macht es recht intuitiv einfache Abfragen
-  zu machen, da Graphen etwas sehr bildliches haben. Sobald die Abfragen
-  aber nur etwas komplexer werden ist es schwierig sie in dieser Form
-  darzustellen und sie werden unübersichtlich. Zudem bin ich nicht
-  sicher, ob die Form unflexibel ist. Die vielen Erweiterungen der
-  Sprache scheinen das zu bestätigen (sie ermöglichen nämlich Dinge, die
-  in der Sprache selbst scheinbar nicht ausgedrückt werden könnten).
-https://graphql.org/[graphql]:: Diese Sprache ist eine Json Sprache und
-  sehr intuitiv. Allerdings scheint auch sie mir nicht sehr flexibel zu
-  sein.
-http://www.graphviz.org/pdf/gvpr.1.pdf[gvpr]:: Dieses Tool stammt aus
-  dem graphviz Universum. Es scheint nicht so weit verbreitet zu
-  sein, wie die beiden anderen Sprachen und es wäre interessant
-  herauszufinden, warum das so ist. Insgesamt scheint die Sprache aber
-  zumindest eine hohe Flexibilität zu erlauben (Vielleicht ist einfach
-  die Syntax nicht besonders schön).
-https://tinkerpop.apache.org/gremlin.html[gremlin]:: Ist eine sowohl
-  schöne und elegante als auch flexibele funktionale Sprache. Allerdings
-  bin ich nicht sicher, ob sie eine einheitliche Form der Serialisierung
-  hat. Die hier beschriebene Sprache orientiert sich im Funktionumfang
-  und Aufbau stark an Gremlin.
+This document provides information about how this language is specified
+and desinged. To get started with using the language please see TODO.
 
 TODO Es wäre sehr gut eine Versionierung für die Serialisierung einzuführen. Dabei muss man bedenken, dass das Format wahrscheinlich von beliebigen Stellen zusammengesetzt werden kann. Deshalb muss man überlegen, ob man in jeder Stelle der Pipe eine Version einfügen will oder ob man es dem Benutzer überlässt zu überprüfen welche Steps in der aktuellen Version verfügbar und kombinierbar sind.
 
@@ -1009,4 +987,34 @@ where
   }
 }
 ----
+
+== Prior Art
+Es gibt einige Graph-Abfrage Sprachen aber keine große Standardisierung
+footnote:[Und dem will ich hier Abhilfe schaffen, durch eine weitere
+Sprache :)]. Manche Sprachen haben eine größere Bedeutung erlangt
+und/oder es wäre interessant sie näher anzuschauen.
+
+https://neo4j.com/developer/cypher/[cypher]:: Ist die Abfrage Sprache
+  der Neo4j Datenbank. Sie hat den interessanten Ansatz Abfragen als
+  ASCII-Art zu codieren. Das macht es recht intuitiv einfache Abfragen
+  zu machen, da Graphen etwas sehr bildliches haben. Sobald die Abfragen
+  aber nur etwas komplexer werden ist es schwierig sie in dieser Form
+  darzustellen und sie werden unübersichtlich. Zudem bin ich nicht
+  sicher, ob die Form unflexibel ist. Die vielen Erweiterungen der
+  Sprache scheinen das zu bestätigen (sie ermöglichen nämlich Dinge, die
+  in der Sprache selbst scheinbar nicht ausgedrückt werden könnten).
+https://graphql.org/[graphql]:: Diese Sprache ist eine Json Sprache und
+  sehr intuitiv. Allerdings scheint auch sie mir nicht sehr flexibel zu
+  sein.
+http://www.graphviz.org/pdf/gvpr.1.pdf[gvpr]:: Dieses Tool stammt aus
+  dem graphviz Universum. Es scheint nicht so weit verbreitet zu
+  sein, wie die beiden anderen Sprachen und es wäre interessant
+  herauszufinden, warum das so ist. Insgesamt scheint die Sprache aber
+  zumindest eine hohe Flexibilität zu erlauben (Vielleicht ist einfach
+  die Syntax nicht besonders schön).
+https://tinkerpop.apache.org/gremlin.html[gremlin]:: Ist eine sowohl
+  schöne und elegante als auch flexibele funktionale Sprache. Allerdings
+  bin ich nicht sicher, ob sie eine einheitliche Form der Serialisierung
+  hat. Die hier beschriebene Sprache orientiert sich im Funktionumfang
+  und Aufbau stark an Gremlin.
 
