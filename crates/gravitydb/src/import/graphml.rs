@@ -9,7 +9,7 @@ pub fn import_graphml<'a, NodeKey, EdgeKey, PropKey, Prop, FNodeKey, FProp, GSto
   mut xml_reader: quick_xml::reader::Reader<&'a [u8]>,
   node_key_mapper: FNodeKey,
   prop_mapper: FProp,
-) -> Result<HashMap<String, NodeKey>, XMLError<E>>
+) -> Result<HashMap<String, NodeKey>, ImportError<E>>
 where
   FNodeKey: Fn(&str, &mut HashMap<String, NodeKey>) -> NodeKey,
   FProp: Fn(&str) -> Prop,
@@ -23,7 +23,7 @@ where
         match e.name().local_name().as_ref() {
           b"node"|b"edge" => Some(e.clone().into_owned()),
           b"graph"|b"graphml" => None,
-          other => Err(XMLError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
+          other => Err(ImportError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
         }
       },
       Ok(Event::Text(e)) => {
@@ -36,7 +36,7 @@ where
       Ok(Event::End(ref e)) => {
         match e.name().local_name().as_ref() {
           b"graph"|b"graphml" => None,
-          other => Err(XMLError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
+          other => Err(ImportError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
         }
       }
       Ok(Event::Eof) => break,
@@ -56,10 +56,10 @@ where
             .filter_map(Result::ok)
             .find(|a| a.key.as_ref() == b"id")
             .map(|a| a.unescape_value())
-            .ok_or(XMLError::MissingAttr("id"))?;
+            .ok_or(ImportError::MissingAttr("id"))?;
           let node_key = node_key_mapper(&node_id?, &mut mappings);
           let properties = prop_mapper(&text);
-          graph.create_node(node_key, &properties).map_err(|e| XMLError::GraphDB(e))?;
+          graph.create_node(node_key, &properties).map_err(|e| ImportError::GraphDB(e))?;
         }
         b"edge" => {
           // Read source and target attributes
@@ -67,20 +67,20 @@ where
             .filter_map(Result::ok)
             .find(|a| a.key.as_ref() == b"source")
             .map(|a| a.unescape_value())
-            .ok_or(XMLError::MissingAttr("source"))?;
+            .ok_or(ImportError::MissingAttr("source"))?;
 
           let target = start_evt.attributes()
             .filter_map(Result::ok)
             .find(|a| a.key.as_ref() == b"target")
             .map(|a| a.unescape_value())
-            .ok_or(XMLError::MissingAttr("target"))?;
+            .ok_or(ImportError::MissingAttr("target"))?;
 
           let source_key = node_key_mapper(&source?, &mut mappings);
           let target_key = node_key_mapper(&target?, &mut mappings);
           let properties = prop_mapper(&text);
-          graph.create_edge(source_key, target_key, &properties).map_err(|e| XMLError::GraphDB(e))?;
+          graph.create_edge(source_key, target_key, &properties).map_err(|e| ImportError::GraphDB(e))?;
         }
-        other => Err(XMLError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
+        other => Err(ImportError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
       };
     }
   }
@@ -149,7 +149,7 @@ where
     &self,
     graph: &mut GStore,
     xml_reader: quick_xml::reader::Reader<&'a [u8]>,
-  ) -> Result<HashMap<String, NodeKey>, XMLError<E>>
+  ) -> Result<HashMap<String, NodeKey>, ImportError<E>>
   where
     GStore: GraphStore<NodeKey, EdgeKey, PropKey, Prop, E>,
   {
@@ -166,7 +166,7 @@ pub fn create_graphml_importer() -> GraphML<Uuid, String, fn(&str, &mut HashMap<
 }
 
 #[derive(Error, Debug)]
-pub enum XMLError<E>
+pub enum ImportError<E>
 {
   #[error(transparent)]
   QuickXML(#[from] quick_xml::Error),
