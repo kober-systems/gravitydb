@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key id="name" for="node" attr.name="name" attr.type="string"/>
+  <key id="language" for="node" attr.name="language" attr.type="string"/>
+  <key id="stable" for="node" attr.name="stable" attr.type="boolean"/>
+  <key id="relation" for="edge" attr.name="relation" attr.type="string"/>
+  <key id="weight" for="edge" attr.name="weight" attr.type="int"/>
+
+  <graph id="code-dependencies" edgedefault="directed">
+    <node id="app">
+      <data key="name">Task App</data>
+      <data key="language">Python</data>
+      <data key="stable">true</data>
+    </node>
+    <node id="api">
+      <data key="name">Weather API Client</data>
+      <data key="language">Python</data>
+      <data key="stable">true</data>
+    </node>
+    <node id="cache">
+      <data key="name">Tiny Cache</data>
+      <data key="language">Python</data>
+      <data key="stable">false</data>
+    </node>
+    <node id="tests">
+      <data key="name">Test Suite</data>
+      <data key="language">Python</data>
+      <data key="stable">true</data>
+    </node>
+
+    <edge id="e1" source="app" target="api">
+      <data key="relation">depends_on</data>
+      <data key="weight">10</data>
+    </edge>
+    <edge id="e2" source="app" target="cache">
+      <data key="relation">depends_on</data>
+      <data key="weight">5</data>
+    </edge>
+    <edge id="e3" source="tests" target="app">
+      <data key="relation">tests</data>
+      <data key="weight">10</data>
+    </edge>
+  </graph>
+</graphml>

@@ -7,6 +7,7 @@ pub mod lua;
 #[cfg(feature="derive")]
 pub use gravitydb_derive::Schema;
 pub mod import;
+pub mod export;
 
 pub trait GraphFilter<GIN, GOUT>
 {
