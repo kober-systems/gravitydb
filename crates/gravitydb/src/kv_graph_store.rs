@@ -474,7 +474,7 @@ pub enum SerialisationError {
   Json { #[from] source: serde_json::Error },
 }
 
-impl<P, K, E> PropertyGraphReader<VertexId, NodeData, HashId, EdgeData, HashId, P, Error<E>> for KvGraphStore<P, K, E>
+impl<P, K, E> PropertyGraphReader<VertexId, NodeData, HashId, EdgeData<VertexId>, HashId, P, Error<E>> for KvGraphStore<P, K, E>
 where
   P: Property<HashId, SerialisationError>,
   K: KVStore<E>,
@@ -505,7 +505,7 @@ where
     Ok(node)
   }
 
-  fn read_edge(&self, id: &HashId) -> Result<EdgeData, Error<E>> {
+  fn read_edge(&self, id: &HashId) -> Result<EdgeData<VertexId>, Error<E>> {
     let path = "edges/".to_string() + id;
 
     let data = self.kv.fetch_record(path.as_bytes()).map_err(|e| Error::KV(e))?;
@@ -821,13 +821,13 @@ impl NodeData
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct EdgeData {
+pub struct EdgeData<VertexId> {
   pub properties: HashId,
   pub n1: VertexId,
   pub n2: VertexId,
 }
 
-impl EdgeData
+impl EdgeData<VertexId>
 {
   fn get_key(&self) -> HashId {
     let data = serde_json::to_vec(self).unwrap();
@@ -846,21 +846,21 @@ impl EdgeData
   }
 }
 
-pub struct Change {
-  pub created: ChangeSet,
-  pub modified: BTreeSet<NodeChange>,
-  pub deleted: ChangeSet,
+pub struct Change<VertexId, HashId> {
+  pub created: ChangeSet<VertexId, HashId>,
+  pub modified: BTreeSet<NodeChange<VertexId, HashId>>,
+  pub deleted: ChangeSet<VertexId, HashId>,
   pub depends_on: BTreeSet<HashId>,
 }
 
-pub struct NodeChange {
+pub struct NodeChange<VertexId, HashId> {
   pub id: VertexId,
   pub properties: HashId,
 }
 
-pub struct ChangeSet {
-  pub nodes: BTreeSet<NodeChange>,
-  pub edges: BTreeSet<EdgeData>,
+pub struct ChangeSet<VertexId, HashId> {
+  pub nodes: BTreeSet<NodeChange<VertexId, HashId>>,
+  pub edges: BTreeSet<EdgeData<VertexId>>,
   //pub properties: BTreeSet<Property>,
 }
 
