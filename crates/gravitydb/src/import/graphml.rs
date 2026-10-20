@@ -109,7 +109,7 @@ where
 {
   node_key_mapper: FNodeKey,
   prop_mapper: FProp,
-  node_type: std::marker::PhantomData<NodeKey>,
+  node_type: PhantomData<NodeKey>,
 }
 
 impl<NodeKey, Prop, FNodeKey, FProp> GraphML<NodeKey, Prop, FNodeKey, FProp>
@@ -142,7 +142,11 @@ where
       prop_mapper: _,
       node_type,
     } = self;
-    GraphML { node_key_mapper, prop_mapper: mapper, node_type }
+    GraphML {
+      node_key_mapper,
+      prop_mapper: mapper,
+      node_type
+    }
   }
 
   pub fn import<'a, PropKey, EdgeKey, GStore, E>(
