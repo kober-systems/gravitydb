@@ -28,7 +28,7 @@ try {
   state = "manual code changes";
 }
 
-const files_modified_before = (await sh("git diff --name-only")).trim().split("\n");
+const files_modified_before = (await sh("jj diff --name-only")).trim().split("\n");
 
 const files_modified_by_lisi = {
   ...await json_sh("lisi --dry-run ../../docs/gravity.adoc", "crates/gravitydb", false),
