@@ -1,4 +1,4 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::{borrow::Cow, collections::HashMap, marker::PhantomData};
 use thiserror::Error;
 use quick_xml::{events::{BytesStart, Event}, XmlVersion};
 use crate::{GraphStore, kv_graph_store::Uuid};
@@ -61,31 +61,20 @@ where
 
       match start_evt.name().local_name().as_ref() {
         "node" => {
-          let node_id = start_evt.attributes()
-            .filter_map(Result::ok)
-            .find(|a| a.key.as_ref() == "id")
-            .map(|a| a.normalized_value(XmlVersion::Implicit1_0))
+          let node_id = attribute_value(&start_evt, "id")?
             .ok_or(ImportError::MissingAttr("id"))?;
-          let node_key = node_key_mapper(&node_id?, &mut mappings);
+          let node_key = node_key_mapper(&node_id, &mut mappings);
           let properties = prop_mapper(&text, &prop_types);
           graph.create_node(node_key, &properties).map_err(|e| ImportError::GraphDB(e))?;
         }
         "edge" => {
-          // Read source and target attributes
-          let source = start_evt.attributes()
-            .filter_map(Result::ok)
-            .find(|a| a.key.as_ref() == "source")
-            .map(|a| a.normalized_value(XmlVersion::Implicit1_0))
+          let source = attribute_value(&start_evt, "source")?
             .ok_or(ImportError::MissingAttr("source"))?;
-
-          let target = start_evt.attributes()
-            .filter_map(Result::ok)
-            .find(|a| a.key.as_ref() == "target")
-            .map(|a| a.normalized_value(XmlVersion::Implicit1_0))
+          let target = attribute_value(&start_evt, "target")?
             .ok_or(ImportError::MissingAttr("target"))?;
 
-          let source_key = node_key_mapper(&source?, &mut mappings);
-          let target_key = node_key_mapper(&target?, &mut mappings);
+          let source_key = node_key_mapper(&source, &mut mappings);
+          let target_key = node_key_mapper(&target, &mut mappings);
           let properties = prop_mapper(&text, &prop_types);
           graph.create_edge(source_key, target_key, &properties).map_err(|e| ImportError::GraphDB(e))?;
         }
@@ -108,6 +97,19 @@ pub fn uuid_mapper<'a>(id: &'a str, id_store: &mut HashMap<String, Uuid>) -> Uui
 
 pub fn string_prop_mapper(prop: &str) -> String {
   prop.to_string()
+}
+
+fn attribute_value<'a, E>(
+  element: &'a BytesStart<'a>,
+  name: &str,
+) -> Result<Option<Cow<'a, str>>, ImportError<E>> {
+  for attribute in element.attributes() {
+    let attribute = attribute.map_err(quick_xml::Error::from)?;
+    if attribute.key.as_ref() == name {
+      return Ok(Some(attribute.normalized_value(XmlVersion::Implicit1_0)?));
+    }
+  }
+  Ok(None)
 }
 
 /// GraphML importer struct with builder API
@@ -201,10 +203,9 @@ fn insert_property_type<E>(
   let mut id = None;
   let mut declared_type = None;
 
-  for attribute in key.attributes().flatten() {
-    let Ok(value) = attribute.normalized_value(XmlVersion::Implicit1_0) else {
-      continue;
-    };
+  for attribute in key.attributes() {
+    let attribute = attribute.map_err(quick_xml::Error::from)?;
+    let value = attribute.normalized_value(XmlVersion::Implicit1_0)?;
 
     match attribute.key.as_ref() {
       "id" => id = Some(value.into_owned()),
@@ -232,8 +233,6 @@ pub enum ImportError<E>
 {
   #[error(transparent)]
   QuickXML(#[from] quick_xml::Error),
-  #[error(transparent)]
-  Parsing(#[from] quick_xml::DeError),
   #[error(transparent)]
   GraphDB(E),
   MissingAttr(&'static str),
@@ -271,6 +270,19 @@ mod tests {
     assert!(matches!(
       property_types.get("metadata"),
       Some(PropType::Custom(xml)) if xml == r#"<key id="metadata" attr.type="json"/>"#
+    ));
+  }
+
+  #[test]
+  fn malformed_key_attributes_are_rejected() {
+    let mut reader = Reader::from_str(r#"<key id="title" attr.type/>"#);
+    let Event::Empty(key) = reader.read_event().unwrap() else {
+      panic!("expected an empty key element");
+    };
+
+    assert!(matches!(
+      insert_property_type::<()>(PropertyTypes::new(), &key),
+      Err(ImportError::QuickXML(_))
     ));
   }
 

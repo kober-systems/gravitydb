@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use std::io::{self, Cursor};
+use std::io;
 
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
@@ -56,7 +56,7 @@ where
     ));
   }
 
-  let mut writer = Writer::new_with_indent(Cursor::new(Vec::new()), b' ', 2);
+  let mut writer = Writer::new_with_indent(Vec::new(), b' ', 2);
   writer.write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))?;
 
   let mut graphml_start = BytesStart::new("graphml");
@@ -98,7 +98,7 @@ where
   writer.write_event(Event::End(BytesEnd::new("graph")))?;
   writer.write_event(Event::End(BytesEnd::new("graphml")))?;
 
-  String::from_utf8(writer.into_inner().into_inner()).map_err(ExportError::Utf8)
+  String::from_utf8(writer.into_inner()).map_err(ExportError::Utf8)
 }
 
 /// GraphML exporter struct with builder API.
@@ -189,8 +189,6 @@ pub fn create_graphml_exporter() -> GraphML<Uuid, (), fn(&Uuid) -> String, fn(&(
 pub enum ExportError<E> {
   #[error("graph error")]
   Graph(E),
-  #[error(transparent)]
-  Xml(quick_xml::Error),
   #[error(transparent)]
   Utf8(std::string::FromUtf8Error),
   #[error(transparent)]
