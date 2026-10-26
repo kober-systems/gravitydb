@@ -1,7 +1,6 @@
-use std::{marker::PhantomData, str::Utf8Error};
-use std::collections::HashMap;
+use std::{collections::HashMap, marker::PhantomData};
 use thiserror::Error;
-use quick_xml::{encoding::EncodingError, events::{BytesStart, Event}};
+use quick_xml::{events::{BytesStart, Event}, XmlVersion};
 use crate::{GraphStore, kv_graph_store::Uuid};
 pub use crate::utils::{PropType, PropertyTypes};
 
@@ -24,20 +23,20 @@ where
     let start_evt = match xml_reader.read_event() {
       Ok(Event::Start(ref e)) => {
         match e.name().local_name().as_ref() {
-          b"node"|b"edge" => Some(e.clone().into_owned()),
-          b"graph"|b"graphml" => None,
-          other => Err(ImportError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
+          "node" | "edge" => Some(e.clone().into_owned()),
+          "graph" | "graphml" => None,
+          other => Err(ImportError::UnexpectedElement(other.to_string()))?,
         }
       },
       Ok(Event::Empty(e)) => match e.name().local_name().as_ref() {
-        b"key" => {
+        "key" => {
           prop_types = insert_property_type(prop_types, &e)?;
           None
         },
-        other => Err(ImportError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
+        other => Err(ImportError::UnexpectedElement(other.to_string()))?,
       },
       Ok(Event::Text(e)) => {
-        let text = e.decode()?;
+        let text = e.into_inner();
         if text.trim() != "" {
           println!("unexpected props {}", text);
         }
@@ -45,8 +44,8 @@ where
       },
       Ok(Event::End(ref e)) => {
         match e.name().local_name().as_ref() {
-          b"graph"|b"graphml" => None,
-          other => Err(ImportError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
+          "graph" | "graphml" => None,
+          other => Err(ImportError::UnexpectedElement(other.to_string()))?,
         }
       }
       Ok(Event::Eof) => break,
@@ -61,28 +60,28 @@ where
       let text = xml_reader.read_text(end_evt.name())?;
 
       match start_evt.name().local_name().as_ref() {
-        b"node" => {
+        "node" => {
           let node_id = start_evt.attributes()
             .filter_map(Result::ok)
-            .find(|a| a.key.as_ref() == b"id")
-            .map(|a| a.unescape_value())
+            .find(|a| a.key.as_ref() == "id")
+            .map(|a| a.normalized_value(XmlVersion::Implicit1_0))
             .ok_or(ImportError::MissingAttr("id"))?;
           let node_key = node_key_mapper(&node_id?, &mut mappings);
           let properties = prop_mapper(&text, &prop_types);
           graph.create_node(node_key, &properties).map_err(|e| ImportError::GraphDB(e))?;
         }
-        b"edge" => {
+        "edge" => {
           // Read source and target attributes
           let source = start_evt.attributes()
             .filter_map(Result::ok)
-            .find(|a| a.key.as_ref() == b"source")
-            .map(|a| a.unescape_value())
+            .find(|a| a.key.as_ref() == "source")
+            .map(|a| a.normalized_value(XmlVersion::Implicit1_0))
             .ok_or(ImportError::MissingAttr("source"))?;
 
           let target = start_evt.attributes()
             .filter_map(Result::ok)
-            .find(|a| a.key.as_ref() == b"target")
-            .map(|a| a.unescape_value())
+            .find(|a| a.key.as_ref() == "target")
+            .map(|a| a.normalized_value(XmlVersion::Implicit1_0))
             .ok_or(ImportError::MissingAttr("target"))?;
 
           let source_key = node_key_mapper(&source?, &mut mappings);
@@ -90,7 +89,7 @@ where
           let properties = prop_mapper(&text, &prop_types);
           graph.create_edge(source_key, target_key, &properties).map_err(|e| ImportError::GraphDB(e))?;
         }
-        other => Err(ImportError::UnexpectedElement(str::from_utf8(other)?.to_string()))?,
+        other => Err(ImportError::UnexpectedElement(other.to_string()))?,
       };
     }
   }
@@ -203,13 +202,13 @@ fn insert_property_type<E>(
   let mut declared_type = None;
 
   for attribute in key.attributes().flatten() {
-    let Ok(value) = attribute.unescape_value() else {
+    let Ok(value) = attribute.normalized_value(XmlVersion::Implicit1_0) else {
       continue;
     };
 
     match attribute.key.as_ref() {
-      b"id" => id = Some(value.into_owned()),
-      b"attr.type" => declared_type = Some(value.into_owned()),
+      "id" => id = Some(value.into_owned()),
+      "attr.type" => declared_type = Some(value.into_owned()),
       _ => {}
     }
   }
@@ -221,7 +220,7 @@ fn insert_property_type<E>(
     Some("int" | "long" | "integer") => PropType::Integer,
     Some("float" | "double") => PropType::Double,
     Some("boolean") => PropType::Boolean,
-    _ => PropType::Custom(format!("<{}/>", String::from_utf8_lossy(key.as_ref()))),
+    _ => PropType::Custom(format!("<{}/>", <BytesStart as AsRef<str>>::as_ref(key))),
   };
 
   property_types.insert(id, prop_type);
@@ -236,11 +235,7 @@ pub enum ImportError<E>
   #[error(transparent)]
   Parsing(#[from] quick_xml::DeError),
   #[error(transparent)]
-  Decode(#[from] EncodingError),
-  #[error(transparent)]
   GraphDB(E),
-  #[error(transparent)]
-  Utf8(#[from] Utf8Error),
   MissingAttr(&'static str),
   UnexpectedElement(String),
 }
@@ -263,7 +258,7 @@ mod tests {
 
     loop {
       match reader.read_event().unwrap() {
-        Event::Empty(key) if key.name().local_name().as_ref() == b"key" => {
+        Event::Empty(key) if key.name().local_name().as_ref() == "key" => {
           property_types = insert_property_type::<()>(property_types, &key).unwrap();
         }
         Event::Eof => break,
