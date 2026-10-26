@@ -86,7 +86,7 @@ fn t02_optimized_schema() {
         }
         _ => {
           let data = serde_json::to_vec(&self).unwrap();
-          format!("{:X}", sha2::Sha256::digest(&data))
+          gravitydb::utils::sha256_key(&data)
         }
       }
     }
@@ -104,8 +104,6 @@ fn t02_optimized_schema() {
       Ok(serde_json::from_slice::<OpenWorkShopsSchema>(data)?)
     }
   }
-
-  use sha2::Digest;
 
   let kv = mem_kv_store::MemoryKvStore::default();
   let mut db = kv_graph_store::KvGraphStore::from_kv(kv);

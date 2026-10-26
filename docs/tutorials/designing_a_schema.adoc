@@ -303,7 +303,7 @@ impl KeyAdressableElement<String> for OpenWorkShopsSchema {
       }
       _ => {
         let data = serde_json::to_vec(&self).unwrap();
-        format!("{:X}", sha2::Sha256::digest(&data))
+        gravitydb::utils::sha256_key(&data)
       }
     }
   }
@@ -329,14 +329,6 @@ impl<Error: From<serde_json::Error>> SchemaElement<Error> for OpenWorkShopsSchem
     Ok(serde_json::from_slice::<OpenWorkShopsSchema>(data)?)
   }
 }
-----
-
-We need to import `Digest` for hashing.
-
-[[optimized_key_implemention]]
-[source, rust]
-----
-use sha2::Digest;
 ----
 
 ====

@@ -146,15 +146,6 @@ strings in this case.
 pub type HashId = String;
 ----
 
-We use SHA-256 as the hash function. For this purpose, we import the
-Digest traits.
-
-[[imports]]
-[source, rust]
-----
-use sha2::Digest;
-----
-
 ====
 
 === Individual Data Types
@@ -304,7 +295,7 @@ impl EdgeData<VertexId>
 {
   fn get_key(&self) -> HashId {
     let data = serde_json::to_vec(self).unwrap();
-    format!("{:X}", sha2::Sha256::digest(&data))
+    crate::utils::sha256_key(&data)
   }
 
   fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {

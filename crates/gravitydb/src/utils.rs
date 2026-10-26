@@ -2,7 +2,8 @@ use sha2::Digest;
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
-pub(crate) fn sha256_key(data: &[u8]) -> String {
+/// Returns the uppercase hexadecimal SHA-256 digest for `data`.
+pub fn sha256_key(data: &[u8]) -> String {
   let digest = sha2::Sha256::digest(data);
   let mut key = String::with_capacity(digest.len() * 2);
   for byte in digest {

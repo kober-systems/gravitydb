@@ -120,7 +120,7 @@ impl UserData for GenericProperty {}
 impl KeyAdressableElement<String> for Vec<u8>
 {
   fn get_key(&self) -> String {
-    crate::utils::sha256_key(self)
+    crate::utils::sha256_key(&self)
   }
 }
 
