@@ -1,3 +1,4 @@
 .envrc
 .litstate
+/cargo-deploy/
 target/

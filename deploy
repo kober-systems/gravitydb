@@ -1,7 +1,33 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+
+PUBLISH_DIR="$(pwd)/cargo-publish"
+BRANCH="master"
+
+cleanup() {
+  rc=$?
+  if [ -d "$PUBLISH_DIR" ]; then
+    if git worktree list --porcelain 2>/dev/null | grep -qF "$(realpath "$PUBLISH_DIR")"; then
+      git worktree remove --force "$PUBLISH_DIR" || true
+    else
+      rm -rf "$PUBLISH_DIR" || true
+    fi
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+
+if command -v jj >/dev/null 2>&1; then
+  jj git export
+fi
+
+rm -rf "$PUBLISH_DIR"
+git worktree add "$PUBLISH_DIR" "$BRANCH"
+cd "$PUBLISH_DIR"
 
 git pull --rebase
+
+./build
 
 # check literate state
 if [ "sync" != "$(cat .litstate)" ]; then
@@ -12,10 +38,15 @@ fi
 cargo semver-checks
 
 # cargo publish
+for package in gravitydb_derive gravitydb gravitydb-test-utils gravitydb-filestore; do
+  echo "Package contents for $package:"
+  cargo package --package "$package" --list
+done
+
 cargo login
-cargo publish --package gravitydb-test-utils
 cargo publish --package gravitydb_derive
 cargo publish --package gravitydb
+cargo publish --package gravitydb-test-utils
 cargo publish --package gravitydb-filestore
 cargo logout
 
