@@ -8,20 +8,18 @@ license = "MIT"
 
 [dependencies]
 gravitydb = { version = "0.3.0", path = "../gravitydb", features = ["lua"] }
-thiserror = "2.0"
-sha2 = "0.11.0"
+thiserror = { workspace = true }
 vfs = "0.13.0"
-uuid = { version = "1.10", features = ["serde", "v4"] }
-serde = { version = "1.0", features = ["derive"] }
+uuid = { workspace = true, features = ["serde", "v4"] }
 # maybe we use a more compact serialisation format later for production
-serde_json = "1.0"
+serde_json = { workspace = true }
 
-mlua = { version = "0.12", features = ["luau", "serialize", "anyhow"] }
+mlua = { workspace = true, features = ["luau", "serialize", "anyhow"] }
 clap = { version = "4", features = ["derive"] }
 log = "0.4.8"
 simple_logger = "5.0.0"
 anyhow = "1.0"
 
 [dev-dependencies]
-pretty_assertions = "1"
+pretty_assertions = { workspace = true }
 gravitydb-test-utils = { path = "../gravitydb-test-utils" }

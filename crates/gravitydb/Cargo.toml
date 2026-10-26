@@ -15,14 +15,14 @@ categories = ["database-implementations"]
 
 [dependencies]
 gravitydb_derive = { version = "0.3", optional = true, path = "../gravitydb_derive" }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 typetag = "0.2"
 
 sha2 = "0.11.0"
-uuid = { version = "1.10", features = ["serde", "v4"] }
-thiserror = "2.0"
-mlua = { version = "0.12", features = ["luau", "serialize", "macros"], optional = true }
+uuid = { workspace = true, features = ["serde", "v4"] }
+thiserror = { workspace = true }
+mlua = { workspace = true, features = ["luau", "serialize", "macros"], optional = true }
 rustyline = { version = "19", features = ["derive"], optional = true }
 
 quick-xml = { version = "0.42", features = ["serialize"] }
@@ -33,6 +33,6 @@ js = [ "uuid/js"]
 derive = ["gravitydb_derive" ]
 
 [dev-dependencies]
-pretty_assertions = "1"
+pretty_assertions = { workspace = true }
 gravitydb-test-utils = { path = "../gravitydb-test-utils" }
 gravitydb_derive = { path = "../gravitydb_derive" }

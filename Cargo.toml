@@ -6,3 +6,11 @@ members = [
   "crates/gravitydb_derive",
   "crates/gravitydb-test-utils",
 ]
+
+[workspace.dependencies]
+mlua = "0.12"
+pretty_assertions = "1"
+serde = "1.0"
+serde_json = "1.0"
+thiserror = "2.0"
+uuid = "1.10"
