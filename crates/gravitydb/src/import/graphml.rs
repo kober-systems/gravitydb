@@ -1,17 +1,9 @@
 use std::{marker::PhantomData, str::Utf8Error};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use thiserror::Error;
 use quick_xml::{encoding::EncodingError, events::{BytesStart, Event}};
 use crate::{GraphStore, kv_graph_store::Uuid};
-
-pub type PropertyTypes = BTreeMap<String, PropType>;
-pub enum PropType {
-  String,
-  Integer,
-  Double,
-  Boolean,
-  Custom(String),
-}
+pub use crate::utils::{PropType, PropertyTypes};
 
 /// Function to import GraphML with closures for mapping node keys and properties
 pub fn import_graphml<'a, NodeKey, EdgeKey, PropKey, Prop, FNodeKey, FProp, GStore, E>(

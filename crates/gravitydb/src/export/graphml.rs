@@ -6,7 +6,7 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use thiserror::Error;
 
 use crate::{PropertyFilter, PropertyGraphReader};
-use crate::import::graphml::{PropType, PropertyTypes};
+use crate::utils::PropertyTypes;
 use crate::kv_graph_store::{EdgeData, NodeData, Uuid};
 
 pub type PropKey = String;
@@ -68,7 +68,7 @@ where
     key.push_attribute(("id", id.as_str()));
     key.push_attribute(("for", "all"));
     key.push_attribute(("attr.name", id.as_str()));
-    key.push_attribute(("attr.type", prop_type_name(prop_type)));
+    key.push_attribute(("attr.type", <&str>::from(prop_type)));
     writer.write_event(Event::Empty(key))?;
   }
 
@@ -99,16 +99,6 @@ where
   writer.write_event(Event::End(BytesEnd::new("graphml")))?;
 
   String::from_utf8(writer.into_inner().into_inner()).map_err(ExportError::Utf8)
-}
-
-fn prop_type_name(prop_type: &PropType) -> &str {
-  match prop_type {
-    PropType::String => "string",
-    PropType::Integer => "int",
-    PropType::Double => "double",
-    PropType::Boolean => "boolean",
-    PropType::Custom(name) => name,
-  }
 }
 
 /// GraphML exporter struct with builder API.

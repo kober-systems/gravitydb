@@ -1,5 +1,6 @@
 use gravitydb::{kv_graph_store, mem_kv_store, ql};
-use gravitydb::import::graphml::{create_graphml_importer, PropType, PropertyTypes};
+use gravitydb::import::graphml::create_graphml_importer;
+use gravitydb::utils::{PropType, PropertyTypes};
 use gravitydb::export::graphml::create_graphml_exporter;
 use gravitydb_derive::Schema;
 use serde::{Serialize, Deserialize};

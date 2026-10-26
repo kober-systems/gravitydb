@@ -418,6 +418,7 @@ pub mod lua;
 pub use gravitydb_derive::Schema;
 pub mod import;
 pub mod export;
+pub mod utils;
 
 <<traits|join="\n\n">>
 ----
