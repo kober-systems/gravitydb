@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use sha2::Digest;
 use crate::schema::SchemaElement;
 use serde::{Serialize, Deserialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -831,7 +830,7 @@ impl EdgeData<VertexId>
 {
   fn get_key(&self) -> HashId {
     let data = serde_json::to_vec(self).unwrap();
-    format!("{:X}", sha2::Sha256::digest(&data))
+    crate::utils::sha256_key(&data)
   }
 
   fn serialize(&self) -> Result<Vec<u8>, SerialisationError> {

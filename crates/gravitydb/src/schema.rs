@@ -60,12 +60,11 @@ where
 
 /// Trait to mark the the automatic implementation should be used
 pub trait JsonSchemaProperty {}
-use sha2::Digest;
 
 impl<T: JsonSchemaProperty + serde::Serialize> KeyAdressableElement<String> for T {
   fn get_key(&self) -> String {
     let data = serde_json::to_vec(&self).unwrap();
-    format!("{:X}", sha2::Sha256::digest(&data))
+    crate::utils::sha256_key(&data)
   }
 }
 
@@ -92,7 +91,7 @@ pub struct GenericProperty(Vec<u8>);
 impl KeyAdressableElement<String> for GenericProperty
 {
   fn get_key(&self) -> String {
-    format!("{:X}", sha2::Sha256::digest(&self.0))
+    crate::utils::sha256_key(&self.0)
   }
 }
 
@@ -121,7 +120,7 @@ impl UserData for GenericProperty {}
 impl KeyAdressableElement<String> for Vec<u8>
 {
   fn get_key(&self) -> String {
-    format!("{:X}", sha2::Sha256::digest(&self))
+    crate::utils::sha256_key(self)
   }
 }
 
