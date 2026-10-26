@@ -1,6 +1,6 @@
 [package]
 name = "gravitydb"
-version = "0.3.1"
+version = "0.4.0"
 description = "A graph database"
 authors = ["Benjamin Kober <benko@kober-systems.com>"]
 homepage = "https://github.com/kober-systems/gravitydb"
@@ -14,7 +14,7 @@ keywords = [
 categories = ["database-implementations"]
 
 [dependencies]
-gravitydb_derive = { version = "0.3", optional = true, path = "../gravitydb_derive" }
+gravitydb_derive = { version = "0.4", optional = true, path = "../gravitydb_derive" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 typetag = "0.2"
