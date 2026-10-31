@@ -331,7 +331,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gravitydb"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "gravitydb-test-utils",
  "gravitydb_derive",
@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "gravitydb-filestore"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -358,9 +358,7 @@ dependencies = [
  "log",
  "mlua",
  "pretty_assertions",
- "serde",
  "serde_json",
- "sha2",
  "simple_logger",
  "thiserror",
  "uuid",
@@ -369,7 +367,7 @@ dependencies = [
 
 [[package]]
 name = "gravitydb-test-utils"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "gravitydb",
  "pretty_assertions",
@@ -378,7 +376,7 @@ dependencies = [
 
 [[package]]
 name = "gravitydb_derive"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "gravitydb",
  "pretty_assertions",
@@ -386,7 +384,6 @@ dependencies = [
  "quote",
  "serde",
  "serde_json",
- "sha2",
  "syn 3.0.9",
  "trybuild",
 ]
@@ -517,9 +514,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.34"
+version = "0.4.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
+checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "luau0-src"
