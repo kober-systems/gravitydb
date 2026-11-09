@@ -150,7 +150,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -331,7 +331,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gravitydb"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "gravitydb-test-utils",
  "gravitydb_derive",
@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "gravitydb-filestore"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -358,9 +358,7 @@ dependencies = [
  "log",
  "mlua",
  "pretty_assertions",
- "serde",
  "serde_json",
- "sha2",
  "simple_logger",
  "thiserror",
  "uuid",
@@ -369,7 +367,7 @@ dependencies = [
 
 [[package]]
 name = "gravitydb-test-utils"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "gravitydb",
  "pretty_assertions",
@@ -378,7 +376,7 @@ dependencies = [
 
 [[package]]
 name = "gravitydb_derive"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "gravitydb",
  "pretty_assertions",
@@ -386,8 +384,7 @@ dependencies = [
  "quote",
  "serde",
  "serde_json",
- "sha2",
- "syn 3.0.9",
+ "syn 3.0.10",
  "trybuild",
 ]
 
@@ -805,7 +802,7 @@ checksum = "6b45a652b0c95353d3206b7f5355f4c034ba08400ddfd0dcb7c1f788c244185a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -857,7 +854,7 @@ checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -936,9 +933,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "3.0.9"
+version = "3.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d78c8dee4c7bf0e14673097256fed6142ce9d3b85a408189d07482442145823b"
+checksum = "4ae9ccbea3a7b0b09443036490c8f34a8b1b760fd345e5c0dae0aac718faea79"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -977,7 +974,7 @@ checksum = "fe5197923287db20a58125f0bc85c062f7f2c892de97b18c356f9efb14b28524"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
@@ -1101,7 +1098,7 @@ checksum = "f153acc4e99a5f2a5aefa09fb078be54e26271b2813f6041200b224c098d8328"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.9",
+ "syn 3.0.10",
 ]
 
 [[package]]
